@@ -12,29 +12,56 @@ ApplicationWindow {
         spacing: 10
         padding: 10
 
-        TextArea {
-            id: chatArea
-            readOnly: true
-            wrapMode: Text.Wrap
+        ScrollView {
+            id: scrollView
+            width: parent.width
             height: parent.height * 0.8
-            text: "🔷 Chat Started..."
+
+            TextArea {
+                id: chatArea
+                readOnly: true
+                wrapMode: Text.Wrap
+                text: "🔷 Chat Started..."
+                selectByMouse: true
+            }
         }
 
         Row {
             spacing: 10
+            width: parent.width
+
             TextField {
                 id: inputField
                 placeholderText: "Type your message..."
-                width: parent.width * 0.8
+                width: parent.width - sendButton.width - parent.spacing
+
+                Keys.onReturnPressed: {
+                    sendButton.clicked()
+                }
             }
 
             Button {
+                id: sendButton
                 text: "Send"
                 onClicked: {
-                    chatArea.text += "\n\n🟢 You: " + inputField.text
-                    inputField.text = ""
-                    // later: send to C++
+                    if (inputField.text.trim() !== "") {
+                        chatArea.text += "\n\n🟢 You: " + inputField.text
+                        lmstudio.sendMessage(inputField.text)
+                        inputField.text = ""
+
+                        // Прокрутка вниз
+                        scrollView.ScrollBar.vertical.position = 1.0
+                    }
                 }
+            }
+        }
+
+        Connections {
+            target: lmstudio
+            function onMessageReceived(response) {
+                chatArea.text += "\n🔵 AI: " + response
+                // Прокрутка вниз после получения ответа
+                scrollView.ScrollBar.vertical.position = 1.0
             }
         }
     }

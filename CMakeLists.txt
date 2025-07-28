@@ -4,12 +4,14 @@ project(AIChatGUI VERSION 0.1 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-find_package(Qt6 REQUIRED COMPONENTS Quick)
+find_package(Qt6 REQUIRED COMPONENTS Quick Network)
 
-qt_standard_project_setup(REQUIRES 6.8)
+qt_standard_project_setup()
 
 qt_add_executable(appAIChatGUI
     main.cpp
+    lmstudioconnector.h
+    lmstudioconnector.cpp
 )
 
 qt_add_qml_module(appAIChatGUI
@@ -31,7 +33,7 @@ set_target_properties(appAIChatGUI PROPERTIES
 )
 
 target_link_libraries(appAIChatGUI
-    PRIVATE Qt6::Quick
+    PRIVATE Qt6::Quick Qt6::Network
 )
 
 include(GNUInstallDirs)
