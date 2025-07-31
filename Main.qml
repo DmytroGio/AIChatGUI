@@ -185,106 +185,74 @@ ApplicationWindow {
         anchors.bottom: parent.bottom
         anchors.left: parent.left
         anchors.right: parent.right
-        height: Math.max(70, inputField.height + 20)
-        color: "transparent"
+        height: 70
+        color: root.surfaceColor
 
         Rectangle {
-            anchors.fill: parent
-            color: root.surfaceColor
-            opacity: 0.9
-            radius: 0
-        }
-
-        Row {
-            anchors.centerIn: parent
+            id: inputContainer
             anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.margins: 20
-            spacing: 15
-            height: 50
+            anchors.right: sendButton.left
+            anchors.verticalCenter: parent.verticalCenter
+            anchors.margins: 15
+            anchors.rightMargin: 10
+            height: 40
+            color: root.inputBackground
+            radius: 20
+            border.color: inputField.activeFocus ? root.primaryColor : "transparent"
+            border.width: 2
 
-            Rectangle {
-                id: inputContainer
-                width: parent.width - sendButton.width - parent.spacing
-                height: 50
-                color: root.inputBackground
-                radius: 25
-                border.color: inputField.activeFocus ? root.primaryColor : "transparent"
-                border.width: 2
+            TextField {
+                id: inputField
+                anchors.fill: parent
+                anchors.margins: 10
+                anchors.topMargin: 8
+                anchors.bottomMargin: 8
+                placeholderText: "Type your message..."
+                placeholderTextColor: root.textSecondary
+                color: root.textPrimary
+                font.pixelSize: 16
+                verticalAlignment: Text.AlignVCenter
+                background: Rectangle { color: "transparent" }
+                selectByMouse: true
 
-                Behavior on border.color {
-                    ColorAnimation { duration: 200 }
-                }
-
-                ScrollView {
-                    anchors.fill: parent
-                    anchors.margins: 15
-                    anchors.leftMargin: 20
-                    clip: true
-
-                    TextArea {
-                        id: inputField
-                        placeholderText: "Type your message..."
-                        placeholderTextColor: root.textSecondary
-                        color: root.textPrimary
-                        font.pixelSize: 14
-                        wrapMode: TextArea.Wrap
-                        selectByMouse: true
-                        background: null
-
-                        Keys.onReturnPressed: {
-                            if (!(event.modifiers & Qt.ShiftModifier)) {
-                                sendButton.sendMessage()
-                                event.accepted = true
-                            }
-                        }
-                    }
+                Keys.onReturnPressed: {
+                    sendButton.sendMessage()
                 }
             }
+        }
 
-            Rectangle {
-                id: sendButton
-                width: 50
-                height: 50
-                radius: 25
-                gradient: Gradient {
-                    orientation: Gradient.Horizontal
-                    GradientStop { position: 0.0; color: root.primaryColor }
-                    GradientStop { position: 1.0; color: root.secondaryColor }
-                }
+        Rectangle {
+            id: sendButton
+            anchors.right: parent.right
+            anchors.verticalCenter: parent.verticalCenter
+            anchors.rightMargin: 15
+            width: 40
+            height: 40
+            radius: 20
+            color: root.primaryColor
 
-                property bool isPressed: false
+            Text {
+                anchors.centerIn: parent
+                text: "→"
+                color: "white"
+                font.pixelSize: 16
+            }
 
-                scale: isPressed ? 0.95 : 1.0
-                Behavior on scale { NumberAnimation { duration: 100 } }
+            MouseArea {
+                anchors.fill: parent
+                onClicked: sendMessage()
+            }
 
-                Text {
-                    anchors.centerIn: parent
-                    text: "→"
-                    color: "white"
-                    font.pixelSize: 20
-                    font.bold: true
-                }
-
-                MouseArea {
-                    anchors.fill: parent
-                    onPressed: parent.isPressed = true
-                    onReleased: parent.isPressed = false
-                    onClicked: parent.sendMessage()
-                }
-
-                function sendMessage() {
-                    if (inputField.text.trim() !== "") {
-                        addMessage(inputField.text, true)
-                        lmstudio.sendMessage(inputField.text)
-                        inputField.text = ""
-                        scrollToBottom()
-                    }
+            function sendMessage() {
+                var messageText = inputField.text.trim()
+                if (messageText !== "") {
+                    addMessage(messageText, true)
+                    lmstudio.sendMessage(messageText)
+                    inputField.text = ""
                 }
             }
         }
     }
-
     // Function to add messages
     function addMessage(text, isUser) {
         var messageComponent = Qt.createComponent("MessageBubble.qml")
@@ -368,5 +336,9 @@ ApplicationWindow {
             contentArea.anchors.margins = 20
             inputArea.anchors.margins = 20
         }
+    }
+
+    Component.onCompleted: {
+        inputField.forceActiveFocus()
     }
 }

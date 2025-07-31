@@ -13,19 +13,22 @@ LMStudioConnector::LMStudioConnector(QObject *parent)
 
 void LMStudioConnector::sendMessage(const QString &message)
 {
-    QUrl url("http://localhost:1234/v1/chat/completions"); // LM Studio endpoint
+    QUrl url("http://127.0.0.1:1234"); // LM Studio endpoint
     QNetworkRequest request(url);
     request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
 
     // Пример JSON запроса к LM Studio
     QJsonObject json;
-    json["model"] = "llama3"; // Название локальной модели
+    json["model"] = "qwen2.5-coder-3b-instruct"; // Название локальной модели
     QJsonArray messages;
     QJsonObject userMessage;
     userMessage["role"] = "user";
     userMessage["content"] = message;
     messages.append(userMessage);
     json["messages"] = messages;
+    json["temperature"] = 0.7;
+    json["max_tokens"] = 2048;
+    json["stream"] = false;
 
     QJsonDocument doc(json);
     QByteArray data = doc.toJson();
