@@ -13,9 +13,11 @@ LMStudioConnector::LMStudioConnector(QObject *parent)
 
 void LMStudioConnector::sendMessage(const QString &message)
 {
-    QUrl url("http://127.0.0.1:1234"); // LM Studio endpoint
+    QUrl url("http://127.0.0.1:1234/v1/chat/completions"); // LM Studio endpoint
     QNetworkRequest request(url);
     request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
+    request.setRawHeader("User-Agent", "AIChatGUI/1.0");
+    request.setRawHeader("Accept", "application/json");
 
     // Пример JSON запроса к LM Studio
     QJsonObject json;
