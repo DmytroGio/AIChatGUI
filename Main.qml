@@ -135,19 +135,52 @@ ApplicationWindow {
             anchors.margins: 15
             clip: true
 
-            ScrollBar.vertical.policy: ScrollBar.AsNeeded
             ScrollBar.horizontal.policy: ScrollBar.Never
+
+            // Кастомизируем вертикальный скроллбар
+            ScrollBar.vertical: ScrollBar {
+                parent: scrollView
+                anchors.top: scrollView.top
+                anchors.right: scrollView.right
+                anchors.bottom: scrollView.bottom
+                anchors.rightMargin: 2
+
+                policy: ScrollBar.AsNeeded
+                minimumSize: 0.1
+                size: flickable.height / flickable.contentHeight
+
+                contentItem: Rectangle {
+                    implicitWidth: 4
+                    radius: 2
+                    color: parent.pressed ? root.primaryColor :
+                           parent.hovered ? Qt.lighter(root.primaryColor, 1.2) :
+                           Qt.rgba(root.primaryColor.r, root.primaryColor.g, root.primaryColor.b, 0.4)
+
+                    Behavior on color {
+                        ColorAnimation { duration: 150 }
+                    }
+                }
+
+                background: Rectangle {
+                    implicitWidth: 6
+                    color: "transparent"
+                }
+            }
 
             Flickable {
                 id: flickable
+                anchors.fill: parent
                 contentHeight: chatContent.height
                 boundsBehavior: Flickable.StopAtBounds
 
+                onContentHeightChanged: scrollToBottom()
+
                 Column {
                     id: chatContent
-                    width: scrollView.width
+                    width: parent.width - 12 // Отступ для скроллбара
                     spacing: 15
 
+                    // Ваш существующий контент остается без изменений
                     // Welcome message
                     Rectangle {
                         width: parent.width
@@ -308,9 +341,9 @@ ApplicationWindow {
 
     Timer {
         id: scrollTimer
-        interval: 100
+        interval: 50
         onTriggered: {
-            scrollView.ScrollBar.vertical.position = 1.0
+            flickable.contentY = Math.max(0, flickable.contentHeight - flickable.height)
         }
     }
 

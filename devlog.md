@@ -1,12 +1,12 @@
 ## 2025-07-31
 AI Chat GUI Development Plan
-Phase 1: Backend Setup
+Phase 1: Backend Setup [done]
 
 Create LMStudioConnector class for HTTP API communication
 Implement JSON request/response handling (OpenAI format)
 Connect to localhost:1234 LM Studio endpoint
 
-Phase 2: Frontend UI
+Phase 2: Frontend UI [done]
 
 Design dark theme chat interface with message bubbles
 Add input field with send button functionality
