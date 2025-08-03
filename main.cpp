@@ -3,6 +3,8 @@
 #include <QQmlContext>
 #include "lmstudioconnector.h"
 #include <QtCore/QString>
+#include "chatmanager.h"
+
 using namespace Qt::StringLiterals;
 
 int main(int argc, char *argv[])
@@ -11,7 +13,10 @@ int main(int argc, char *argv[])
     QQmlApplicationEngine engine;
 
     LMStudioConnector connector;
+    ChatManager chatManager;
+
     engine.rootContext()->setContextProperty("lmstudio", &connector);
+    engine.rootContext()->setContextProperty("chatManager", &chatManager);
 
     // Используем путь к модулю вместо qrc
     const QUrl url(QStringLiteral("qrc:/AIChatGUI/Main.qml"));

@@ -12,6 +12,8 @@ qt_add_executable(appAIChatGUI
     main.cpp
     lmstudioconnector.h
     lmstudioconnector.cpp
+    chatmanager.h
+    chatmanager.cpp
 )
 
 qt_add_qml_module(appAIChatGUI
@@ -19,7 +21,11 @@ qt_add_qml_module(appAIChatGUI
     VERSION 1.0
     QML_FILES
         Main.qml
-        QML_FILES MessageBubble.qml
+        MessageBubble.qml
+        ChatList.qml
+    SOURCES
+        chatmanager.h
+        chatmanager.cpp
 )
 
 # Qt for iOS sets MACOSX_BUNDLE_GUI_IDENTIFIER automatically since Qt 6.1.

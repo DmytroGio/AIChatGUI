@@ -47,6 +47,10 @@ void LMStudioConnector::onReplyFinished(QNetworkReply *reply)
     }
 
     QByteArray responseData = reply->readAll();
+
+    // ДОБАВИТЬ: Диагностика размера ответа
+    qDebug() << "Response size:" << responseData.size() << "bytes";
+
     QJsonDocument jsonDoc = QJsonDocument::fromJson(responseData);
     QString content;
 
@@ -57,8 +61,23 @@ void LMStudioConnector::onReplyFinished(QNetworkReply *reply)
             if (!choices.isEmpty()) {
                 QJsonObject message = choices[0].toObject()["message"].toObject();
                 content = message["content"].toString();
+
+                // Обработка экранированных символов
+                content = content.replace("\\n", "\n");
+                content = content.replace("\\\"", "\"");
+                content = content.replace("\\\\", "\\");
+                content = content.replace("\\t", "\t");
+
+                qDebug() << "Content length:" << content.length() << "characters";
             }
         }
+    }
+
+    // ДОБАВИТЬ: Проверка на пустой контент
+    if (content.isEmpty()) {
+        qDebug() << "Empty content received!";
+        qDebug() << "Full response:" << responseData;
+        content = "⚠️ Empty response received";
     }
 
     emit messageReceived(content);

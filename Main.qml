@@ -22,6 +22,7 @@ ApplicationWindow {
     property color inputBackground: "#16213e"
     property color messageUserBg: "#2d3748"
     property color messageAiBg: "#1a365d"
+    property bool showChatList: false
 
     // Gradient background
     Rectangle {
@@ -32,11 +33,21 @@ ApplicationWindow {
         }
     }
 
+    // Chat list panel
+    ChatList {
+        id: chatList
+        anchors.top: parent.top
+        anchors.bottom: parent.bottom
+        anchors.left: parent.left
+        isOpen: root.showChatList
+        z: 10
+    }
+
     // Header
     Rectangle {
         id: header
         anchors.top: parent.top
-        anchors.left: parent.left
+        anchors.left: chatList.right
         anchors.right: parent.right
         height: 60
         color: "transparent"
@@ -48,9 +59,33 @@ ApplicationWindow {
             radius: 0
         }
 
-        Row {
+        // Menu button
+        Rectangle {
+            id: menuButton
             anchors.left: parent.left
-            anchors.leftMargin: 20
+            anchors.leftMargin: 15
+            anchors.verticalCenter: parent.verticalCenter
+            width: 35
+            height: 35
+            radius: 8
+            color: root.showChatList ? root.primaryColor : "transparent"
+
+            Text {
+                anchors.centerIn: parent
+                text: "☰"
+                color: root.textPrimary
+                font.pixelSize: 18
+            }
+
+            MouseArea {
+                anchors.fill: parent
+                onClicked: root.showChatList = !root.showChatList
+            }
+        }
+
+        Row {
+            anchors.left: menuButton.right
+            anchors.leftMargin: 15
             anchors.verticalCenter: parent.verticalCenter
             spacing: 15
 
@@ -77,7 +112,7 @@ ApplicationWindow {
                 anchors.verticalCenter: parent.verticalCenter
 
                 Text {
-                    text: "AI Chat Assistant"
+                    text: chatManager.currentChatTitle
                     color: root.textPrimary
                     font.pixelSize: 18
                     font.bold: true
@@ -114,7 +149,7 @@ ApplicationWindow {
     Rectangle {
         id: contentArea
         anchors.top: header.bottom
-        anchors.left: parent.left
+        anchors.left: chatList.right
         anchors.right: parent.right
         anchors.bottom: inputArea.top
         anchors.margins: 20
@@ -139,15 +174,7 @@ ApplicationWindow {
 
             // Кастомизируем вертикальный скроллбар
             ScrollBar.vertical: ScrollBar {
-                parent: scrollView
-                anchors.top: scrollView.top
-                anchors.right: scrollView.right
-                anchors.bottom: scrollView.bottom
-                anchors.rightMargin: 2
-
                 policy: ScrollBar.AsNeeded
-                minimumSize: 0.1
-                size: flickable.height / flickable.contentHeight
 
                 contentItem: Rectangle {
                     implicitWidth: 4
@@ -216,7 +243,7 @@ ApplicationWindow {
     Rectangle {
         id: inputArea
         anchors.bottom: parent.bottom
-        anchors.left: parent.left
+        anchors.left: chatList.right
         anchors.right: parent.right
         height: 70
         color: root.surfaceColor
@@ -245,11 +272,19 @@ ApplicationWindow {
                 color: root.textPrimary
                 font.pixelSize: 16
                 verticalAlignment: Text.AlignVCenter
-                background: Rectangle { color: "transparent" }
                 selectByMouse: true
 
+                background: Rectangle {
+                    color: "transparent"
+                    border.width: 0
+                }
+
                 Keys.onReturnPressed: {
-                    sendButton.sendMessage()
+                    if (inputField.text.trim() !== "") {
+                        chatManager.addMessage(inputField.text.trim(), true)
+                        lmstudio.sendMessage(inputField.text.trim())
+                        inputField.text = ""
+                    }
                 }
             }
         }
@@ -275,19 +310,42 @@ ApplicationWindow {
                 anchors.fill: parent
                 onClicked: sendMessage()
             }
-
-            function sendMessage() {
-                var messageText = inputField.text.trim()
-                if (messageText !== "") {
-                    addMessage(messageText, true)
-                    lmstudio.sendMessage(messageText)
-                    inputField.text = ""
-                }
-            }
         }
     }
     // Function to add messages
     function addMessage(text, isUser) {
+        chatManager.addMessage(text, isUser)
+    }
+
+    function sendMessage() {
+        var messageText = inputField.text.trim()
+        if (messageText !== "") {
+            // Сначала добавляем сообщение пользователя в ChatManager
+            chatManager.addMessage(messageText, true)
+            // Затем отправляем в LM Studio
+            lmstudio.sendMessage(messageText)
+            inputField.text = ""
+        }
+    }
+
+    function loadMessages() {
+        // Очищаем все сообщения кроме welcome message (первый элемент)
+        for (var i = chatContent.children.length - 1; i >= 1; i--) {
+            chatContent.children[i].destroy()
+        }
+
+        // Загружаем сообщения текущего чата
+        var messages = chatManager.getCurrentMessages()
+        for (var j = 0; j < messages.length; j++) {
+            var msg = messages[j]
+            createMessageBubble(msg.text, msg.isUser)
+        }
+
+        scrollToBottom()
+    }
+
+    // Добавить новую функцию для создания сообщений
+    function createMessageBubble(text, isUser) {
         var messageComponent = Qt.createComponent("MessageBubble.qml")
         if (messageComponent.status === Component.Ready) {
             var messageObject = messageComponent.createObject(chatContent, {
@@ -296,11 +354,12 @@ ApplicationWindow {
                 "width": Qt.binding(function() { return chatContent.width })
             })
         } else {
-            // Fallback if component doesn't exist
+            // Fallback
             addSimpleMessage(text, isUser)
         }
     }
 
+    // Удалить старую функцию addMessage и addSimpleMessage, заменить на:
     function addSimpleMessage(text, isUser) {
         var messageRect = Qt.createQmlObject(`
             import QtQuick 2.15
@@ -323,7 +382,7 @@ ApplicationWindow {
                     Text {
                         id: messageText
                         anchors.centerIn: parent
-                        text: "${isUser ? '🟢 You: ' : '🤖 AI: '}${text}"
+                        text: "${isUser ? '🟢 You: ' : '🤖 AI: '}${text.replace(/"/g, '\\"')}"
                         color: "${root.textPrimary}"
                         font.pixelSize: 14
                         wrapMode: Text.Wrap
@@ -333,6 +392,8 @@ ApplicationWindow {
                 }
             }
         `, chatContent)
+
+        scrollToBottom()
     }
 
     function scrollToBottom() {
@@ -356,6 +417,15 @@ ApplicationWindow {
         }
     }
 
+    // Connections for ChatManager
+    Connections {
+        target: chatManager
+        function onMessagesChanged() {
+            // Добавляем небольшую задержку для корректного обновления
+            Qt.callLater(loadMessages)
+        }
+    }
+
     // Adaptive sizing
     onWidthChanged: {
         if (width < 600) {
@@ -373,5 +443,6 @@ ApplicationWindow {
 
     Component.onCompleted: {
         inputField.forceActiveFocus()
+        loadMessages()  // Добавить эту строку
     }
 }
