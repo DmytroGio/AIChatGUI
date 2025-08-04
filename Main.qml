@@ -24,6 +24,7 @@ ApplicationWindow {
     property color messageAiBg: "#1a365d"
     property bool showChatList: false
 
+
     // Gradient background
     Rectangle {
         anchors.fill: parent
@@ -146,6 +147,7 @@ ApplicationWindow {
     }
 
     // Main content area
+    // Main content area
     Rectangle {
         id: contentArea
         anchors.top: header.bottom
@@ -163,6 +165,7 @@ ApplicationWindow {
             opacity: 0.6
             radius: parent.radius
         }
+
 
         ScrollView {
             id: scrollView
@@ -204,10 +207,9 @@ ApplicationWindow {
 
                 Column {
                     id: chatContent
-                    width: parent.width - 12 // Отступ для скроллбара
+                    width: parent.width - 12
                     spacing: 15
 
-                    // Ваш существующий контент остается без изменений
                     // Welcome message
                     Rectangle {
                         width: parent.width
@@ -237,9 +239,7 @@ ApplicationWindow {
                 }
             }
         }
-    }
-
-    // Input area
+    }// Input area
     Rectangle {
         id: inputArea
         anchors.bottom: parent.bottom
@@ -445,4 +445,5 @@ ApplicationWindow {
         inputField.forceActiveFocus()
         loadMessages()  // Добавить эту строку
     }
+
 }

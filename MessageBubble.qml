@@ -1,4 +1,5 @@
 import QtQuick 2.15
+import QtQuick.Controls 2.15
 import QtQuick.Effects
 
 Rectangle {
@@ -52,16 +53,35 @@ Rectangle {
             GradientStop { position: 1.0; color: messageContainer.primaryColor }
         }
 
-        Text {
+        TextEdit {
             id: messageLabel
             anchors.centerIn: parent
             text: (isUserMessage ? "🟢 " : "🤖 ") + messageText
             color: messageContainer.textColor
             font.pixelSize: 14
-            wrapMode: Text.Wrap
-            width: Math.min(implicitWidth, parent.parent.width * 0.75 - 25)
-            horizontalAlignment: isUserMessage ? Text.AlignRight : Text.AlignLeft
+            wrapMode: TextEdit.Wrap
+            width: Math.min(contentWidth, parent.parent.width * 0.75 - 25)
+            horizontalAlignment: isUserMessage ? TextEdit.AlignRight : TextEdit.AlignLeft
+
+            readOnly: true
+            selectByMouse: true
+            selectionColor: Qt.rgba(0.3, 0.6, 1.0, 0.3)
+            selectedTextColor: messageContainer.textColor
+
+            // Обязательно добавить прозрачный background
+            background: Rectangle {
+                color: "transparent"
+                border.width: 0
+            }
+
+            // Убрать отступы
+            leftPadding: 0
+            rightPadding: 0
+            topPadding: 0
+            bottomPadding: 0
         }
+
+        // Добавить контекстное меню после TextArea
 
         // Subtle animation on creation
         NumberAnimation on opacity {
