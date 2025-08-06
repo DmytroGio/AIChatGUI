@@ -21,6 +21,7 @@ Rectangle {
     }
 
     Column {
+        id: mainColumn
         anchors.fill: parent
         anchors.margins: 15
         spacing: 10
@@ -71,17 +72,18 @@ Rectangle {
             opacity: 0.3
         }
 
-        // Chat list
-        ScrollView {
+        // Chat list area
+        Item {
             width: parent.width
             height: parent.height - 60
-            clip: true
 
             ListView {
                 id: chatListView
                 anchors.fill: parent
+                anchors.rightMargin: 20  // Место для скроллбара
                 model: chatManager.chatList
                 spacing: 5
+                clip: true
 
                 delegate: Rectangle {
                     width: chatListView.width
@@ -140,8 +142,9 @@ Rectangle {
                         height: 24
                         radius: 12
                         color: "#e74c3c"
-                        opacity: chatMouseArea.containsMouse ? 1.0 : 0.0
+                        opacity: (chatMouseArea.containsMouse || deleteBtnMouseArea.containsMouse) ? 1.0 : 0.0
                         visible: !modelData.isCurrent || chatManager.chatList.length > 1
+                        z: 10
 
                         Behavior on opacity {
                             NumberAnimation { duration: 150 }
@@ -156,21 +159,172 @@ Rectangle {
                         }
 
                         MouseArea {
+                            id: deleteBtnMouseArea
                             anchors.fill: parent
+                            anchors.margins: -4
+                            hoverEnabled: true
+                            z: 11
+
                             onClicked: {
-                                chatManager.deleteChat(modelData.id)
+                                console.log("Delete button clicked for:", modelData.title)
+                                chatListPanel.showDeleteDialog(modelData.id, modelData.title)
                                 mouse.accepted = true
                             }
+
+                            onPressed: mouse.accepted = true
+                            onReleased: mouse.accepted = true
                         }
                     }
 
                     MouseArea {
                         id: chatMouseArea
                         anchors.fill: parent
+                        anchors.rightMargin: 32
                         hoverEnabled: true
                         onClicked: {
                             if (!modelData.isCurrent) {
                                 chatManager.switchToChat(modelData.id)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Кастомный скроллбар на уровне всей панели
+    ScrollBar {
+        id: customScrollBar
+        anchors.right: parent.right
+        anchors.top: parent.top
+        anchors.topMargin: 70  // После заголовка и разделителя
+        anchors.bottom: parent.bottom
+        anchors.rightMargin: 5
+        anchors.bottomMargin: 5
+        width: 8
+        orientation: Qt.Vertical
+
+        size: chatListView.height / Math.max(chatListView.contentHeight, 1)
+        position: chatListView.contentY / Math.max(chatListView.contentHeight - chatListView.height, 1)
+
+        onPositionChanged: {
+            if (pressed) {
+                chatListView.contentY = position * (chatListView.contentHeight - chatListView.height)
+            }
+        }
+
+        contentItem: Rectangle {
+            radius: 4
+            color: customScrollBar.pressed ? "#4facfe" :
+                   customScrollBar.hovered ? "#00f2fe" :
+                   "#6c5ce7"
+            opacity: 0.8
+
+            Behavior on color {
+                ColorAnimation { duration: 200 }
+            }
+        }
+
+        background: Rectangle {
+            color: "#16213e"
+            opacity: 0.3
+            radius: 4
+        }
+    }
+
+    // Диалог подтверждения удаления
+    Rectangle {
+        id: deleteDialog
+        anchors.fill: parent
+        color: "#80000000"
+        visible: false
+        z: 100
+
+        property string chatIdToDelete: ""
+        property string chatTitleToDelete: ""
+
+        MouseArea {
+            anchors.fill: parent
+            onClicked: deleteDialog.visible = false
+        }
+
+        Rectangle {
+            anchors.centerIn: parent
+            width: Math.min(parent.width * 0.9, 300)
+            height: 140
+            color: "#1a1b2e"
+            radius: 15
+            border.color: "#4facfe"
+            border.width: 1
+
+            Column {
+                anchors.centerIn: parent
+                spacing: 20
+                width: parent.width - 40
+
+                Text {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    text: "Delete Chat"
+                    color: "#ffffff"
+                    font.pixelSize: 16
+                    font.bold: true
+                }
+
+                Text {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    text: 'Delete "' + deleteDialog.chatTitleToDelete + '"?'
+                    color: "#a0a0a0"
+                    font.pixelSize: 14
+                    wrapMode: Text.Wrap
+                    horizontalAlignment: Text.AlignHCenter
+                    width: parent.width
+                }
+
+                Row {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    spacing: 15
+
+                    Rectangle {
+                        width: 80
+                        height: 35
+                        radius: 8
+                        color: "#6c5ce7"
+
+                        Text {
+                            anchors.centerIn: parent
+                            text: "Cancel"
+                            color: "white"
+                            font.pixelSize: 14
+                        }
+
+                        MouseArea {
+                            anchors.fill: parent
+                            onClicked: {
+                                console.log("Cancel clicked")
+                                deleteDialog.visible = false
+                            }
+                        }
+                    }
+
+                    Rectangle {
+                        width: 80
+                        height: 35
+                        radius: 8
+                        color: "#e74c3c"
+
+                        Text {
+                            anchors.centerIn: parent
+                            text: "Delete"
+                            color: "white"
+                            font.pixelSize: 14
+                        }
+
+                        MouseArea {
+                            anchors.fill: parent
+                            onClicked: {
+                                console.log("Confirm delete clicked")
+                                chatManager.deleteChat(deleteDialog.chatIdToDelete)
+                                deleteDialog.visible = false
                             }
                         }
                     }
@@ -189,5 +343,12 @@ Rectangle {
         } else {
             return date.toLocaleDateString()
         }
+    }
+
+    function showDeleteDialog(chatId, chatTitle) {
+        console.log("showDeleteDialog called:", chatId, chatTitle)
+        deleteDialog.chatIdToDelete = chatId
+        deleteDialog.chatTitleToDelete = chatTitle
+        deleteDialog.visible = true
     }
 }
