@@ -82,19 +82,22 @@ Rectangle {
                 anchors.fill: parent
                 anchors.rightMargin: 15  // Место для скроллбара
                 model: chatManager.chatList
-                spacing: 5
+                spacing: 8  // Увеличиваем отступ между элементами
                 clip: true
 
                 delegate: Rectangle {
                     width: chatListView.width
-                    height: 70
-                    color: modelData.isCurrent ? "#2d3748" : "transparent"
-                    radius: 10
+                    height: 65
+                    color: modelData.isCurrent ? "#2d3748" : "#1e2332"  // Базовый цвет для всех элементов
+                    radius: 12
+                    border.color: modelData.isCurrent ? "#4facfe" : "transparent"
+                    border.width: modelData.isCurrent ? 2 : 0
 
+                    // Эффект при наведении
                     Rectangle {
                         anchors.fill: parent
-                        color: parent.color
-                        opacity: chatMouseArea.containsMouse ? 0.7 : 0.5
+                        color: "#4facfe"
+                        opacity: chatMouseArea.containsMouse && !modelData.isCurrent ? 0.1 : 0.0
                         radius: parent.radius
 
                         Behavior on opacity {
@@ -102,84 +105,86 @@ Rectangle {
                         }
                     }
 
-                    Column {
-                        anchors.left: parent.left
-                        anchors.right: deleteBtn.left
-                        anchors.verticalCenter: parent.verticalCenter
+                    Row {
+                        anchors.fill: parent
                         anchors.margins: 12
-                        spacing: 4
+                        spacing: 8
 
-                        Text {
-                            text: modelData.title
-                            color: "#ffffff"
-                            font.pixelSize: 14
-                            font.bold: modelData.isCurrent
-                            elide: Text.ElideRight
-                            width: parent.width
-                        }
+                        // Основная информация о чате
+                        Column {
+                            width: parent.width - deleteBtn.width - 16
+                            anchors.verticalCenter: parent.verticalCenter
+                            spacing: 3
 
-                        Text {
-                            text: modelData.lastMessage
-                            color: "#a0a0a0"
-                            font.pixelSize: 12
-                            elide: Text.ElideRight
-                            width: parent.width
-                        }
-
-                        Text {
-                            text: formatTime(modelData.lastTimestamp)
-                            color: "#6c5ce7"
-                            font.pixelSize: 10
-                        }
-                    }
-
-                    Rectangle {
-                        id: deleteBtn
-                        anchors.right: parent.right
-                        anchors.verticalCenter: parent.verticalCenter
-                        anchors.rightMargin: 8
-                        width: 24
-                        height: 24
-                        radius: 12
-                        color: "#e74c3c"
-                        opacity: (chatMouseArea.containsMouse || deleteBtnMouseArea.containsMouse) ? 1.0 : 0.0
-                        visible: !modelData.isCurrent || chatManager.chatList.length > 1
-                        z: 10
-
-                        Behavior on opacity {
-                            NumberAnimation { duration: 150 }
-                        }
-
-                        Text {
-                            anchors.centerIn: parent
-                            text: "×"
-                            color: "white"
-                            font.pixelSize: 14
-                            font.bold: true
-                        }
-
-                        MouseArea {
-                            id: deleteBtnMouseArea
-                            anchors.fill: parent
-                            anchors.margins: -4
-                            hoverEnabled: true
-                            z: 11
-
-                            onClicked: {
-                                console.log("Delete button clicked for:", modelData.title)
-                                chatListPanel.showDeleteDialog(modelData.id, modelData.title)
-                                mouse.accepted = true
+                            Text {
+                                text: modelData.title
+                                color: "#ffffff"
+                                font.pixelSize: 13
+                                font.bold: modelData.isCurrent
+                                elide: Text.ElideRight
+                                width: parent.width
                             }
 
-                            onPressed: mouse.accepted = true
-                            onReleased: mouse.accepted = true
+                            Text {
+                                text: modelData.lastMessage
+                                color: "#a0a0a0"
+                                font.pixelSize: 11
+                                elide: Text.ElideRight
+                                width: parent.width
+                                maximumLineCount: 1
+                            }
+
+                            Text {
+                                text: formatTime(modelData.lastTimestamp)
+                                color: "#6c5ce7"
+                                font.pixelSize: 9
+                            }
+                        }
+
+                        // Кнопка удаления
+                        Rectangle {
+                            id: deleteBtn
+                            width: 22
+                            height: 22
+                            radius: 11
+                            color: "#e74c3c"
+                            opacity: (chatMouseArea.containsMouse || deleteBtnMouseArea.containsMouse) ? 0.9 : 0.0
+                            visible: !modelData.isCurrent || chatManager.chatList.length > 1
+                            anchors.verticalCenter: parent.verticalCenter
+
+                            Behavior on opacity {
+                                NumberAnimation { duration: 200 }
+                            }
+
+                            Text {
+                                anchors.centerIn: parent
+                                text: "×"
+                                color: "white"
+                                font.pixelSize: 12
+                                font.bold: true
+                            }
+
+                            MouseArea {
+                                id: deleteBtnMouseArea
+                                anchors.fill: parent
+                                anchors.margins: -4
+                                hoverEnabled: true
+
+                                onClicked: {
+                                    console.log("Delete button clicked for:", modelData.title)
+                                    chatListPanel.showDeleteDialog(modelData.id, modelData.title)
+                                    mouse.accepted = true
+                                }
+
+                                onPressed: mouse.accepted = true
+                                onReleased: mouse.accepted = true
+                            }
                         }
                     }
 
                     MouseArea {
                         id: chatMouseArea
                         anchors.fill: parent
-                        anchors.rightMargin: 32
                         hoverEnabled: true
                         onClicked: {
                             if (!modelData.isCurrent) {
@@ -189,7 +194,6 @@ Rectangle {
                     }
                 }
             }
-
             // MouseArea для обработки колеса мыши в зоне между чатами и скроллбаром
             MouseArea {
                 anchors.right: parent.right
@@ -209,84 +213,81 @@ Rectangle {
         }
     }
 
-    // Кастомный скроллбар на уровне всей панели
-    // Кастомный скроллбар
-        Item {
-            id: customScrollBar
-            anchors.right: parent.right
-            anchors.top: parent.top
-            anchors.topMargin: 70
-            anchors.bottom: parent.bottom
-            anchors.rightMargin: 5
-            anchors.bottomMargin: 5
-            width: 8
-            visible: chatListView.contentHeight > chatListView.height
+    // Кастомный скроллбар (перемещаем на уровень с Column)
+    Item {
+        id: chatListScrollBar
+        anchors.right: parent.right
+        anchors.top: parent.top
+        anchors.topMargin: 75  // Учитываем отступ Column + высоту заголовка
+        anchors.bottom: parent.bottom
+        anchors.rightMargin: 5
+        anchors.bottomMargin: 15
+        width: 8
+        visible: isOpen && chatListView.contentHeight > chatListView.height
 
-            property real scrollBarHeight: chatListView.height
-            property real contentHeight: chatListView.contentHeight
-            property real thumbHeight: Math.max(20, scrollBarHeight * (scrollBarHeight / contentHeight))
-            property real thumbY: chatListView.contentY * (scrollBarHeight - thumbHeight) / Math.max(1, contentHeight - scrollBarHeight)
+        property real scrollBarHeight: chatListView.height
+        property real contentHeight: chatListView.contentHeight
+        property real thumbHeight: Math.max(20, (contentHeight > 0) ? scrollBarHeight * (scrollBarHeight / contentHeight) : 20)
+        property real thumbY: (contentHeight > scrollBarHeight && scrollBarHeight > thumbHeight) ?
+                              chatListView.contentY * (scrollBarHeight - thumbHeight) / (contentHeight - scrollBarHeight) : 0
 
-            Rectangle {
-                id: scrollTrack
+        Rectangle {
+            id: chatScrollTrack
+            anchors.fill: parent
+            color: "#16213e"
+            opacity: 0.3
+            radius: 4
+        }
+
+        Rectangle {
+            id: chatScrollThumb
+            x: 0
+            y: parent.thumbY
+            width: parent.width
+            height: parent.thumbHeight
+            radius: 4
+            color: chatThumbMouseArea.pressed ? "#4facfe" :
+                   chatThumbMouseArea.containsMouse ? "#00f2fe" :
+                   "#6c5ce7"
+            opacity: 0.8
+
+            MouseArea {
+                id: chatThumbMouseArea
                 anchors.fill: parent
-                color: "#16213e"
-                opacity: 0.3
-                radius: 4
-            }
+                hoverEnabled: true
 
-            Rectangle {
-                id: scrollThumb
-                x: 0
-                y: customScrollBar.thumbY
-                width: parent.width
-                height: customScrollBar.thumbHeight
-                radius: 4
-                color: thumbMouseArea.pressed ? "#4facfe" :
-                       thumbMouseArea.containsMouse ? "#00f2fe" :
-                       "#6c5ce7"
-                opacity: 0.8
+                property real startY: 0
+                property real startContentY: 0
 
-                Behavior on color {
-                    ColorAnimation { duration: 200 }
+                onPressed: {
+                    startY = mouse.y
+                    startContentY = chatListView.contentY
                 }
 
-                MouseArea {
-                    id: thumbMouseArea
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    drag.target: scrollThumb
-                    drag.axis: Drag.YAxis
-                    drag.minimumY: 0
-                    drag.maximumY: customScrollBar.scrollBarHeight - scrollThumb.height
-
-                    onPositionChanged: {
-                        if (drag.active) {
-                            var newContentY = scrollThumb.y * (customScrollBar.contentHeight - customScrollBar.scrollBarHeight) / (customScrollBar.scrollBarHeight - scrollThumb.height)
-                            chatListView.contentY = Math.max(0, Math.min(newContentY, customScrollBar.contentHeight - customScrollBar.scrollBarHeight))
-                        }
+                onPositionChanged: {
+                    if (pressed) {
+                        var deltaY = mouse.y - startY
+                        var maxScroll = Math.max(0, chatListScrollBar.contentHeight - chatListScrollBar.scrollBarHeight)
+                        var scrollRatio = deltaY / Math.max(1, chatListScrollBar.scrollBarHeight - chatScrollThumb.height)
+                        var newContentY = startContentY + scrollRatio * maxScroll
+                        chatListView.contentY = Math.max(0, Math.min(newContentY, maxScroll))
                     }
                 }
             }
+        }
 
-            MouseArea {
-                anchors.fill: parent
-                onClicked: {
-                    var clickRatio = mouse.y / height
-                    var targetContentY = clickRatio * (customScrollBar.contentHeight - customScrollBar.scrollBarHeight)
-                    chatListView.contentY = Math.max(0, Math.min(targetContentY, customScrollBar.contentHeight - customScrollBar.scrollBarHeight))
-                }
-
-                onWheel: {
-                    var delta = wheel.angleDelta.y
-                    var scrollAmount = delta > 0 ? -60 : 60
-                    var newContentY = chatListView.contentY + scrollAmount
-                    newContentY = Math.max(0, Math.min(newContentY, chatListView.contentHeight - chatListView.height))
-                    chatListView.contentY = newContentY
-                }
+        MouseArea {
+            anchors.fill: parent
+            onWheel: {
+                var delta = wheel.angleDelta.y
+                var scrollAmount = delta > 0 ? -60 : 60
+                var maxContentY = Math.max(0, chatListView.contentHeight - chatListView.height)
+                var newContentY = chatListView.contentY + scrollAmount
+                chatListView.contentY = Math.max(0, Math.min(newContentY, maxContentY))
             }
         }
-        // Диалог подтверждения удаления
+    }
+    // Диалог подтверждения удаления
     Rectangle {
         id: deleteDialog
         anchors.fill: parent

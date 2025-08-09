@@ -147,7 +147,6 @@ ApplicationWindow {
     }
 
     // Main content area
-    // Main content area
     Rectangle {
         id: contentArea
         anchors.top: header.bottom
@@ -167,75 +166,125 @@ ApplicationWindow {
         }
 
 
-        ScrollView {
-            id: scrollView
+        // делаем простую структуру с Flickable
+        Flickable {
+            id: flickable
             anchors.fill: parent
             anchors.margins: 15
+            anchors.rightMargin: 25  // Место для скроллбара
+            contentHeight: chatContent.height
+            boundsBehavior: Flickable.StopAtBounds
             clip: true
 
-            ScrollBar.horizontal.policy: ScrollBar.Never
+            onContentHeightChanged: scrollToBottom()
 
-            // Кастомизируем вертикальный скроллбар
-            ScrollBar.vertical: ScrollBar {
-                policy: ScrollBar.AsNeeded
+            Column {
+                id: chatContent
+                width: parent.width
+                spacing: 15
 
-                contentItem: Rectangle {
-                    implicitWidth: 4
-                    radius: 2
-                    color: parent.pressed ? root.primaryColor :
-                           parent.hovered ? Qt.lighter(root.primaryColor, 1.2) :
-                           Qt.rgba(root.primaryColor.r, root.primaryColor.g, root.primaryColor.b, 0.4)
+                // Welcome message
+                Rectangle {
+                    width: parent.width
+                    height: welcomeText.height + 30
+                    color: "transparent"
 
-                    Behavior on color {
-                        ColorAnimation { duration: 150 }
+                    Rectangle {
+                        anchors.centerIn: parent
+                        width: Math.min(parent.width * 0.8, 400)
+                        height: parent.height
+                        color: root.messageAiBg
+                        opacity: 0.7
+                        radius: 15
+
+                        Text {
+                            id: welcomeText
+                            anchors.centerIn: parent
+                            text: "🤖 Welcome to AI Chat Assistant!\nHow can I help you today?"
+                            color: root.textPrimary
+                            font.pixelSize: 14
+                            horizontalAlignment: Text.AlignHCenter
+                            wrapMode: Text.Wrap
+                            width: parent.width - 20
+                        }
                     }
                 }
+            }
+        }
 
-                background: Rectangle {
-                    implicitWidth: 6
-                    color: "transparent"
+        // Добавляем кастомный скроллбар
+        Item {
+            id: customScrollBar
+            anchors.right: parent.right
+            anchors.top: parent.top
+            anchors.bottom: parent.bottom
+            anchors.rightMargin: 5
+            anchors.topMargin: 15
+            anchors.bottomMargin: 15
+            width: 8
+            visible: flickable.contentHeight > flickable.height
+
+            property real scrollBarHeight: flickable.height
+            property real contentHeight: flickable.contentHeight
+            property real thumbHeight: Math.max(20, scrollBarHeight * (scrollBarHeight / contentHeight))
+            property real thumbY: flickable.contentY * (scrollBarHeight - thumbHeight) / Math.max(1, contentHeight - scrollBarHeight)
+
+            Rectangle {
+                id: scrollTrack
+                anchors.fill: parent
+                color: root.surfaceColor
+                opacity: 0.3
+                radius: 4
+            }
+
+            Rectangle {
+                id: scrollThumb
+                x: 0
+                y: customScrollBar.thumbY
+                width: parent.width
+                height: customScrollBar.thumbHeight
+                radius: 4
+                color: thumbMouseArea.pressed ? root.primaryColor :
+                       thumbMouseArea.containsMouse ? root.secondaryColor :
+                       root.accentColor
+                opacity: 0.8
+
+                Behavior on color {
+                    ColorAnimation { duration: 200 }
+                }
+
+                MouseArea {
+                    id: thumbMouseArea
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    drag.target: scrollThumb
+                    drag.axis: Drag.YAxis
+                    drag.minimumY: 0
+                    drag.maximumY: customScrollBar.scrollBarHeight - scrollThumb.height
+
+                    onPositionChanged: {
+                        if (drag.active) {
+                            var newContentY = scrollThumb.y * (customScrollBar.contentHeight - customScrollBar.scrollBarHeight) / (customScrollBar.scrollBarHeight - scrollThumb.height)
+                            flickable.contentY = Math.max(0, Math.min(newContentY, customScrollBar.contentHeight - customScrollBar.scrollBarHeight))
+                        }
+                    }
                 }
             }
 
-            Flickable {
-                id: flickable
+            MouseArea {
                 anchors.fill: parent
-                contentHeight: chatContent.height
-                boundsBehavior: Flickable.StopAtBounds
+                onClicked: {
+                    var clickRatio = mouse.y / height
+                    var targetContentY = clickRatio * (customScrollBar.contentHeight - customScrollBar.scrollBarHeight)
+                    flickable.contentY = Math.max(0, Math.min(targetContentY, customScrollBar.contentHeight - customScrollBar.scrollBarHeight))
+                }
 
-                onContentHeightChanged: scrollToBottom()
-
-                Column {
-                    id: chatContent
-                    width: parent.width - 12
-                    spacing: 15
-
-                    // Welcome message
-                    Rectangle {
-                        width: parent.width
-                        height: welcomeText.height + 30
-                        color: "transparent"
-
-                        Rectangle {
-                            anchors.centerIn: parent
-                            width: Math.min(parent.width * 0.8, 400)
-                            height: parent.height
-                            color: root.messageAiBg
-                            opacity: 0.7
-                            radius: 15
-
-                            Text {
-                                id: welcomeText
-                                anchors.centerIn: parent
-                                text: "🤖 Welcome to AI Chat Assistant!\nHow can I help you today?"
-                                color: root.textPrimary
-                                font.pixelSize: 14
-                                horizontalAlignment: Text.AlignHCenter
-                                wrapMode: Text.Wrap
-                                width: parent.width - 20
-                            }
-                        }
-                    }
+                onWheel: {
+                    var delta = wheel.angleDelta.y
+                    var scrollAmount = delta > 0 ? -60 : 60
+                    var newContentY = flickable.contentY + scrollAmount
+                    newContentY = Math.max(0, Math.min(newContentY, flickable.contentHeight - flickable.height))
+                    flickable.contentY = newContentY
                 }
             }
         }
