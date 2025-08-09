@@ -88,7 +88,7 @@ Rectangle {
                 delegate: Rectangle {
                     width: chatListView.width
                     height: 65
-                    color: modelData.isCurrent ? "#2d3748" : "#1e2332"  // Базовый цвет для всех элементов
+                    color: modelData.isCurrent ? "#2d3748" : "#1e2332"
                     radius: 12
                     border.color: modelData.isCurrent ? "#4facfe" : "transparent"
                     border.width: modelData.isCurrent ? 2 : 0
@@ -166,18 +166,13 @@ Rectangle {
 
                             MouseArea {
                                 id: deleteBtnMouseArea
-                                anchors.fill: parent
-                                anchors.margins: -4
+                                anchors.fill: deleteBtn
                                 hoverEnabled: true
 
                                 onClicked: {
-                                    console.log("Delete button clicked for:", modelData.title)
                                     chatListPanel.showDeleteDialog(modelData.id, modelData.title)
                                     mouse.accepted = true
                                 }
-
-                                onPressed: mouse.accepted = true
-                                onReleased: mouse.accepted = true
                             }
                         }
                     }
@@ -185,7 +180,9 @@ Rectangle {
                     MouseArea {
                         id: chatMouseArea
                         anchors.fill: parent
+                        anchors.rightMargin: deleteBtn.width + 12  // ДОБАВИТЬ: исключаем область кнопки удаления
                         hoverEnabled: true
+
                         onClicked: {
                             if (!modelData.isCurrent) {
                                 chatManager.switchToChat(modelData.id)
@@ -294,9 +291,23 @@ Rectangle {
         color: "#80000000"
         visible: false
         z: 100
+        focus: visible
 
         property string chatIdToDelete: ""
         property string chatTitleToDelete: ""
+
+        Keys.onPressed: {
+            if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+                console.log("Enter pressed - confirming delete")
+                chatManager.deleteChat(deleteDialog.chatIdToDelete)
+                deleteDialog.visible = false
+                event.accepted = true
+            } else if (event.key === Qt.Key_Escape) {
+                console.log("Escape pressed - cancelling delete")
+                deleteDialog.visible = false
+                event.accepted = true
+            }
+        }
 
         MouseArea {
             anchors.fill: parent
@@ -405,5 +416,6 @@ Rectangle {
         deleteDialog.chatIdToDelete = chatId
         deleteDialog.chatTitleToDelete = chatTitle
         deleteDialog.visible = true
+        deleteDialog.forceActiveFocus()
     }
 }

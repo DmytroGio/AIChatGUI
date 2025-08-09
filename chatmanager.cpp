@@ -17,6 +17,10 @@ ChatManager::ChatManager(QObject *parent)
         dir.mkpath(m_dataPath);
     }
 
+    m_dataPath += "/chats.json";
+
+    qDebug() << "Chat file path:" << m_dataPath;
+
     loadChats();
 
     if (m_chats.isEmpty()) {
@@ -47,6 +51,7 @@ void ChatManager::switchToChat(const QString &chatId)
         m_currentChatId = chatId;
         emit currentChatChanged();
         emit messagesChanged();
+        emit chatListChanged();
     }
 }
 
@@ -163,6 +168,8 @@ QString ChatManager::getCurrentChatTitle() const
 
 void ChatManager::saveChats()
 {
+    qDebug() << "Saving chats, count:" << m_chats.size();
+
     QJsonArray chatsArray;
 
     for (const auto &chat : m_chats) {
@@ -187,52 +194,130 @@ void ChatManager::saveChats()
 
     QJsonDocument doc(chatsArray);
 
-    QFile file(m_dataPath + "/chats.json");
+    QFile file(m_dataPath);
     if (file.open(QIODevice::WriteOnly)) {
         file.write(doc.toJson());
+        file.close(); // ДОБАВИТЬ
+        qDebug() << "Chats saved successfully to:" << m_dataPath; // ДОБАВИТЬ
+    } else {
+        qDebug() << "Failed to save chats to:" << m_dataPath; // ДОБАВИТЬ
     }
 }
 
 void ChatManager::loadChats()
 {
-    QFile file(m_dataPath + "/chats.json");
+    qDebug() << "Loading chats from:" << m_dataPath;
+
+    QFile file(m_dataPath);
     if (!file.open(QIODevice::ReadOnly)) {
-        return;
+        qDebug() << "File not found or cannot open:" << m_dataPath; // ДОБАВИТЬ
+        return; // Выходим, конструктор создаст новый чат
     }
 
     QByteArray data = file.readAll();
+    file.close();
+    qDebug() << "Loaded data size:" << data.size();
+
+    if (data.isEmpty()) {
+        qDebug() << "Chats file is empty";
+        return; // Выходим, конструктор создаст новый чат
+    }
+
     QJsonDocument doc = QJsonDocument::fromJson(data);
-    QJsonArray chatsArray = doc.array();
+    if (doc.isNull()) {
+        qDebug() << "Failed to parse chats file";
+        return; // Выходим, конструктор создаст новый чат
+    }
 
     m_chats.clear();
 
-    for (const auto &value : chatsArray) {
-        QJsonObject chatObj = value.toObject();
+    // Проверяем новый формат (с корневым объектом)
+    if (doc.isObject()) {
+        QJsonObject rootObj = doc.object();
 
-        Chat chat;
-        chat.id = chatObj["id"].toString();
-        chat.title = chatObj["title"].toString();
-        chat.lastMessage = chatObj["lastMessage"].toString();
-        chat.lastTimestamp = chatObj["lastTimestamp"].toString();
+        if (rootObj.contains("chats") && rootObj.contains("currentChatId")) {
+            // Новый формат
+            m_currentChatId = rootObj["currentChatId"].toString();
+            QJsonArray chatsArray = rootObj["chats"].toArray();
 
-        QJsonArray messagesArray = chatObj["messages"].toArray();
-        for (const auto &msgValue : messagesArray) {
-            QJsonObject msgObj = msgValue.toObject();
+            for (const auto &value : chatsArray) {
+                QJsonObject chatObj = value.toObject();
 
-            Message msg;
-            msg.text = msgObj["text"].toString();
-            msg.isUser = msgObj["isUser"].toBool();
-            msg.timestamp = msgObj["timestamp"].toString();
+                Chat chat;
+                chat.id = chatObj["id"].toString();
+                chat.title = chatObj["title"].toString();
+                chat.lastMessage = chatObj["lastMessage"].toString();
+                chat.lastTimestamp = chatObj["lastTimestamp"].toString();
 
-            chat.messages.append(msg);
+                QJsonArray messagesArray = chatObj["messages"].toArray();
+                for (const auto &msgValue : messagesArray) {
+                    QJsonObject messageObj = msgValue.toObject();
+                    Message message;
+                    message.text = messageObj["text"].toString();
+                    message.isUser = messageObj["isUser"].toBool();
+                    message.timestamp = messageObj["timestamp"].toString();
+                    chat.messages.append(message);
+                }
+
+                m_chats.append(chat);
+            }
+
+            qDebug() << "Loaded chats in new format:" << m_chats.size();
+        } else {
+            qDebug() << "Object format but not recognized, will create new chat";
+            return; // Конструктор создаст новый чат
+        }
+    }
+    // Проверяем старый формат (массив чатов в корне)
+    else if (doc.isArray()) {
+        QJsonArray chatsArray = doc.array();
+
+        for (const auto &value : chatsArray) {
+            QJsonObject chatObj = value.toObject();
+
+            Chat chat;
+            chat.id = chatObj.contains("id") ? chatObj["id"].toString() : generateChatId();
+            chat.title = chatObj.contains("title") ? chatObj["title"].toString() : "Restored Chat";
+            chat.lastMessage = chatObj.contains("lastMessage") ? chatObj["lastMessage"].toString() : "";
+            chat.lastTimestamp = chatObj.contains("lastTimestamp") ? chatObj["lastTimestamp"].toString() : QDateTime::currentDateTime().toString(Qt::ISODate);
+
+            if (chatObj.contains("messages")) {
+                QJsonArray messagesArray = chatObj["messages"].toArray();
+                for (const auto &msgValue : messagesArray) {
+                    QJsonObject messageObj = msgValue.toObject();
+                    Message message;
+                    message.text = messageObj["text"].toString();
+                    message.isUser = messageObj["isUser"].toBool();
+                    message.timestamp = messageObj.contains("timestamp") ? messageObj["timestamp"].toString() : chat.lastTimestamp;
+                    chat.messages.append(message);
+                }
+            }
+
+            m_chats.append(chat);
         }
 
-        m_chats.append(chat);
+        if (!m_chats.isEmpty()) {
+            m_currentChatId = m_chats.first().id;
+            saveChats(); // Сохраняем в новом формате
+            qDebug() << "Converted old format to new format:" << m_chats.size();
+        }
     }
 
-    if (!m_chats.isEmpty()) {
-        m_currentChatId = m_chats.first().id;
+    // Проверяем, что текущий чат существует
+    if (!m_currentChatId.isEmpty() && !m_chats.isEmpty()) {
+        bool found = false;
+        for (const auto &chat : m_chats) {
+            if (chat.id == m_currentChatId) {
+                found = true;
+                break;
+            }
+        }
+        if (!found) {
+            m_currentChatId = m_chats.first().id;
+        }
     }
+
+    qDebug() << "Successfully loaded" << m_chats.size() << "chats, current:" << m_currentChatId;
 }
 
 QString ChatManager::generateChatId()
