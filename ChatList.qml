@@ -80,7 +80,7 @@ Rectangle {
             ListView {
                 id: chatListView
                 anchors.fill: parent
-                anchors.rightMargin: 20  // Место для скроллбара
+                anchors.rightMargin: 15  // Место для скроллбара
                 model: chatManager.chatList
                 spacing: 5
                 clip: true
@@ -189,50 +189,104 @@ Rectangle {
                     }
                 }
             }
+
+            // MouseArea для обработки колеса мыши в зоне между чатами и скроллбаром
+            MouseArea {
+                anchors.right: parent.right
+                anchors.top: parent.top
+                anchors.bottom: parent.bottom
+                anchors.left: chatListView.right
+
+                onWheel: {
+                    var delta = wheel.angleDelta.y
+                    var scrollAmount = delta > 0 ? -60 : 60
+                    var newContentY = chatListView.contentY + scrollAmount
+                    newContentY = Math.max(0, Math.min(newContentY, chatListView.contentHeight - chatListView.height))
+                    chatListView.contentY = newContentY
+                }
+            }
+
         }
     }
 
     // Кастомный скроллбар на уровне всей панели
-    ScrollBar {
-        id: customScrollBar
-        anchors.right: parent.right
-        anchors.top: parent.top
-        anchors.topMargin: 70  // После заголовка и разделителя
-        anchors.bottom: parent.bottom
-        anchors.rightMargin: 5
-        anchors.bottomMargin: 5
-        width: 8
-        orientation: Qt.Vertical
+    // Кастомный скроллбар
+        Item {
+            id: customScrollBar
+            anchors.right: parent.right
+            anchors.top: parent.top
+            anchors.topMargin: 70
+            anchors.bottom: parent.bottom
+            anchors.rightMargin: 5
+            anchors.bottomMargin: 5
+            width: 8
+            visible: chatListView.contentHeight > chatListView.height
 
-        size: chatListView.height / Math.max(chatListView.contentHeight, 1)
-        position: chatListView.contentY / Math.max(chatListView.contentHeight - chatListView.height, 1)
+            property real scrollBarHeight: chatListView.height
+            property real contentHeight: chatListView.contentHeight
+            property real thumbHeight: Math.max(20, scrollBarHeight * (scrollBarHeight / contentHeight))
+            property real thumbY: chatListView.contentY * (scrollBarHeight - thumbHeight) / Math.max(1, contentHeight - scrollBarHeight)
 
-        onPositionChanged: {
-            if (pressed) {
-                chatListView.contentY = position * (chatListView.contentHeight - chatListView.height)
+            Rectangle {
+                id: scrollTrack
+                anchors.fill: parent
+                color: "#16213e"
+                opacity: 0.3
+                radius: 4
+            }
+
+            Rectangle {
+                id: scrollThumb
+                x: 0
+                y: customScrollBar.thumbY
+                width: parent.width
+                height: customScrollBar.thumbHeight
+                radius: 4
+                color: thumbMouseArea.pressed ? "#4facfe" :
+                       thumbMouseArea.containsMouse ? "#00f2fe" :
+                       "#6c5ce7"
+                opacity: 0.8
+
+                Behavior on color {
+                    ColorAnimation { duration: 200 }
+                }
+
+                MouseArea {
+                    id: thumbMouseArea
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    drag.target: scrollThumb
+                    drag.axis: Drag.YAxis
+                    drag.minimumY: 0
+                    drag.maximumY: customScrollBar.scrollBarHeight - scrollThumb.height
+
+                    onPositionChanged: {
+                        if (drag.active) {
+                            var newContentY = scrollThumb.y * (customScrollBar.contentHeight - customScrollBar.scrollBarHeight) / (customScrollBar.scrollBarHeight - scrollThumb.height)
+                            chatListView.contentY = Math.max(0, Math.min(newContentY, customScrollBar.contentHeight - customScrollBar.scrollBarHeight))
+                        }
+                    }
+                }
+            }
+
+            MouseArea {
+                anchors.fill: parent
+                onClicked: {
+                    var clickRatio = mouse.y / height
+                    var targetContentY = clickRatio * (customScrollBar.contentHeight - customScrollBar.scrollBarHeight)
+                    chatListView.contentY = Math.max(0, Math.min(targetContentY, customScrollBar.contentHeight - customScrollBar.scrollBarHeight))
+                }
+
+                onWheel: {
+                    var delta = wheel.angleDelta.y
+                    var scrollAmount = delta > 0 ? -60 : 60
+                    var newContentY = chatListView.contentY + scrollAmount
+                    newContentY = Math.max(0, Math.min(newContentY, chatListView.contentHeight - chatListView.height))
+                    chatListView.contentY = newContentY
+                }
             }
         }
-
-        contentItem: Rectangle {
-            radius: 4
-            color: customScrollBar.pressed ? "#4facfe" :
-                   customScrollBar.hovered ? "#00f2fe" :
-                   "#6c5ce7"
-            opacity: 0.8
-
-            Behavior on color {
-                ColorAnimation { duration: 200 }
-            }
-        }
-
-        background: Rectangle {
-            color: "#16213e"
-            opacity: 0.3
-            radius: 4
-        }
-    }
-
-    // Диалог подтверждения удаления
+        // Диалог подтверждения удаления
     Rectangle {
         id: deleteDialog
         anchors.fill: parent
