@@ -145,7 +145,7 @@ Rectangle {
                             color: "#e6edf3"
                             font.family: "Consolas, Monaco, monospace"
                             font.pixelSize: 12
-                            wrapMode: Text.Wrap  // ВАЖНО: включаем перенос строк
+                            wrapMode: Text.Wrap
                             textFormat: Text.RichText
                             lineHeight: 1.2
 
@@ -239,30 +239,49 @@ Rectangle {
      }
 
      function highlightCpp(code) {
-         // Экранируем HTML, но сохраняем переносы строк
+         // Экранируем HTML
          var highlighted = code.replace(/&/g, "&amp;")
-                              .replace(/</g, "&lt;")
-                              .replace(/>/g, "&gt;")
+                               .replace(/</g, "&lt;")
+                               .replace(/>/g, "&gt;")
+                               .replace(/"/g, "&quot;");
 
-         // #include
-         highlighted = highlighted.replace(/(#include)/g, '<font color="#ffa657">$1</font>')
+         // Сохраняем переносы строк
+         highlighted = highlighted.replace(/\n/g, '<br>');
 
-         // Headers
-         highlighted = highlighted.replace(/\b(iostream|string|vector|cstdlib)\b/g, '<font color="#a5d6ff">$1</font>')
+         // Комментарии (должны быть первыми)
+         highlighted = highlighted.replace(/(\/\/[^\n]*)/g, '<span style="color: #8b949e;">$1</span>');
+         highlighted = highlighted.replace(/(\/\*.*?\*\/)/g, '<span style="color: #8b949e;">$1</span>');
 
-         // Keywords
-         highlighted = highlighted.replace(/\b(int|void|return|if|else|for|while|class|struct)\b/g, '<font color="#ff7b72">$1</font>')
+         // Строковые литералы
+         highlighted = highlighted.replace(/(&quot;[^&\n]*?&quot;)/g, '<span style="color: #a5d6ff;">$1</span>');
 
-         // Strings
-         highlighted = highlighted.replace(/(".*?")/g, '<font color="#a5d6ff">$1</font>')
+         // Препроцессорные директивы
+         highlighted = highlighted.replace(/(#include|#define|#ifdef|#ifndef|#endif)/g, '<span style="color: #ffa657;">$1</span>');
 
-         // Comments (сохраняем до конца строки)
-         highlighted = highlighted.replace(/(\/\/[^\n]*)/g, '<font color="#8b949e">$1</font>')
+         // Системные заголовки
+         highlighted = highlighted.replace(/(&lt;[^&\n]*?&gt;)/g, '<span style="color: #a5d6ff;">$1</span>');
 
-         // Numbers
-         highlighted = highlighted.replace(/\b(\d+)\b/g, '<font color="#79c0ff">$1</font>')
+         // Ключевые слова C++
+         var keywords = ['int', 'void', 'return', 'if', 'else', 'for', 'while', 'class', 'struct',
+                        'double', 'float', 'char', 'bool', 'const', 'static', 'public', 'private',
+                        'protected', 'virtual', 'namespace', 'using', 'main'];
 
-         return highlighted
+         keywords.forEach(function(keyword) {
+             var regex = new RegExp('\\b' + keyword + '\\b(?![^<]*</span>)', 'g');
+             highlighted = highlighted.replace(regex, '<span style="color: #ff7b72;">$1</span>'.replace('$1', keyword));
+         });
+
+         // std::
+         highlighted = highlighted.replace(/\b(std)::/g, '<span style="color: #ff7b72;">$1</span>::');
+         highlighted = highlighted.replace(/::(cout|cin|endl)\b/g, '::<span style="color: #79c0ff;">$1</span>');
+
+         // Числа
+         highlighted = highlighted.replace(/\b(\d+\.?\d*)\b(?![^<]*<\/span>)/g, '<span style="color: #79c0ff;">$1</span>');
+
+         // Операторы
+         highlighted = highlighted.replace(/(&lt;&lt;|&gt;&gt;)/g, '<span style="color: #79c0ff;">$1</span>');
+
+         return highlighted;
      }
 
      function highlightPython(code) {
