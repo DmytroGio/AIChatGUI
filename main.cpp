@@ -4,12 +4,14 @@
 #include "lmstudioconnector.h"
 #include <QtCore/QString>
 #include "chatmanager.h"
+#include <QClipboard>
 
 using namespace Qt::StringLiterals;
 
 int main(int argc, char *argv[])
 {
     QGuiApplication app(argc, argv);
+    app.setProperty("clipboard", QVariant::fromValue(QGuiApplication::clipboard()));
     QQmlApplicationEngine engine;
 
     LMStudioConnector connector;
