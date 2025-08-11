@@ -6,6 +6,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(Qt6 REQUIRED COMPONENTS Quick Network)
 
+
 qt_standard_project_setup()
 
 qt_add_executable(appAIChatGUI
@@ -26,6 +27,8 @@ qt_add_qml_module(appAIChatGUI
     SOURCES
         chatmanager.h
         chatmanager.cpp
+        SOURCES clipboardhelper.h clipboardhelper.cpp
+
 )
 
 # Qt for iOS sets MACOSX_BUNDLE_GUI_IDENTIFIER automatically since Qt 6.1.

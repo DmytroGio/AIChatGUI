@@ -12,7 +12,7 @@ Rectangle {
     property color textColor: "#ffffff"
 
     width: parent.width
-    height: messageContent.height + 25
+    height: messageContent.height + 30
     color: "transparent"
 
     // ЗАМЕНИТЬ ВЕСЬ Rectangle messageBubble в MessageBubble.qml на это:
@@ -24,8 +24,8 @@ Rectangle {
         anchors.rightMargin: isUserMessage ? 0 : parent.width * 0.15
         anchors.leftMargin: isUserMessage ? parent.width * 0.15 : 0
 
-        width: Math.min(messageContent.implicitWidth + 30, parent.width * 0.75)
-        height: messageContent.height + 20
+         width: Math.min(messageContent.implicitWidth + 40, parent.width * 0.75)  // Увеличиваем отступ
+         height: messageContent.height + 25
 
         color: isUserMessage ? messageContainer.userColor : messageContainer.aiColor
         radius: 18
@@ -34,8 +34,8 @@ Rectangle {
         Column {
             id: messageContent
             anchors.centerIn: parent
-            width: parent.width - 20
-            spacing: 10
+            width: parent.width - 30
+            spacing: 12
 
             // Обычный текст
             Text {
@@ -48,32 +48,34 @@ Rectangle {
                 horizontalAlignment: isUserMessage ? Text.AlignRight : Text.AlignLeft
                 visible: getFormattedText().length > 0
                 textFormat: Text.RichText
+                lineHeight: 1.3  // Добавляем межстрочный интервал
+                    topPadding: 5    // Добавляем отступы
+                    bottomPadding: 5
             }
 
             // Код блоки
+            // Код блоки с улучшенной подсветкой
+            // Код блоки с подсветкой
             Repeater {
                 model: getCodeBlocks()
 
                 Rectangle {
                     width: messageContent.width
-                    height: codeColumn.height + 20
+                    height: codeText.implicitHeight + 50
                     color: "#0d1117"
                     radius: 8
                     border.color: "#21262d"
                     border.width: 1
 
                     Column {
-                        id: codeColumn
-                        anchors.left: parent.left
-                        anchors.right: parent.right
-                        anchors.top: parent.top
+                        anchors.fill: parent
                         anchors.margins: 10
                         spacing: 5
 
                         // Заголовок
                         Rectangle {
                             width: parent.width
-                            height: 30
+                            height: 25
                             color: "#161b22"
                             radius: 4
 
@@ -103,7 +105,7 @@ Rectangle {
                                 anchors.rightMargin: 10
                                 anchors.verticalCenter: parent.verticalCenter
                                 width: 50
-                                height: 20
+                                height: 18
                                 radius: 4
                                 color: copyArea.containsMouse ? "#238636" : "#21262d"
 
@@ -115,12 +117,13 @@ Rectangle {
                                     font.pixelSize: 10
                                 }
 
+
                                 MouseArea {
                                     id: copyArea
                                     anchors.fill: parent
                                     hoverEnabled: true
                                     onClicked: {
-                                        console.log("Copied:", modelData.code)
+                                        clipboardHelper.copyText(modelData.code)
                                         copyText.text = "Copied!"
                                         resetTimer.restart()
                                     }
@@ -134,29 +137,22 @@ Rectangle {
                             }
                         }
 
-                        // Код
-                        Rectangle {
+                        // Код без скроллбаров, с переносом строк
+                        Text {
+                            id: codeText
                             width: parent.width
-                            height: Math.min(codeArea.implicitHeight + 10, 250)
-                            color: "#0d1117"
-                            radius: 4
+                            text: highlightSyntax(modelData.code, modelData.language)
+                            color: "#e6edf3"
+                            font.family: "Consolas, Monaco, monospace"
+                            font.pixelSize: 12
+                            wrapMode: Text.Wrap  // ВАЖНО: включаем перенос строк
+                            textFormat: Text.RichText
+                            lineHeight: 1.2
 
-                            Flickable {
-                                anchors.fill: parent
-                                anchors.margins: 8
-                                contentWidth: codeArea.implicitWidth
-                                contentHeight: codeArea.implicitHeight
-                                clip: true
-
-                                Text {
-                                    id: codeArea
-                                    text: modelData.code
-                                    color: "#e6edf3"
-                                    font.family: "Consolas, Monaco, monospace"
-                                    font.pixelSize: 12
-                                    wrapMode: Text.NoWrap
-                                }
-                            }
+                            leftPadding: 8
+                            rightPadding: 8
+                            topPadding: 5
+                            bottomPadding: 5
                         }
                     }
                 }
@@ -214,8 +210,95 @@ Rectangle {
          return parsed.codeBlocks || []
      }
 
-    // Tail for speech bubble effect
-    Canvas {
+     function highlightSyntax(code, language) {
+         if (!code) return ""
+
+         switch((language || "").toLowerCase()) {
+             case 'javascript':
+             case 'js':
+                 return highlightJavaScript(code)
+             case 'python':
+             case 'py':
+                 return highlightPython(code)
+             case 'cpp':
+             case 'c++':
+             case 'c':
+                 return highlightCpp(code)
+             case 'qml':
+                 return highlightQml(code)
+             default:
+                 return escapeHtml(code)
+         }
+     }
+
+     function escapeHtml(text) {
+         return text.replace(/&/g, "&amp;")
+                   .replace(/</g, "&lt;")
+                   .replace(/>/g, "&gt;")
+                   .replace(/"/g, "&quot;")
+     }
+
+     function highlightCpp(code) {
+         // Экранируем HTML, но сохраняем переносы строк
+         var highlighted = code.replace(/&/g, "&amp;")
+                              .replace(/</g, "&lt;")
+                              .replace(/>/g, "&gt;")
+
+         // #include
+         highlighted = highlighted.replace(/(#include)/g, '<font color="#ffa657">$1</font>')
+
+         // Headers
+         highlighted = highlighted.replace(/\b(iostream|string|vector|cstdlib)\b/g, '<font color="#a5d6ff">$1</font>')
+
+         // Keywords
+         highlighted = highlighted.replace(/\b(int|void|return|if|else|for|while|class|struct)\b/g, '<font color="#ff7b72">$1</font>')
+
+         // Strings
+         highlighted = highlighted.replace(/(".*?")/g, '<font color="#a5d6ff">$1</font>')
+
+         // Comments (сохраняем до конца строки)
+         highlighted = highlighted.replace(/(\/\/[^\n]*)/g, '<font color="#8b949e">$1</font>')
+
+         // Numbers
+         highlighted = highlighted.replace(/\b(\d+)\b/g, '<font color="#79c0ff">$1</font>')
+
+         return highlighted
+     }
+
+     function highlightPython(code) {
+         var highlighted = escapeHtml(code)
+         var keywords = ['def', 'class', 'if', 'elif', 'else', 'for', 'while', 'try', 'except', 'finally', 'with', 'as', 'import', 'from', 'return', 'yield', 'lambda', 'and', 'or', 'not', 'in', 'is', 'None', 'True', 'False', 'print']
+
+         keywords.forEach(function(keyword) {
+             var regex = new RegExp('\\b' + keyword + '\\b', 'g')
+             highlighted = highlighted.replace(regex, '<span style="color: #ff7b72">' + keyword + '</span>')
+         })
+
+         highlighted = highlighted.replace(/(&quot;[^&]*?&quot;|'[^']*?')/g, '<span style="color: #a5d6ff">$1</span>')
+         highlighted = highlighted.replace(/(#.*$)/gm, '<span style="color: #8b949e">$1</span>')
+         highlighted = highlighted.replace(/\b(\d+\.?\d*)\b/g, '<span style="color: #79c0ff">$1</span>')
+
+         return highlighted
+     }
+
+     function highlightQml(code) {
+         var highlighted = escapeHtml(code)
+         var keywords = ['import', 'property', 'signal', 'function', 'var', 'let', 'const', 'if', 'else', 'for', 'while', 'return', 'Rectangle', 'Text', 'MouseArea', 'Column', 'Row', 'Item', 'Component', 'Connections', 'Timer']
+
+         keywords.forEach(function(keyword) {
+             var regex = new RegExp('\\b' + keyword + '\\b', 'g')
+             highlighted = highlighted.replace(regex, '<span style="color: #ff7b72">' + keyword + '</span>')
+         })
+
+         highlighted = highlighted.replace(/(&quot;[^&]*?&quot;)/g, '<span style="color: #a5d6ff">$1</span>')
+         highlighted = highlighted.replace(/(\/\/.*$)/gm, '<span style="color: #8b949e">$1</span>')
+
+         return highlighted
+     }
+
+
+     // Tail for speech bubble effect
+     Canvas {
         id: tail
         anchors.top: messageBubble.bottom
         anchors.topMargin: -5

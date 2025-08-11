@@ -5,22 +5,26 @@
 #include <QtCore/QString>
 #include "chatmanager.h"
 #include <QClipboard>
+#include "clipboardhelper.h"
 
 using namespace Qt::StringLiterals;
 
 int main(int argc, char *argv[])
 {
     QGuiApplication app(argc, argv);
-    app.setProperty("clipboard", QVariant::fromValue(QGuiApplication::clipboard()));
     QQmlApplicationEngine engine;
 
     LMStudioConnector connector;
     ChatManager chatManager;
 
+    ClipboardHelper clipboardHelper;
+    engine.rootContext()->setContextProperty("clipboardHelper", &clipboardHelper);
+
     engine.rootContext()->setContextProperty("lmstudio", &connector);
     engine.rootContext()->setContextProperty("chatManager", &chatManager);
+    engine.rootContext()->setContextProperty("clipboard", QGuiApplication::clipboard());
+    qmlRegisterType<QObject>("CodeHighlighter", 1, 0, "CodeHighlighter");
 
-    // Используем путь к модулю вместо qrc
     const QUrl url(QStringLiteral("qrc:/AIChatGUI/Main.qml"));
     QObject::connect(&engine, &QQmlApplicationEngine::objectCreated,
                      &app, [url](QObject *obj, const QUrl &objUrl) {

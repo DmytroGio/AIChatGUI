@@ -403,13 +403,31 @@ ApplicationWindow {
                 "width": Qt.binding(function() { return chatContent.width })
             })
         } else {
-            // Fallback
+            console.log("MessageBubble component error:", messageComponent.errorString())
             addSimpleMessage(text, isUser)
         }
     }
 
     // Удалить старую функцию addMessage и addSimpleMessage, заменить на:
     function addSimpleMessage(text, isUser) {
+        // Проверяем есть ли код в сообщении
+        var hasCode = text.includes('```')
+
+        if (hasCode && !isUser) {
+            // Если есть код, используем MessageBubble компонент
+            var messageComponent = Qt.createComponent("MessageBubble.qml")
+            if (messageComponent.status === Component.Ready) {
+                var messageObject = messageComponent.createObject(chatContent, {
+                    "messageText": text,
+                    "isUserMessage": isUser,
+                    "width": Qt.binding(function() { return chatContent.width })
+                })
+                scrollToBottom()
+                return
+            }
+        }
+
+        // Обычное сообщение без кода
         var messageRect = Qt.createQmlObject(`
             import QtQuick 2.15
             Rectangle {
@@ -431,7 +449,7 @@ ApplicationWindow {
                     Text {
                         id: messageText
                         anchors.centerIn: parent
-                        text: "${isUser ? '🟢 You: ' : '🤖 AI: '}${text.replace(/"/g, '\\"')}"
+                        text: "${isUser ? '🟢 You: ' : '🤖 AI: '}${text.replace(/"/g, '\\"').replace(/\n/g, '\\n')}"
                         color: "${root.textPrimary}"
                         font.pixelSize: 14
                         wrapMode: Text.Wrap
