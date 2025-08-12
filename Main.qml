@@ -175,6 +175,7 @@ ApplicationWindow {
             contentHeight: chatContent.height
             boundsBehavior: Flickable.StopAtBounds
             clip: true
+            interactive: false
 
             onContentHeightChanged: scrollToBottom()
 
@@ -212,6 +213,18 @@ ApplicationWindow {
             }
         }
 
+        MouseArea {
+            anchors.fill: flickable
+            acceptedButtons: Qt.NoButton  // Только колесико, не кнопки
+
+            onWheel: {
+                var delta = wheel.angleDelta.y
+                var scrollAmount = delta > 0 ? -60 : 60
+                var newContentY = flickable.contentY + scrollAmount
+                newContentY = Math.max(0, Math.min(newContentY, flickable.contentHeight - flickable.height))
+                flickable.contentY = newContentY
+            }
+        }
         // Добавляем кастомный скроллбар
         Item {
             id: customScrollBar
@@ -447,15 +460,15 @@ ApplicationWindow {
                     opacity: 0.8
 
                     Text {
-                        id: messageText
-                        anchors.centerIn: parent
-                        text: "${isUser ? '🟢 You: ' : '🤖 AI: '}${text.replace(/"/g, '\\"').replace(/\n/g, '\\n')}"
-                        color: "${root.textPrimary}"
-                        font.pixelSize: 14
-                        wrapMode: Text.Wrap
-                        width: parent.width - 20
-                        horizontalAlignment: ${isUser ? 'Text.AlignRight' : 'Text.AlignLeft'}
-                    }
+                         id: messageText
+                         anchors.centerIn: parent
+                         text: "${isUser ? '🟢 You: ' : '🤖 AI: '}${text.replace(/"/g, '\\"').replace(/\n/g, '\\n')}"
+                         color: "${root.textPrimary}"
+                         font.pixelSize: 14
+                         wrapMode: Text.Wrap
+                         width: parent.width - 20
+                         horizontalAlignment: ${isUser ? 'Text.AlignRight' : 'Text.AlignLeft'}
+                     }
                 }
             }
         `, chatContent)

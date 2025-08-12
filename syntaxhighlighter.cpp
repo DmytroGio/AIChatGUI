@@ -25,11 +25,31 @@ QString SyntaxHighlighter::highlightCode(const QString &code, const QString &lan
 
 QString SyntaxHighlighter::escapeHtml(const QString &text)
 {
-    return QString(text).replace("&", "&amp;")
-    .replace("<", "&lt;")
-    .replace(">", "&gt;")
-    .replace("\"", "&quot;")
-    .replace("\n", "<br>");
+    QString result = text;
+    result.replace("&", "&amp;");
+    result.replace("<", "&lt;");
+    result.replace(">", "&gt;");
+    result.replace("\"", "&quot;");
+
+    // Обрабатываем строки построчно для сохранения отступов
+    QStringList lines = result.split('\n');
+    for (int i = 0; i < lines.size(); ++i) {
+        QString &line = lines[i];
+        // Заменяем ведущие пробелы и табы
+        int leadingSpaces = 0;
+        while (leadingSpaces < line.length() && (line[leadingSpaces] == ' ' || line[leadingSpaces] == '\t')) {
+            if (line[leadingSpaces] == '\t') {
+                line.replace(leadingSpaces, 1, "&nbsp;&nbsp;&nbsp;&nbsp;");
+                leadingSpaces += 23; // длина "&nbsp;&nbsp;&nbsp;&nbsp;" - 1
+            } else {
+                line.replace(leadingSpaces, 1, "&nbsp;");
+                leadingSpaces += 5; // длина "&nbsp;" - 1
+            }
+            leadingSpaces++;
+        }
+    }
+
+    return lines.join("<br>");
 }
 
 QString SyntaxHighlighter::highlightCpp(const QString &code)

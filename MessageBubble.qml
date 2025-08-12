@@ -37,26 +37,24 @@ Rectangle {
         opacity: 0.9
 
         Column {
-            id: messageContent
-            anchors.centerIn: parent
-            width: parent.width - 30
-            spacing: 12
+         id: messageContent
+         anchors.centerIn: parent
+         width: parent.width - 30
+         spacing: 12
 
-            // Обычный текст
-            Text {
-                id: messageLabel
-                width: parent.width
-                text: getFormattedText()
-                color: messageContainer.textColor
-                font.pixelSize: 14
-                wrapMode: Text.Wrap
-                horizontalAlignment: isUserMessage ? Text.AlignRight : Text.AlignLeft
-                visible: getFormattedText().length > 0
-                textFormat: Text.RichText
-                lineHeight: 1.3  // Добавляем межстрочный интервал
-                    topPadding: 5    // Добавляем отступы
-                    bottomPadding: 5
-            }
+         // Обычный текст
+         TextInput {
+             id: messageLabel
+             width: parent.width
+             text: getFormattedText()
+             color: messageContainer.textColor
+             font.pixelSize: 14
+             wrapMode: TextInput.Wrap
+             visible: getFormattedText().length > 0
+             readOnly: true
+             selectByMouse: true
+             horizontalAlignment: isUserMessage ? TextInput.AlignRight : TextInput.AlignLeft
+         }
 
             // Код блоки
             // Код блоки с улучшенной подсветкой
@@ -218,9 +216,9 @@ Rectangle {
      function highlightSyntax(code, language) {
               if (!code) return ""
 
-             // Используем Highlight.js через C++ wrapper
-             var highlighted = highlighter.highlightCode(code, language || 'text')
-             return highlighted || escapeHtml(code)
+         // Используем C++ SyntaxHighlighter вместо собственных функций
+         var highlighted = highlighter.highlightCode(code, language || 'text')
+         return highlighted || escapeHtml(code)
      }
 
      function escapeHtml(text) {
@@ -229,84 +227,6 @@ Rectangle {
                    .replace(/>/g, "&gt;")
                    .replace(/"/g, "&quot;")
      }
-
-     function highlightCpp(code) {
-         // Экранируем HTML
-         var highlighted = code.replace(/&/g, "&amp;")
-                               .replace(/</g, "&lt;")
-                               .replace(/>/g, "&gt;")
-                               .replace(/"/g, "&quot;");
-
-         // Сохраняем переносы строк
-         highlighted = highlighted.replace(/\n/g, '<br>');
-
-         // Комментарии (должны быть первыми)
-         highlighted = highlighted.replace(/(\/\/[^\n]*)/g, '<span style="color: #8b949e;">$1</span>');
-         highlighted = highlighted.replace(/(\/\*.*?\*\/)/g, '<span style="color: #8b949e;">$1</span>');
-
-         // Строковые литералы
-         highlighted = highlighted.replace(/(&quot;[^&\n]*?&quot;)/g, '<span style="color: #a5d6ff;">$1</span>');
-
-         // Препроцессорные директивы
-         highlighted = highlighted.replace(/(#include|#define|#ifdef|#ifndef|#endif)/g, '<span style="color: #ffa657;">$1</span>');
-
-         // Системные заголовки
-         highlighted = highlighted.replace(/(&lt;[^&\n]*?&gt;)/g, '<span style="color: #a5d6ff;">$1</span>');
-
-         // Ключевые слова C++
-         var keywords = ['int', 'void', 'return', 'if', 'else', 'for', 'while', 'class', 'struct',
-                        'double', 'float', 'char', 'bool', 'const', 'static', 'public', 'private',
-                        'protected', 'virtual', 'namespace', 'using', 'main'];
-
-         keywords.forEach(function(keyword) {
-             var regex = new RegExp('\\b' + keyword + '\\b(?![^<]*</span>)', 'g');
-             highlighted = highlighted.replace(regex, '<span style="color: #ff7b72;">$1</span>'.replace('$1', keyword));
-         });
-
-         // std::
-         highlighted = highlighted.replace(/\b(std)::/g, '<span style="color: #ff7b72;">$1</span>::');
-         highlighted = highlighted.replace(/::(cout|cin|endl)\b/g, '::<span style="color: #79c0ff;">$1</span>');
-
-         // Числа
-         highlighted = highlighted.replace(/\b(\d+\.?\d*)\b(?![^<]*<\/span>)/g, '<span style="color: #79c0ff;">$1</span>');
-
-         // Операторы
-         highlighted = highlighted.replace(/(&lt;&lt;|&gt;&gt;)/g, '<span style="color: #79c0ff;">$1</span>');
-
-         return highlighted;
-     }
-
-     function highlightPython(code) {
-         var highlighted = escapeHtml(code)
-         var keywords = ['def', 'class', 'if', 'elif', 'else', 'for', 'while', 'try', 'except', 'finally', 'with', 'as', 'import', 'from', 'return', 'yield', 'lambda', 'and', 'or', 'not', 'in', 'is', 'None', 'True', 'False', 'print']
-
-         keywords.forEach(function(keyword) {
-             var regex = new RegExp('\\b' + keyword + '\\b', 'g')
-             highlighted = highlighted.replace(regex, '<span style="color: #ff7b72">' + keyword + '</span>')
-         })
-
-         highlighted = highlighted.replace(/(&quot;[^&]*?&quot;|'[^']*?')/g, '<span style="color: #a5d6ff">$1</span>')
-         highlighted = highlighted.replace(/(#.*$)/gm, '<span style="color: #8b949e">$1</span>')
-         highlighted = highlighted.replace(/\b(\d+\.?\d*)\b/g, '<span style="color: #79c0ff">$1</span>')
-
-         return highlighted
-     }
-
-     function highlightQml(code) {
-         var highlighted = escapeHtml(code)
-         var keywords = ['import', 'property', 'signal', 'function', 'var', 'let', 'const', 'if', 'else', 'for', 'while', 'return', 'Rectangle', 'Text', 'MouseArea', 'Column', 'Row', 'Item', 'Component', 'Connections', 'Timer']
-
-         keywords.forEach(function(keyword) {
-             var regex = new RegExp('\\b' + keyword + '\\b', 'g')
-             highlighted = highlighted.replace(regex, '<span style="color: #ff7b72">' + keyword + '</span>')
-         })
-
-         highlighted = highlighted.replace(/(&quot;[^&]*?&quot;)/g, '<span style="color: #a5d6ff">$1</span>')
-         highlighted = highlighted.replace(/(\/\/.*$)/gm, '<span style="color: #8b949e">$1</span>')
-
-         return highlighted
-     }
-
 
      // Tail for speech bubble effect
      Canvas {
