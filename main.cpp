@@ -6,6 +6,7 @@
 #include "chatmanager.h"
 #include <QClipboard>
 #include "clipboardhelper.h"
+#include "syntaxhighlighter.h"
 
 using namespace Qt::StringLiterals;
 
@@ -24,6 +25,8 @@ int main(int argc, char *argv[])
     engine.rootContext()->setContextProperty("chatManager", &chatManager);
     engine.rootContext()->setContextProperty("clipboard", QGuiApplication::clipboard());
     qmlRegisterType<QObject>("CodeHighlighter", 1, 0, "CodeHighlighter");
+
+    qmlRegisterType<SyntaxHighlighter>("SyntaxHighlighter", 1, 0, "SyntaxHighlighter");
 
     const QUrl url(QStringLiteral("qrc:/AIChatGUI/Main.qml"));
     QObject::connect(&engine, &QQmlApplicationEngine::objectCreated,

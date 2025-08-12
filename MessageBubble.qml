@@ -1,6 +1,7 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Effects
+import SyntaxHighlighter 1.0
 
 Rectangle {
     id: messageContainer
@@ -10,6 +11,10 @@ Rectangle {
     property color aiColor: "#1a365d"
     property color primaryColor: "#4facfe"
     property color textColor: "#ffffff"
+
+    SyntaxHighlighter {
+         id: highlighter
+     }
 
     width: parent.width
     height: messageContent.height + 30
@@ -211,24 +216,11 @@ Rectangle {
      }
 
      function highlightSyntax(code, language) {
-         if (!code) return ""
+              if (!code) return ""
 
-         switch((language || "").toLowerCase()) {
-             case 'javascript':
-             case 'js':
-                 return highlightJavaScript(code)
-             case 'python':
-             case 'py':
-                 return highlightPython(code)
-             case 'cpp':
-             case 'c++':
-             case 'c':
-                 return highlightCpp(code)
-             case 'qml':
-                 return highlightQml(code)
-             default:
-                 return escapeHtml(code)
-         }
+             // Используем Highlight.js через C++ wrapper
+             var highlighted = highlighter.highlightCode(code, language || 'text')
+             return highlighted || escapeHtml(code)
      }
 
      function escapeHtml(text) {
