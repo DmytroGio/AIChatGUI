@@ -28,6 +28,7 @@ class ChatManager : public QObject
     Q_PROPERTY(QVariantList chatList READ getChatList NOTIFY chatListChanged)
     Q_PROPERTY(QString currentChatId READ getCurrentChatId NOTIFY currentChatChanged)
     Q_PROPERTY(QString currentChatTitle READ getCurrentChatTitle NOTIFY currentChatChanged)
+    Q_PROPERTY(int messageCount READ getMessageCount NOTIFY messagesChanged)
 
 public:
     explicit ChatManager(QObject *parent = nullptr);
@@ -42,6 +43,7 @@ public:
     QVariantList getChatList() const;
     QString getCurrentChatId() const { return m_currentChatId; }
     QString getCurrentChatTitle() const;
+    int getMessageCount() const;
 
 signals:
     void chatListChanged();

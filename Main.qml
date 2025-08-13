@@ -187,27 +187,21 @@ ApplicationWindow {
                 // Welcome message
                 Rectangle {
                     width: parent.width
-                    height: welcomeText.height + 30
+                    height: chatManager.messageCount === 0 ? 80 : 0
                     color: "transparent"
+                    visible: chatManager.messageCount === 0
 
-                    Rectangle {
+                    Behavior on height {
+                        NumberAnimation { duration: 200; easing.type: Easing.OutQuad }
+                    }
+
+                    Text {
                         anchors.centerIn: parent
-                        width: Math.min(parent.width * 0.8, 400)
-                        height: parent.height
-                        color: root.messageAiBg
+                        text: "Start typing to begin..."
+                        color: root.textSecondary
+                        font.pixelSize: 16
+                        font.weight: Font.Light
                         opacity: 0.7
-                        radius: 15
-
-                        Text {
-                            id: welcomeText
-                            anchors.centerIn: parent
-                            text: "🤖 Welcome to AI Chat Assistant!\nHow can I help you today?"
-                            color: root.textPrimary
-                            font.pixelSize: 14
-                            horizontalAlignment: Text.AlignHCenter
-                            wrapMode: Text.Wrap
-                            width: parent.width - 20
-                        }
                     }
                 }
             }
@@ -462,7 +456,7 @@ ApplicationWindow {
                     Text {
                          id: messageText
                          anchors.centerIn: parent
-                         text: "${isUser ? '🟢 You: ' : '🤖 AI: '}${text.replace(/"/g, '\\"').replace(/\n/g, '\\n')}"
+                         text: "${text.replace(/"/g, '\\"').replace(/\n/g, '\\n')}"
                          color: "${root.textPrimary}"
                          font.pixelSize: 14
                          wrapMode: Text.Wrap

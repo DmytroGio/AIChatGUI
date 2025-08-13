@@ -333,3 +333,13 @@ QString ChatManager::generateTitle(const QString &firstMessage)
     }
     return title;
 }
+
+int ChatManager::getMessageCount() const
+{
+    for (const auto& chat : m_chats) {
+        if (chat.id == m_currentChatId) {
+            return chat.messages.size();
+        }
+    }
+    return 0;
+}

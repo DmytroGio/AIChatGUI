@@ -197,7 +197,6 @@ Rectangle {
 
      function getFormattedText() {
          var parsed = parseMessage(messageText)
-         var prefix = isUserMessage ? "🟢 " : "🤖 "
 
          if (!parsed.textParts || parsed.textParts.length === 0) return ""
 
@@ -205,7 +204,7 @@ Rectangle {
          var formattedText = parsed.textParts.replace(/`([^`\n]+)`/g,
              '<span style="background-color: #2d3748; color: #ffd700; padding: 1px 4px; border-radius: 3px; font-family: monospace;">$1</span>')
 
-         return prefix + formattedText
+         return formattedText
      }
 
      function getCodeBlocks() {
