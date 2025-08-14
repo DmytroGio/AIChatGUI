@@ -35,17 +35,18 @@ QString SyntaxHighlighter::escapeHtml(const QString &text)
     QStringList lines = result.split('\n');
     for (int i = 0; i < lines.size(); ++i) {
         QString &line = lines[i];
-        // Заменяем ведущие пробелы и табы
+        // Заменяем табы на 4 пробела
+        line.replace("\t", "    ");
+
+        // Заменяем ведущие пробелы на &nbsp;
         int leadingSpaces = 0;
-        while (leadingSpaces < line.length() && (line[leadingSpaces] == ' ' || line[leadingSpaces] == '\t')) {
-            if (line[leadingSpaces] == '\t') {
-                line.replace(leadingSpaces, 1, "&nbsp;&nbsp;&nbsp;&nbsp;");
-                leadingSpaces += 23; // длина "&nbsp;&nbsp;&nbsp;&nbsp;" - 1
-            } else {
-                line.replace(leadingSpaces, 1, "&nbsp;");
-                leadingSpaces += 5; // длина "&nbsp;" - 1
-            }
+        while (leadingSpaces < line.length() && line[leadingSpaces] == ' ') {
             leadingSpaces++;
+        }
+        if (leadingSpaces > 0) {
+            QString spaces = line.left(leadingSpaces);
+            spaces.replace(" ", "&nbsp;");
+            line = spaces + line.mid(leadingSpaces);
         }
     }
 
@@ -54,47 +55,71 @@ QString SyntaxHighlighter::escapeHtml(const QString &text)
 
 QString SyntaxHighlighter::highlightCpp(const QString &code)
 {
-    QString highlighted = escapeHtml(code);
+    QString result = code;
 
-    // Комментарии (обновленные регексы с учетом <br>)
-    highlighted.replace(QRegularExpression("(//[^<]*?)(<br>|$)"),
-                        "<span style=\"color: #6a994e;\">\\1</span>\\2");
-    highlighted.replace(QRegularExpression("(/\\*.*?\\*/)"),
-                        "<span style=\"color: #6a994e;\">\\1</span>");
+    // Сначала экранируем HTML
+    result.replace("&", "&amp;");
+    result.replace("<", "&lt;");
+    result.replace(">", "&gt;");
+    result.replace("\"", "&quot;");
 
-    // Строки
-    highlighted.replace(QRegularExpression("(&quot;[^&<]*?&quot;)"),
-                        "<span style=\"color: #f77f00;\">\\1</span>");
+    // Более точные замены ключевых слов
+    result.replace(QRegularExpression("\\b(int|void|return|main|class|struct|double|float|char|bool|const|static|public|private|protected|virtual|namespace|using)\\b"),
+                   "<span style=\"color: #d62828;\">\\1</span>");
 
-    // Ключевые слова
-    QStringList keywords = {"int", "void", "return", "if", "else", "for", "while",
-                            "class", "struct", "double", "float", "char", "bool",
-                            "const", "static", "public", "private", "protected",
-                            "virtual", "namespace", "using", "main", "#include", "#define"};
+    // Препроцессорные директивы
+    result.replace(QRegularExpression("^(\\s*)(#\\w+)", QRegularExpression::MultilineOption),
+                   "\\1<span style=\"color: #d62828;\">\\2</span>");
 
-    for (const QString &keyword : keywords) {
-        highlighted.replace(QRegularExpression(QString("\\b%1\\b(?![^<]*</span>)").arg(keyword)),
-                            QString("<span style=\"color: #d62828;\">%1</span>").arg(keyword));
-    }
+    // Строки в кавычках (улучшенная версия)
+    result.replace(QRegularExpression("&quot;([^&]*)&quot;"),
+                   "<span style=\"color: #f77f00;\">&quot;\\1&quot;</span>");
+
+    // Namespace и операторы
+    result.replace(QRegularExpression("\\b(std|cout|endl)\\b"),
+                   "<span style=\"color: #6c5ce7;\">\\1</span>");
 
     // Числа
-    highlighted.replace(QRegularExpression("\\b(\\d+\\.?\\d*)\\b(?![^<]*</span>)"),
-                        "<span style=\"color: #457b9d;\">\\1</span>");
+    result.replace(QRegularExpression("\\b(\\d+)\\b"),
+                   "<span style=\"color: #457b9d;\">\\1</span>");
 
-    return highlighted;
+    // Операторы
+    result.replace("::", "<span style=\"color: #e74c3c;\">::</span>");
+    result.replace("&lt;&lt;", "<span style=\"color: #e74c3c;\">&lt;&lt;</span>");
+
+    // Обрабатываем отступы и переносы
+    QStringList lines = result.split('\n');
+    for (int i = 0; i < lines.size(); ++i) {
+        QString &line = lines[i];
+        line.replace("\t", "&nbsp;&nbsp;&nbsp;&nbsp;");
+
+        // Заменяем ведущие пробелы на &nbsp;
+        int leadingSpaces = 0;
+        while (leadingSpaces < line.length() && line[leadingSpaces] == ' ') {
+            leadingSpaces++;
+        }
+        if (leadingSpaces > 0) {
+            QString spaces = QString("&nbsp;").repeated(leadingSpaces);
+            line = spaces + line.mid(leadingSpaces);
+        }
+    }
+
+    return lines.join("<br>");
 }
 
 QString SyntaxHighlighter::highlightPython(const QString &code)
 {
-    QString highlighted = escapeHtml(code);
+    QString result = code;
 
-    // Комментарии
-    highlighted.replace(QRegularExpression("(#[^<]*?)(<br>|$)"),
-                        "<span style=\"color: #6a994e;\">\\1</span>\\2");
+    // Комментарии #
+    result.replace(QRegularExpression("#(.*)$", QRegularExpression::MultilineOption),
+                   "COMMENT_START\\1COMMENT_END");
 
-    // Строки
-    highlighted.replace(QRegularExpression("(&quot;[^&<]*?&quot;|'[^'<]*?')"),
-                        "<span style=\"color: #f77f00;\">\\1</span>");
+    // Строки в кавычках (одинарные и двойные)
+    result.replace(QRegularExpression("\"([^\"\\\\]*(\\\\.[^\"\\\\]*)*)\""),
+                   "STRING_START\\1STRING_END");
+    result.replace(QRegularExpression("'([^'\\\\]*(\\\\.[^'\\\\]*)*)'"),
+                   "STRING2_START\\1STRING2_END");
 
     // Ключевые слова Python
     QStringList keywords = {"def", "class", "if", "elif", "else", "for", "while",
@@ -103,15 +128,50 @@ QString SyntaxHighlighter::highlightPython(const QString &code)
                             "in", "is", "None", "True", "False", "print"};
 
     for (const QString &keyword : keywords) {
-        highlighted.replace(QRegularExpression(QString("\\b%1\\b(?![^<]*</span>)").arg(keyword)),
-                            QString("<span style=\"color: #d62828;\">%1</span>").arg(keyword));
+        result.replace(QRegularExpression(QString("\\b%1\\b").arg(keyword)),
+                       QString("KEYWORD_START%1KEYWORD_END").arg(keyword));
     }
 
     // Числа
-    highlighted.replace(QRegularExpression("\\b(\\d+\\.?\\d*)\\b(?![^<]*</span>)"),
-                        "<span style=\"color: #457b9d;\">\\1</span>");
+    result.replace(QRegularExpression("\\b(\\d+\\.?\\d*)\\b"),
+                   "NUMBER_START\\1NUMBER_END");
 
-    return highlighted;
+    // Экранируем HTML
+    result.replace("&", "&amp;");
+    result.replace("<", "&lt;");
+    result.replace(">", "&gt;");
+    result.replace("\"", "&quot;");
+
+    // Заменяем маркеры
+    result.replace("COMMENT_START", "<span style=\"color: #6a994e;\">#");
+    result.replace("COMMENT_END", "</span>");
+    result.replace("STRING_START", "<span style=\"color: #f77f00;\">&quot;");
+    result.replace("STRING_END", "&quot;</span>");
+    result.replace("STRING2_START", "<span style=\"color: #f77f00;\">'");
+    result.replace("STRING2_END", "'</span>");
+    result.replace("KEYWORD_START", "<span style=\"color: #d62828;\">");
+    result.replace("KEYWORD_END", "</span>");
+    result.replace("NUMBER_START", "<span style=\"color: #457b9d;\">");
+    result.replace("NUMBER_END", "</span>");
+
+    // Обрабатываем отступы
+    QStringList lines = result.split('\n');
+    for (int i = 0; i < lines.size(); ++i) {
+        QString &line = lines[i];
+        line.replace("\t", "    ");
+
+        int leadingSpaces = 0;
+        while (leadingSpaces < line.length() && line[leadingSpaces] == ' ') {
+            leadingSpaces++;
+        }
+        if (leadingSpaces > 0) {
+            QString spaces = line.left(leadingSpaces);
+            spaces.replace(" ", "&nbsp;");
+            line = spaces + line.mid(leadingSpaces);
+        }
+    }
+
+    return lines.join("<br>");
 }
 
 QString SyntaxHighlighter::highlightJavaScript(const QString &code)
@@ -119,9 +179,9 @@ QString SyntaxHighlighter::highlightJavaScript(const QString &code)
     QString highlighted = escapeHtml(code);
 
     // Комментарии
-    highlighted.replace(QRegularExpression("(//[^<]*?)(<br>|$)"),
-                        "<span style=\"color: #6a994e;\">\\1</span>\\2");
-    highlighted.replace(QRegularExpression("(/\\*.*?\\*/)"),
+    highlighted.replace(QRegularExpression("(//[^<]*?)(?=<br>|$)"),
+                        "<span style=\"color: #6a994e;\">\\1</span>");
+    highlighted.replace(QRegularExpression("(/\\*[\\s\\S]*?\\*/)"),
                         "<span style=\"color: #6a994e;\">\\1</span>");
 
     // Строки
@@ -135,7 +195,7 @@ QString SyntaxHighlighter::highlightJavaScript(const QString &code)
                             "true", "false", "null", "undefined", "new", "this"};
 
     for (const QString &keyword : keywords) {
-        highlighted.replace(QRegularExpression(QString("\\b%1\\b(?![^<]*</span>)").arg(keyword)),
+        highlighted.replace(QRegularExpression(QString("\\b%1\\b(?![^<]*</span>)").arg(QRegularExpression::escape(keyword))),
                             QString("<span style=\"color: #d62828;\">%1</span>").arg(keyword));
     }
 

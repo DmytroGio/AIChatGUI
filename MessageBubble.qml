@@ -164,61 +164,93 @@ Rectangle {
     }
 
     function parseMessage(text) {
-         var codeBlocks = []
-         var cleanText = text
+        var codeBlocks = []
+        var cleanText = text
 
-         // Извлекаем блоки кода
-         var regex = /```(\w+)?\s*\n?([\s\S]*?)\n?```/g
-         var match
+        console.log("Original text:", text.substring(0, 200))
 
-         while ((match = regex.exec(text)) !== null) {
-             var language = match[1] || "text"
-             var code = match[2].trim()
-             var lineCount = code.split('\n').length
+        // Улучшенное извлечение блоков кода
+        var regex = /```(\w+)?\s*\n?([\s\S]*?)\n?```/g
+        var match
+        var matchCount = 0
 
-             codeBlocks.push({
-                 language: language,
-                 code: code,
-                 lineCount: lineCount
-             })
+        while ((match = regex.exec(text)) !== null) {
+            matchCount++
+            console.log("Found code block", matchCount, "Language:", match[1], "Code length:", match[2].length)
 
-             // Удаляем code block из текста
-             cleanText = cleanText.replace(match[0], "\n\n")
-         }
+            var language = match[1] || "text"
+            var code = match[2]
 
-         // Очищаем лишние переносы
-         cleanText = cleanText.replace(/\n{3,}/g, "\n\n").trim()
+            // Убираем ведущие и завершающие переносы строк
+            code = code.replace(/^\n+/, '').replace(/\n+$/, '')
 
-         return {
-             textParts: cleanText,
-             codeBlocks: codeBlocks
-         }
-     }
+            var lineCount = code.split('\n').length
 
-     function getFormattedText() {
-         var parsed = parseMessage(messageText)
+            codeBlocks.push({
+                language: language,
+                code: code,
+                lineCount: lineCount,
+                fullMatch: match[0]
+            })
 
-         if (!parsed.textParts || parsed.textParts.length === 0) return ""
+            console.log("Code block content:", code.substring(0, 100))
+        }
 
-         // Обрабатываем инлайн код
-         var formattedText = parsed.textParts.replace(/`([^`\n]+)`/g,
-             '<span style="background-color: #2d3748; color: #ffd700; padding: 1px 4px; border-radius: 3px; font-family: monospace;">$1</span>')
+        // Удаляем все найденные code blocks из текста
+        for (var i = 0; i < codeBlocks.length; i++) {
+            cleanText = cleanText.replace(codeBlocks[i].fullMatch, "\n[CODE_BLOCK_" + i + "]\n")
+        }
 
-         return formattedText
-     }
+        // Очищаем лишние переносы
+        cleanText = cleanText.replace(/\n{3,}/g, "\n\n").trim()
 
-     function getCodeBlocks() {
-         var parsed = parseMessage(messageText)
-         return parsed.codeBlocks || []
-     }
+        // Удаляем маркеры code blocks
+        cleanText = cleanText.replace(/\[CODE_BLOCK_\d+\]/g, "").trim()
 
-     function highlightSyntax(code, language) {
-              if (!code) return ""
+        console.log("Clean text:", cleanText.substring(0, 100))
+        console.log("Code blocks found:", codeBlocks.length)
 
-         // Используем C++ SyntaxHighlighter вместо собственных функций
-         var highlighted = highlighter.highlightCode(code, language || 'text')
-         return highlighted || escapeHtml(code)
-     }
+        return {
+            textParts: cleanText,
+            codeBlocks: codeBlocks
+        }
+    }
+
+    function getFormattedText() {
+        var parsed = parseMessage(messageText)
+
+        if (!parsed.textParts || parsed.textParts.length === 0) return ""
+
+        var formattedText = parsed.textParts
+
+        // Обрабатываем инлайн код только если это не пустой текст
+        if (formattedText.trim().length > 0) {
+            formattedText = formattedText.replace(/`([^`\n]+)`/g,
+                '<span style="background-color: #2d3748; color: #ffd700; padding: 1px 4px; border-radius: 3px; font-family: monospace;">$1</span>')
+        }
+
+        return formattedText
+    }
+
+
+    function getCodeBlocks() {
+        var parsed = parseMessage(messageText)
+        console.log("getCodeBlocks returning:", parsed.codeBlocks ? parsed.codeBlocks.length : 0, "blocks")
+        return parsed.codeBlocks || []
+    }
+
+    function highlightSyntax(code, language) {
+        if (!code) return ""
+
+        console.log("Full code to highlight:", code)
+        console.log("Language:", language)
+
+        var highlighted = highlighter.highlightCode(code, language || 'text')
+
+        console.log("Full highlighted result:", highlighted)
+
+        return highlighted || escapeHtml(code)
+    }
 
      function escapeHtml(text) {
          return text.replace(/&/g, "&amp;")
