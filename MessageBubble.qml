@@ -13,12 +13,6 @@ Rectangle {
     property color textColor: "#ffffff"
 
 
-
-    SyntaxHighlighter {
-         id: highlighter
-         //SyntaxHighlighter {}
-     }
-
     width: parent.width
     height: messageContent.height + 30
     color: "transparent"
@@ -46,17 +40,16 @@ Rectangle {
          spacing: 12
 
          // Обычный текст
-         TextInput {
+         Text {
              id: messageLabel
              width: parent.width
              text: getFormattedText()
              color: messageContainer.textColor
              font.pixelSize: 14
-             wrapMode: TextInput.Wrap
+             wrapMode: Text.Wrap
              visible: getFormattedText().length > 0
-             readOnly: true
-             selectByMouse: true
-             horizontalAlignment: isUserMessage ? TextInput.AlignRight : TextInput.AlignLeft
+             textFormat: Text.RichText  // Добавить эту строку для поддержки HTML
+             horizontalAlignment: isUserMessage ? Text.AlignRight : Text.AlignLeft
          }
 
             // Код блоки с подсветкой
@@ -156,21 +149,25 @@ Rectangle {
                                  selectByMouse: true
                                  readOnly: true
 
-                                 property var syntaxHighlighter: null
-
                                  Component.onCompleted: {
-                                     if (modelData.language) {
-                                         syntaxHighlighter = highlighter.createObject(codeEdit)
-                                         if (syntaxHighlighter) {
-                                             syntaxHighlighter.language = modelData.language || "text"
-                                             syntaxHighlighter.setDocument(codeEdit.textDocument)
+                                     if (modelData.language && modelData.language !== "text") {
+                                         var highlighter = Qt.createComponent("qrc:/SyntaxHighlighter/SyntaxHighlighter.qml")
+                                         if (highlighter.status === Component.Ready) {
+                                             var highlighterInstance = highlighter.createObject(codeEdit)
+                                             if (highlighterInstance) {
+                                                 highlighterInstance.language = modelData.language
+                                                 highlighterInstance.setDocument(codeEdit.textDocument)
+                                             }
+                                         } else {
+                                             // Fallback - создаем через C++
+                                             var cppHighlighter = Qt.createQmlObject(
+                                                 'import SyntaxHighlighter 1.0; SyntaxHighlighter { language: "' + modelData.language + '" }',
+                                                 codeEdit
+                                             )
+                                             if (cppHighlighter) {
+                                                 cppHighlighter.setDocument(codeEdit.textDocument)
+                                             }
                                          }
-                                     }
-                                 }
-
-                                 Component.onDestruction: {
-                                     if (syntaxHighlighter) {
-                                         syntaxHighlighter.destroy()
                                      }
                                  }
                              }
@@ -193,7 +190,8 @@ Rectangle {
         while ((match = regex.exec(text)) !== null) {
             // Добавляем текст до блока кода
             if (match.index > lastIndex) {
-                cleanText += text.substring(lastIndex, match.index)
+                var textBefore = text.substring(lastIndex, match.index)
+                cleanText += textBefore
             }
 
             var language = match[1] || "text"
@@ -216,8 +214,14 @@ Rectangle {
             cleanText += text.substring(lastIndex)
         }
 
+        // Очищаем текст от лишних пробелов и переводов строк
+        cleanText = cleanText.trim()
+
+        // Заменяем множественные переводы строк на двойные
+        cleanText = cleanText.replace(/\n{3,}/g, '\n\n')
+
         return {
-            textParts: cleanText.trim(),
+            textParts: cleanText,
             codeBlocks: codeBlocks
         }
     }
@@ -231,9 +235,18 @@ Rectangle {
 
         var formattedText = parsed.textParts
 
-        // Добавляем инлайн код блоки (одинарные бэктики)
+        // Добавляем inline код блоки (одинарные бэктики)
         formattedText = formattedText.replace(/`([^`\n]+)`/g,
-            '<span style="background-color: #2d3748; color: #ffd700; padding: 1px 4px; border-radius: 3px; font-family: monospace;">$1</span>')
+            '<span style="background-color: #2d3748; color: #ffd700; padding: 2px 6px; border-radius: 4px; font-family: Consolas, Monaco, monospace; font-size: 13px;">$1</span>')
+
+        // Обрабатываем переводы строк для HTML
+        formattedText = formattedText.replace(/\n/g, '<br>')
+
+        // Обрабатываем жирный текст
+        formattedText = formattedText.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>')
+
+        // Обрабатываем курсив
+        formattedText = formattedText.replace(/\*(.*?)\*/g, '<i>$1</i>')
 
         return formattedText
     }

@@ -39,6 +39,9 @@ private:
     QTextCharFormat m_commentFormat;
     QTextCharFormat m_numberFormat;
     QTextCharFormat m_operatorFormat;
+    QTextCharFormat m_functionFormat;
+    QTextCharFormat m_typeFormat;
+    QTextCharFormat m_preprocessorFormat;
 };
 
 #endif // SYNTAXHIGHLIGHTER_H
