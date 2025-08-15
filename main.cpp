@@ -24,7 +24,6 @@ int main(int argc, char *argv[])
     engine.rootContext()->setContextProperty("lmstudio", &connector);
     engine.rootContext()->setContextProperty("chatManager", &chatManager);
     engine.rootContext()->setContextProperty("clipboard", QGuiApplication::clipboard());
-    qmlRegisterType<QObject>("CodeHighlighter", 1, 0, "CodeHighlighter");
 
     qmlRegisterType<SyntaxHighlighter>("SyntaxHighlighter", 1, 0, "SyntaxHighlighter");
 

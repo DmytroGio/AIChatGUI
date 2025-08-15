@@ -12,8 +12,11 @@ Rectangle {
     property color primaryColor: "#4facfe"
     property color textColor: "#ffffff"
 
+
+
     SyntaxHighlighter {
          id: highlighter
+         //SyntaxHighlighter {}
      }
 
     width: parent.width
@@ -56,162 +59,165 @@ Rectangle {
              horizontalAlignment: isUserMessage ? TextInput.AlignRight : TextInput.AlignLeft
          }
 
-            // Код блоки
-            // Код блоки с улучшенной подсветкой
             // Код блоки с подсветкой
-            Repeater {
-                model: getCodeBlocks()
+             Repeater {
+                 model: getCodeBlocks()
 
-                Rectangle {
-                    width: messageContent.width
-                    height: codeText.implicitHeight + 50
-                    color: "#0d1117"
-                    radius: 8
-                    border.color: "#21262d"
-                    border.width: 1
+                 Rectangle {
+                     width: messageContent.width
+                     height: Math.max(codeEdit.contentHeight + 60, 100)
+                     color: "#0d1117"
+                     radius: 8
+                     border.color: "#21262d"
+                     border.width: 1
 
-                    Column {
-                        anchors.fill: parent
-                        anchors.margins: 10
-                        spacing: 5
+                     Column {
+                         anchors.fill: parent
+                         anchors.margins: 10
+                         spacing: 5
 
-                        // Заголовок
-                        Rectangle {
-                            width: parent.width
-                            height: 25
-                            color: "#161b22"
-                            radius: 4
+                         // Заголовок (оставляем как есть)
+                         Rectangle {
+                             width: parent.width
+                             height: 25
+                             color: "#161b22"
+                             radius: 4
 
-                            Row {
-                                anchors.left: parent.left
-                                anchors.leftMargin: 10
-                                anchors.verticalCenter: parent.verticalCenter
-                                spacing: 10
+                             Row {
+                                 anchors.left: parent.left
+                                 anchors.leftMargin: 10
+                                 anchors.verticalCenter: parent.verticalCenter
+                                 spacing: 10
 
-                                Text {
-                                    text: modelData.language || "code"
-                                    color: "#58a6ff"
-                                    font.pixelSize: 12
-                                    font.family: "monospace"
-                                    font.bold: true
-                                }
+                                 Text {
+                                     text: modelData.language || "code"
+                                     color: "#58a6ff"
+                                     font.pixelSize: 12
+                                     font.family: "monospace"
+                                     font.bold: true
+                                 }
 
-                                Text {
-                                    text: modelData.lineCount + " lines"
-                                    color: "#7d8590"
-                                    font.pixelSize: 11
-                                }
-                            }
+                                 Text {
+                                     text: modelData.lineCount + " lines"
+                                     color: "#7d8590"
+                                     font.pixelSize: 11
+                                 }
+                             }
 
-                            Rectangle {
-                                anchors.right: parent.right
-                                anchors.rightMargin: 10
-                                anchors.verticalCenter: parent.verticalCenter
-                                width: 50
-                                height: 18
-                                radius: 4
-                                color: copyArea.containsMouse ? "#238636" : "#21262d"
+                             Rectangle {
+                                 anchors.right: parent.right
+                                 anchors.rightMargin: 10
+                                 anchors.verticalCenter: parent.verticalCenter
+                                 width: 50
+                                 height: 18
+                                 radius: 4
+                                 color: copyArea.containsMouse ? "#238636" : "#21262d"
 
-                                Text {
-                                    id: copyText
-                                    anchors.centerIn: parent
-                                    text: "Copy"
-                                    color: "#ffffff"
-                                    font.pixelSize: 10
-                                }
+                                 Text {
+                                     id: copyText
+                                     anchors.centerIn: parent
+                                     text: "Copy"
+                                     color: "#ffffff"
+                                     font.pixelSize: 10
+                                 }
 
+                                 MouseArea {
+                                     id: copyArea
+                                     anchors.fill: parent
+                                     hoverEnabled: true
+                                     onClicked: {
+                                         clipboardHelper.copyText(modelData.code)
+                                         copyText.text = "Copied!"
+                                         resetTimer.restart()
+                                     }
 
-                                MouseArea {
-                                    id: copyArea
-                                    anchors.fill: parent
-                                    hoverEnabled: true
-                                    onClicked: {
-                                        clipboardHelper.copyText(modelData.code)
-                                        copyText.text = "Copied!"
-                                        resetTimer.restart()
-                                    }
+                                     Timer {
+                                         id: resetTimer
+                                         interval: 1500
+                                         onTriggered: copyText.text = "Copy"
+                                     }
+                                 }
+                             }
+                         }
 
-                                    Timer {
-                                        id: resetTimer
-                                        interval: 1500
-                                        onTriggered: copyText.text = "Copy"
-                                    }
-                                }
-                            }
-                        }
+                         // Заменяем на TextEdit с SyntaxHighlighter
+                         ScrollView {
+                             width: parent.width
+                             height: parent.parent.height - 35
+                             clip: true
 
-                        // Код без скроллбаров, с переносом строк
-                        Text {
-                            id: codeText
-                            width: parent.width
-                            text: highlightSyntax(modelData.code, modelData.language)
-                            color: "#e6edf3"
-                            font.family: "Consolas, Monaco, monospace"
-                            font.pixelSize: 12
-                            wrapMode: Text.Wrap
-                            textFormat: Text.RichText
-                            lineHeight: 1.2
+                             TextEdit {
+                                 id: codeEdit
+                                 text: modelData.code
+                                 color: "#e6edf3"
+                                 font.family: "Consolas, Monaco, monospace"
+                                 font.pixelSize: 12
+                                 wrapMode: TextEdit.Wrap
+                                 selectByMouse: true
+                                 readOnly: true
 
-                            leftPadding: 8
-                            rightPadding: 8
-                            topPadding: 5
-                            bottomPadding: 5
-                        }
-                    }
-                }
-            }
+                                 property var syntaxHighlighter: null
+
+                                 Component.onCompleted: {
+                                     if (modelData.language) {
+                                         syntaxHighlighter = highlighter.createObject(codeEdit)
+                                         if (syntaxHighlighter) {
+                                             syntaxHighlighter.language = modelData.language || "text"
+                                             syntaxHighlighter.setDocument(codeEdit.textDocument)
+                                         }
+                                     }
+                                 }
+
+                                 Component.onDestruction: {
+                                     if (syntaxHighlighter) {
+                                         syntaxHighlighter.destroy()
+                                     }
+                                 }
+                             }
+                         }
+                     }
+                 }
+             }
         }
     }
 
     function parseMessage(text) {
         var codeBlocks = []
-        var cleanText = text
+        var cleanText = ""
 
-        console.log("Original text:", text.substring(0, 200))
-
-        // Улучшенное извлечение блоков кода
-        var regex = /```(\w+)?\s*\n?([\s\S]*?)\n?```/g
+        // Улучшенное регулярное выражение для блоков кода
+        var regex = /```(\w*)\n?([\s\S]*?)```/g
         var match
-        var matchCount = 0
+        var lastIndex = 0
 
         while ((match = regex.exec(text)) !== null) {
-            matchCount++
-            console.log("Found code block", matchCount, "Language:", match[1], "Code length:", match[2].length)
+            // Добавляем текст до блока кода
+            if (match.index > lastIndex) {
+                cleanText += text.substring(lastIndex, match.index)
+            }
 
             var language = match[1] || "text"
             var code = match[2]
 
-            // Убираем ведущие и завершающие переносы строк
+            // Убираем лишние переводы строк в начале и конце
             code = code.replace(/^\n+/, '').replace(/\n+$/, '')
-
-            var lineCount = code.split('\n').length
 
             codeBlocks.push({
                 language: language,
                 code: code,
-                lineCount: lineCount,
-                fullMatch: match[0]
+                lineCount: code.split('\n').length
             })
 
-            console.log("Code block content:", code.substring(0, 100))
+            lastIndex = regex.lastIndex
         }
 
-        // Удаляем все найденные code blocks из текста
-        for (var i = 0; i < codeBlocks.length; i++) {
-            cleanText = cleanText.replace(codeBlocks[i].fullMatch, "\n[CODE_BLOCK_" + i + "]\n")
+        // Добавляем оставшийся текст после последнего блока
+        if (lastIndex < text.length) {
+            cleanText += text.substring(lastIndex)
         }
-
-        // Очищаем лишние переносы
-        cleanText = cleanText.replace(/\n{3,}/g, "\n\n").trim()
-
-        // Удаляем маркеры code blocks
-        cleanText = cleanText.replace(/\[CODE_BLOCK_\d+\]/g, "").trim()
-
-        console.log("Clean text:", cleanText.substring(0, 100))
-        console.log("Code blocks found:", codeBlocks.length)
 
         return {
-            textParts: cleanText,
+            textParts: cleanText.trim(),
             codeBlocks: codeBlocks
         }
     }
@@ -219,45 +225,24 @@ Rectangle {
     function getFormattedText() {
         var parsed = parseMessage(messageText)
 
-        if (!parsed.textParts || parsed.textParts.length === 0) return ""
+        if (!parsed.textParts || parsed.textParts.length === 0) {
+            return ""
+        }
 
         var formattedText = parsed.textParts
 
-        // Обрабатываем инлайн код только если это не пустой текст
-        if (formattedText.trim().length > 0) {
-            formattedText = formattedText.replace(/`([^`\n]+)`/g,
-                '<span style="background-color: #2d3748; color: #ffd700; padding: 1px 4px; border-radius: 3px; font-family: monospace;">$1</span>')
-        }
+        // Добавляем инлайн код блоки (одинарные бэктики)
+        formattedText = formattedText.replace(/`([^`\n]+)`/g,
+            '<span style="background-color: #2d3748; color: #ffd700; padding: 1px 4px; border-radius: 3px; font-family: monospace;">$1</span>')
 
         return formattedText
     }
-
 
     function getCodeBlocks() {
         var parsed = parseMessage(messageText)
         console.log("getCodeBlocks returning:", parsed.codeBlocks ? parsed.codeBlocks.length : 0, "blocks")
         return parsed.codeBlocks || []
     }
-
-    function highlightSyntax(code, language) {
-        if (!code) return ""
-
-        console.log("Full code to highlight:", code)
-        console.log("Language:", language)
-
-        var highlighted = highlighter.highlightCode(code, language || 'text')
-
-        console.log("Full highlighted result:", highlighted)
-
-        return highlighted || escapeHtml(code)
-    }
-
-     function escapeHtml(text) {
-         return text.replace(/&/g, "&amp;")
-                   .replace(/</g, "&lt;")
-                   .replace(/>/g, "&gt;")
-                   .replace(/"/g, "&quot;")
-     }
 
      // Tail for speech bubble effect
      Canvas {

@@ -18,6 +18,7 @@ qt_add_executable(appAIChatGUI
     clipboardhelper.cpp
     syntaxhighlighter.h
     syntaxhighlighter.cpp
+
 )
 
 qt_add_qml_module(appAIChatGUI
@@ -27,6 +28,7 @@ qt_add_qml_module(appAIChatGUI
         Main.qml
         MessageBubble.qml
         ChatList.qml
+        SOURCES syntaxhighlighter.h syntaxhighlighter.cpp
 )
 
 # Qt for iOS sets MACOSX_BUNDLE_GUI_IDENTIFIER automatically since Qt 6.1.

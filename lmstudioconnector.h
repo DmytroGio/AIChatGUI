@@ -18,6 +18,8 @@ signals:
 
 private:
     QNetworkAccessManager manager;
+    void handleStreamingResponse(const QString &response);
+    void handleRegularResponse(const QString &response);
 
 private slots:
     void onReplyFinished(QNetworkReply *reply);
