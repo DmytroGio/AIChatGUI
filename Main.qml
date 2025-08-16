@@ -5,8 +5,8 @@ import QtQuick.Effects
 ApplicationWindow {
     id: root
     visible: true
-    width: 900
-    height: 700
+    width: 1200
+    height: 800
     minimumWidth: 400
     minimumHeight: 500
     title: "AI Chat Assistant"
@@ -181,7 +181,8 @@ ApplicationWindow {
 
             Column {
                 id: chatContent
-                width: parent.width
+                width: Math.min(parent.width, 800)
+                anchors.horizontalCenter: parent.horizontalCenter
                 spacing: 15
 
                 // Welcome message
@@ -445,9 +446,9 @@ ApplicationWindow {
                 Rectangle {
                     anchors.right: ${isUser ? 'parent.right' : 'undefined'}
                     anchors.left: ${isUser ? 'undefined' : 'parent.left'}
-                    anchors.rightMargin: ${isUser ? '0' : 'parent.width * 0.2'}
-                    anchors.leftMargin: ${isUser ? 'parent.width * 0.2' : '0'}
-                    width: Math.min(messageText.implicitWidth + 30, parent.width * 0.8)
+                    anchors.rightMargin: ${isUser ? '0' : 'Math.max(50, parent.width * 0.2)'}
+                    anchors.leftMargin: ${isUser ? 'Math.max(50, parent.width * 0.2)' : '0'}
+                    width: Math.min(messageText.implicitWidth + 30, Math.min(550, parent.width * 0.8))
                     height: parent.height
                     color: "${isUser ? root.messageUserBg : root.messageAiBg}"
                     radius: 15

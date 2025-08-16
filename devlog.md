@@ -25,3 +25,6 @@ Test with LM Studio and Llama models
 Deploy and document
 
 Tech Stack: Qt6, QML, C++, HTTP API, LM Studio
+
+## 2025-08-15
+- Resolve the issue of speed, eliminate long loading times

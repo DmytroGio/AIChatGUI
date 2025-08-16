@@ -13,6 +13,7 @@ Rectangle {
     property color textColor: "#ffffff"
 
 
+
     width: parent.width
     height: messageContent.height + 30
     color: "transparent"
@@ -26,7 +27,7 @@ Rectangle {
         anchors.rightMargin: isUserMessage ? 0 : parent.width * 0.15
         anchors.leftMargin: isUserMessage ? parent.width * 0.15 : 0
 
-         width: Math.min(messageContent.implicitWidth + 40, parent.width * 0.75)  // Увеличиваем отступ
+        width: Math.min(messageContent.implicitWidth + 40, Math.min(600, parent.width * 0.75))
          height: messageContent.height + 25
 
         color: isUserMessage ? messageContainer.userColor : messageContainer.aiColor
