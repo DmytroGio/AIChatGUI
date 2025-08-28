@@ -418,19 +418,199 @@ void SyntaxHighlighter::highlightJavaScript(const QString &text)
 
 void SyntaxHighlighter::highlightQml(const QString &text)
 {
-    QStringList keywords = {"import", "property", "signal", "function", "Rectangle",
-                            "Text", "MouseArea", "Column", "Row", "Item", "Component",
-                            "Connections", "Timer", "ListView", "if", "else", "for", "while",
-                            "anchors", "width", "height", "color", "visible", "opacity",
-                            "true", "false", "parent", "children"};
+    // QML компоненты и типы
+    QStringList qmlTypes = {"Rectangle", "Text", "Image", "MouseArea", "Column", "Row",
+                            "Grid", "Flow", "Item", "Window", "ApplicationWindow",
+                            "ScrollView", "ListView", "GridView", "Repeater", "Loader",
+                            "Timer", "Animation", "NumberAnimation", "ColorAnimation",
+                            "PropertyAnimation", "SequentialAnimation", "ParallelAnimation",
+                            "Behavior", "Transition", "State", "PropertyChanges",
+                            "Component", "QtObject", "Connections", "Binding",
+                            "TextField", "Button", "CheckBox", "RadioButton", "ComboBox",
+                            "Slider", "ProgressBar", "SpinBox", "TextArea", "Label",
+                            "GroupBox", "TabView", "SplitView", "StackView", "Dialog",
+                            "Popup", "Drawer", "Menu", "MenuBar", "ToolBar", "StatusBar",
+                            "Canvas", "WebView", "VideoOutput", "Camera", "MediaPlayer"};
 
-    for (const QString &keyword : keywords) {
-        QRegularExpression expression("\\b" + keyword + "\\b");
+    // QML ключевые слова
+    QStringList qmlKeywords = {"import", "as", "property", "alias", "readonly", "signal",
+                               "function", "default", "required", "component", "pragma",
+                               "if", "else", "for", "while", "do", "switch", "case",
+                               "break", "continue", "return", "try", "catch", "finally",
+                               "throw", "new", "delete", "typeof", "instanceof", "in",
+                               "var", "let", "const"};
+
+    // QML встроенные свойства и константы
+    QStringList qmlBuiltins = {"parent", "children", "anchors", "width", "height", "x", "y", "z",
+                               "visible", "enabled", "opacity", "scale", "rotation", "color",
+                               "border", "radius", "clip", "focus", "activeFocus", "Keys",
+                               "true", "false", "null", "undefined", "console", "Qt",
+                               "Math", "Date", "String", "Number", "Array", "Object", "JSON"};
+
+    // QML глобальные объекты и функции
+    QStringList qmlGlobals = {"qmlRegisterType", "qsTr", "qsTranslate", "Qt.quit",
+                              "Qt.createComponent", "Qt.createQmlObject", "Qt.binding",
+                              "Qt.callLater", "Qt.md5", "Qt.btoa", "Qt.atob", "Qt.locale",
+                              "Qt.formatDate", "Qt.formatTime", "Qt.formatDateTime"};
+
+    // Подсветка QML типов
+    for (const QString &type : qmlTypes) {
+        QRegularExpression expression("\\b" + QRegularExpression::escape(type) + "\\b");
+        QRegularExpressionMatchIterator i = expression.globalMatch(text);
+        while (i.hasNext()) {
+            QRegularExpressionMatch match = i.next();
+            setFormat(match.capturedStart(), match.capturedLength(), m_typeFormat);
+        }
+    }
+
+    // Подсветка ключевых слов
+    for (const QString &keyword : qmlKeywords) {
+        QRegularExpression expression("\\b" + QRegularExpression::escape(keyword) + "\\b");
         QRegularExpressionMatchIterator i = expression.globalMatch(text);
         while (i.hasNext()) {
             QRegularExpressionMatch match = i.next();
             setFormat(match.capturedStart(), match.capturedLength(), m_keywordFormat);
         }
+    }
+
+    // Подсветка встроенных свойств и констант
+    for (const QString &builtin : qmlBuiltins) {
+        QRegularExpression expression("\\b" + QRegularExpression::escape(builtin) + "\\b");
+        QRegularExpressionMatchIterator i = expression.globalMatch(text);
+        while (i.hasNext()) {
+            QRegularExpressionMatch match = i.next();
+            setFormat(match.capturedStart(), match.capturedLength(), m_preprocessorFormat);
+        }
+    }
+
+    // Подсветка глобальных объектов
+    for (const QString &global : qmlGlobals) {
+        QRegularExpression expression("\\b" + QRegularExpression::escape(global) + "\\b");
+        QRegularExpressionMatchIterator i = expression.globalMatch(text);
+        while (i.hasNext()) {
+            QRegularExpressionMatch match = i.next();
+            setFormat(match.capturedStart(), match.capturedLength(), m_functionFormat);
+        }
+    }
+
+    // ID объектов - id: someName
+    QRegularExpression idExpression("\\bid\\s*:\\s*([a-zA-Z_]\\w*)");
+    QRegularExpressionMatchIterator idIterator = idExpression.globalMatch(text);
+    while (idIterator.hasNext()) {
+        QRegularExpressionMatch match = idIterator.next();
+        setFormat(match.capturedStart(1), match.capturedLength(1), m_functionFormat);
+    }
+
+    // Свойства объектов - property type name: value
+    QRegularExpression propExpression("\\bproperty\\s+(\\w+)\\s+([a-zA-Z_]\\w*)");
+    QRegularExpressionMatchIterator propIterator = propExpression.globalMatch(text);
+    while (propIterator.hasNext()) {
+        QRegularExpressionMatch match = propIterator.next();
+        setFormat(match.capturedStart(1), match.capturedLength(1), m_typeFormat);
+        setFormat(match.capturedStart(2), match.capturedLength(2), m_functionFormat);
+    }
+
+    // Сигналы - signal signalName(parameters)
+    QRegularExpression signalExpression("\\bsignal\\s+([a-zA-Z_]\\w*)");
+    QRegularExpressionMatchIterator signalIterator = signalExpression.globalMatch(text);
+    while (signalIterator.hasNext()) {
+        QRegularExpressionMatch match = signalIterator.next();
+        setFormat(match.capturedStart(1), match.capturedLength(1), m_functionFormat);
+    }
+
+    // Функции - function functionName()
+    QRegularExpression funcExpression("\\bfunction\\s+([a-zA-Z_]\\w*)");
+    QRegularExpressionMatchIterator funcIterator = funcExpression.globalMatch(text);
+    while (funcIterator.hasNext()) {
+        QRegularExpressionMatch match = funcIterator.next();
+        setFormat(match.capturedStart(1), match.capturedLength(1), m_functionFormat);
+    }
+
+    // Вызовы функций и свойств - name() или object.property
+    QRegularExpression callExpression("([a-zA-Z_]\\w*)(?=\\s*[\\(\\.:])");
+    QRegularExpressionMatchIterator callIterator = callExpression.globalMatch(text);
+    while (callIterator.hasNext()) {
+        QRegularExpressionMatch match = callIterator.next();
+        QString word = match.captured(1);
+        // Пропускаем если это уже подсвечено как ключевое слово или тип
+        if (!qmlKeywords.contains(word) && !qmlTypes.contains(word) && !qmlBuiltins.contains(word)) {
+            setFormat(match.capturedStart(1), match.capturedLength(1), m_functionFormat);
+        }
+    }
+
+    // Binding выражения - property: value
+    QRegularExpression bindingExpression("([a-zA-Z_]\\w*)\\s*:");
+    QRegularExpressionMatchIterator bindingIterator = bindingExpression.globalMatch(text);
+    while (bindingIterator.hasNext()) {
+        QRegularExpressionMatch match = bindingIterator.next();
+        QString property = match.captured(1);
+        if (!qmlKeywords.contains(property) && !qmlTypes.contains(property)) {
+            setFormat(match.capturedStart(1), match.capturedLength(1), m_preprocessorFormat);
+        }
+    }
+
+    // Строки в двойных кавычках
+    QRegularExpression doubleStringExpression("\"([^\"\\\\]|\\\\.)*\"");
+    QRegularExpressionMatchIterator doubleIterator = doubleStringExpression.globalMatch(text);
+    while (doubleIterator.hasNext()) {
+        QRegularExpressionMatch match = doubleIterator.next();
+        setFormat(match.capturedStart(), match.capturedLength(), m_stringFormat);
+    }
+
+    // Строки в одинарных кавычках
+    QRegularExpression singleStringExpression("'([^'\\\\]|\\\\.)*'");
+    QRegularExpressionMatchIterator singleIterator = singleStringExpression.globalMatch(text);
+    while (singleIterator.hasNext()) {
+        QRegularExpressionMatch match = singleIterator.next();
+        setFormat(match.capturedStart(), match.capturedLength(), m_stringFormat);
+    }
+
+    // Однострочные комментарии
+    QRegularExpression singleCommentExpression("//[^\n]*");
+    QRegularExpressionMatchIterator singleCommentIterator = singleCommentExpression.globalMatch(text);
+    while (singleCommentIterator.hasNext()) {
+        QRegularExpressionMatch match = singleCommentIterator.next();
+        setFormat(match.capturedStart(), match.capturedLength(), m_commentFormat);
+    }
+
+    // Многострочные комментарии
+    QRegularExpression multiCommentExpression("/\\*[\\s\\S]*?\\*/");
+    QRegularExpressionMatchIterator multiCommentIterator = multiCommentExpression.globalMatch(text);
+    while (multiCommentIterator.hasNext()) {
+        QRegularExpressionMatch match = multiCommentIterator.next();
+        setFormat(match.capturedStart(), match.capturedLength(), m_commentFormat);
+    }
+
+    // Числа (включая версии, hex, float)
+    QRegularExpression numberExpression("\\b(\\d+\\.\\d+|\\d+)([eE][+-]?\\d+)?\\b");
+    QRegularExpressionMatchIterator numberIterator = numberExpression.globalMatch(text);
+    while (numberIterator.hasNext()) {
+        QRegularExpressionMatch match = numberIterator.next();
+        setFormat(match.capturedStart(), match.capturedLength(), m_numberFormat);
+    }
+
+    // Операторы
+    QRegularExpression operatorExpression("[+\\-*/=<>!&|%^~?:]");
+    QRegularExpressionMatchIterator operatorIterator = operatorExpression.globalMatch(text);
+    while (operatorIterator.hasNext()) {
+        QRegularExpressionMatch match = operatorIterator.next();
+        setFormat(match.capturedStart(), match.capturedLength(), m_operatorFormat);
+    }
+
+    // import версии - import QtQuick 2.15
+    QRegularExpression importVersionExpression("\\bimport\\s+[a-zA-Z.]+ (\\d+\\.\\d+)");
+    QRegularExpressionMatchIterator importVersionIterator = importVersionExpression.globalMatch(text);
+    while (importVersionIterator.hasNext()) {
+        QRegularExpressionMatch match = importVersionIterator.next();
+        setFormat(match.capturedStart(1), match.capturedLength(1), m_numberFormat);
+    }
+
+    // Q_INVOKABLE, Q_PROPERTY и другие Qt макросы (если встречаются в QML)
+    QRegularExpression qtMacroExpression("\\bQ_[A-Z_]+\\b");
+    QRegularExpressionMatchIterator qtMacroIterator = qtMacroExpression.globalMatch(text);
+    while (qtMacroIterator.hasNext()) {
+        QRegularExpressionMatch match = qtMacroIterator.next();
+        setFormat(match.capturedStart(), match.capturedLength(), m_preprocessorFormat);
     }
 }
 
