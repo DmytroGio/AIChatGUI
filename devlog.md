@@ -30,4 +30,7 @@ Tech Stack: Qt6, QML, C++, HTTP API, LM Studio
 - Resolve the issue of speed, eliminate long loading times
 
 ## 2025-09-22
-Planning the integration of SQLite and JSON solutions for chats - data management optimization
+- Planning the integration of SQLite and JSON solutions for chats - data management optimization
+
+## 2025-09-29
+- Project restructuring analysis and planning
