@@ -7,6 +7,7 @@
 #include <QString>
 #include <QVariantList>
 #include <QStandardPaths>
+#include <QSqlDatabase>
 
 struct Message {
     QString text;
@@ -51,14 +52,17 @@ signals:
     void messagesChanged();
 
 private:
-    void saveChats();
+    void initDatabase();
     void loadChats();
+    void saveChatToDb(const Chat &chat);
+    void updateChatInDb(const Chat &chat);
+    void deleteChatFromDb(const QString &chatId);
     QString generateChatId();
     QString generateTitle(const QString &firstMessage);
 
     QList<Chat> m_chats;
     QString m_currentChatId;
-    QString m_dataPath;
+    QSqlDatabase m_db;
 };
 
 #endif // CHATMANAGER_H

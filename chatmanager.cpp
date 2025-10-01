@@ -1,26 +1,17 @@
 #include "chatmanager.h"
-#include <QJsonDocument>
-#include <QJsonObject>
-#include <QJsonArray>
 #include <QDir>
-#include <QFile>
 #include <QDateTime>
 #include <QDebug>
 #include <QUuid>
+#include <QSqlDatabase>
+#include <QSqlQuery>
+#include <QSqlError>
+#include <QStandardPaths>
 
 ChatManager::ChatManager(QObject *parent)
     : QObject(parent)
 {
-    m_dataPath = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
-    QDir dir(m_dataPath);
-    if (!dir.exists()) {
-        dir.mkpath(m_dataPath);
-    }
-
-    m_dataPath += "/chats.json";
-
-    qDebug() << "Chat file path:" << m_dataPath;
-
+    initDatabase();
     loadChats();
 
     if (m_chats.isEmpty()) {
@@ -36,10 +27,10 @@ void ChatManager::createNewChat()
     newChat.lastMessage = "";
     newChat.lastTimestamp = QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss");
 
+    saveChatToDb(newChat);  // Изменено
     m_chats.prepend(newChat);
     m_currentChatId = newChat.id;
 
-    saveChats();
     emit chatListChanged();
     emit currentChatChanged();
     emit messagesChanged();
@@ -57,6 +48,8 @@ void ChatManager::switchToChat(const QString &chatId)
 
 void ChatManager::deleteChat(const QString &chatId)
 {
+    deleteChatFromDb(chatId);  // Добавлено
+
     for (int i = 0; i < m_chats.size(); ++i) {
         if (m_chats[i].id == chatId) {
             m_chats.removeAt(i);
@@ -73,7 +66,6 @@ void ChatManager::deleteChat(const QString &chatId)
         }
     }
 
-    saveChats();
     emit chatListChanged();
     emit currentChatChanged();
     emit messagesChanged();
@@ -97,11 +89,25 @@ void ChatManager::addMessage(const QString &text, bool isUser)
                 chat.title = generateTitle(text);
             }
 
+            // Сохраняем сообщение в БД
+            QSqlQuery query;
+            query.prepare("INSERT INTO messages (chat_id, text, isUser, timestamp) VALUES (?, ?, ?, ?)");
+            query.addBindValue(chat.id);
+            query.addBindValue(msg.text);
+            query.addBindValue(msg.isUser);
+            query.addBindValue(msg.timestamp);
+
+            if (!query.exec()) {
+                qDebug() << "Failed to save message:" << query.lastError().text();
+            }
+
+            // Обновляем чат в БД
+            updateChatInDb(chat);
+
             break;
         }
     }
 
-    saveChats();
     emit chatListChanged();
     emit messagesChanged();
 }
@@ -131,11 +137,11 @@ void ChatManager::renameChatTitle(const QString &chatId, const QString &newTitle
     for (auto &chat : m_chats) {
         if (chat.id == chatId) {
             chat.title = newTitle;
+            updateChatInDb(chat);  // Добавлено
             break;
         }
     }
 
-    saveChats();
     emit chatListChanged();
 }
 
@@ -166,158 +172,128 @@ QString ChatManager::getCurrentChatTitle() const
     return "New Chat";
 }
 
-void ChatManager::saveChats()
+void ChatManager::initDatabase()
 {
-    qDebug() << "Saving chats, count:" << m_chats.size();
-
-    QJsonArray chatsArray;
-
-    for (const auto &chat : m_chats) {
-        QJsonObject chatObj;
-        chatObj["id"] = chat.id;
-        chatObj["title"] = chat.title;
-        chatObj["lastMessage"] = chat.lastMessage;
-        chatObj["lastTimestamp"] = chat.lastTimestamp;
-
-        QJsonArray messagesArray;
-        for (const auto &msg : chat.messages) {
-            QJsonObject msgObj;
-            msgObj["text"] = msg.text;
-            msgObj["isUser"] = msg.isUser;
-            msgObj["timestamp"] = msg.timestamp;
-            messagesArray.append(msgObj);
-        }
-        chatObj["messages"] = messagesArray;
-
-        chatsArray.append(chatObj);
+    QString dataPath = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
+    QDir dir(dataPath);
+    if (!dir.exists()) {
+        dir.mkpath(dataPath);
     }
 
-    QJsonDocument doc(chatsArray);
+    QString dbPath = dataPath + "/chats.db";
+    qDebug() << "Database path:" << dbPath;
 
-    QFile file(m_dataPath);
-    if (file.open(QIODevice::WriteOnly)) {
-        file.write(doc.toJson());
-        file.close(); // ДОБАВИТЬ
-        qDebug() << "Chats saved successfully to:" << m_dataPath; // ДОБАВИТЬ
-    } else {
-        qDebug() << "Failed to save chats to:" << m_dataPath; // ДОБАВИТЬ
+    m_db = QSqlDatabase::addDatabase("QSQLITE");
+    m_db.setDatabaseName(dbPath);
+
+    if (!m_db.open()) {
+        qDebug() << "Failed to open database:" << m_db.lastError().text();
+        return;
     }
+
+    QSqlQuery query;
+
+    // Создаём таблицу чатов
+    query.exec("CREATE TABLE IF NOT EXISTS chats ("
+               "id TEXT PRIMARY KEY, "
+               "title TEXT, "
+               "lastMessage TEXT, "
+               "lastTimestamp TEXT, "
+               "created_at TEXT)");
+
+    // Создаём таблицу сообщений
+    query.exec("CREATE TABLE IF NOT EXISTS messages ("
+               "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+               "chat_id TEXT, "
+               "text TEXT, "
+               "isUser INTEGER, "
+               "timestamp TEXT, "
+               "FOREIGN KEY(chat_id) REFERENCES chats(id) ON DELETE CASCADE)");
+
+    qDebug() << "Database initialized";
 }
 
 void ChatManager::loadChats()
 {
-    qDebug() << "Loading chats from:" << m_dataPath;
-
-    QFile file(m_dataPath);
-    if (!file.open(QIODevice::ReadOnly)) {
-        qDebug() << "File not found or cannot open:" << m_dataPath; // ДОБАВИТЬ
-        return; // Выходим, конструктор создаст новый чат
-    }
-
-    QByteArray data = file.readAll();
-    file.close();
-    qDebug() << "Loaded data size:" << data.size();
-
-    if (data.isEmpty()) {
-        qDebug() << "Chats file is empty";
-        return; // Выходим, конструктор создаст новый чат
-    }
-
-    QJsonDocument doc = QJsonDocument::fromJson(data);
-    if (doc.isNull()) {
-        qDebug() << "Failed to parse chats file";
-        return; // Выходим, конструктор создаст новый чат
-    }
-
     m_chats.clear();
 
-    // Проверяем новый формат (с корневым объектом)
-    if (doc.isObject()) {
-        QJsonObject rootObj = doc.object();
+    QSqlQuery query("SELECT id, title, lastMessage, lastTimestamp FROM chats ORDER BY lastTimestamp DESC");
 
-        if (rootObj.contains("chats") && rootObj.contains("currentChatId")) {
-            // Новый формат
-            m_currentChatId = rootObj["currentChatId"].toString();
-            QJsonArray chatsArray = rootObj["chats"].toArray();
+    while (query.next()) {
+        Chat chat;
+        chat.id = query.value(0).toString();
+        chat.title = query.value(1).toString();
+        chat.lastMessage = query.value(2).toString();
+        chat.lastTimestamp = query.value(3).toString();
 
-            for (const auto &value : chatsArray) {
-                QJsonObject chatObj = value.toObject();
+        // Загружаем сообщения для этого чата
+        QSqlQuery msgQuery;
+        msgQuery.prepare("SELECT text, isUser, timestamp FROM messages WHERE chat_id = ? ORDER BY id ASC");
+        msgQuery.addBindValue(chat.id);
+        msgQuery.exec();
 
-                Chat chat;
-                chat.id = chatObj["id"].toString();
-                chat.title = chatObj["title"].toString();
-                chat.lastMessage = chatObj["lastMessage"].toString();
-                chat.lastTimestamp = chatObj["lastTimestamp"].toString();
-
-                QJsonArray messagesArray = chatObj["messages"].toArray();
-                for (const auto &msgValue : messagesArray) {
-                    QJsonObject messageObj = msgValue.toObject();
-                    Message message;
-                    message.text = messageObj["text"].toString();
-                    message.isUser = messageObj["isUser"].toBool();
-                    message.timestamp = messageObj["timestamp"].toString();
-                    chat.messages.append(message);
-                }
-
-                m_chats.append(chat);
-            }
-
-            qDebug() << "Loaded chats in new format:" << m_chats.size();
-        } else {
-            qDebug() << "Object format but not recognized, will create new chat";
-            return; // Конструктор создаст новый чат
-        }
-    }
-    // Проверяем старый формат (массив чатов в корне)
-    else if (doc.isArray()) {
-        QJsonArray chatsArray = doc.array();
-
-        for (const auto &value : chatsArray) {
-            QJsonObject chatObj = value.toObject();
-
-            Chat chat;
-            chat.id = chatObj.contains("id") ? chatObj["id"].toString() : generateChatId();
-            chat.title = chatObj.contains("title") ? chatObj["title"].toString() : "Restored Chat";
-            chat.lastMessage = chatObj.contains("lastMessage") ? chatObj["lastMessage"].toString() : "";
-            chat.lastTimestamp = chatObj.contains("lastTimestamp") ? chatObj["lastTimestamp"].toString() : QDateTime::currentDateTime().toString(Qt::ISODate);
-
-            if (chatObj.contains("messages")) {
-                QJsonArray messagesArray = chatObj["messages"].toArray();
-                for (const auto &msgValue : messagesArray) {
-                    QJsonObject messageObj = msgValue.toObject();
-                    Message message;
-                    message.text = messageObj["text"].toString();
-                    message.isUser = messageObj["isUser"].toBool();
-                    message.timestamp = messageObj.contains("timestamp") ? messageObj["timestamp"].toString() : chat.lastTimestamp;
-                    chat.messages.append(message);
-                }
-            }
-
-            m_chats.append(chat);
+        while (msgQuery.next()) {
+            Message msg;
+            msg.text = msgQuery.value(0).toString();
+            msg.isUser = msgQuery.value(1).toBool();
+            msg.timestamp = msgQuery.value(2).toString();
+            chat.messages.append(msg);
         }
 
-        if (!m_chats.isEmpty()) {
-            m_currentChatId = m_chats.first().id;
-            saveChats(); // Сохраняем в новом формате
-            qDebug() << "Converted old format to new format:" << m_chats.size();
-        }
+        m_chats.append(chat);
     }
 
-    // Проверяем, что текущий чат существует
-    if (!m_currentChatId.isEmpty() && !m_chats.isEmpty()) {
-        bool found = false;
-        for (const auto &chat : m_chats) {
-            if (chat.id == m_currentChatId) {
-                found = true;
-                break;
-            }
-        }
-        if (!found) {
-            m_currentChatId = m_chats.first().id;
-        }
+    if (!m_chats.isEmpty()) {
+        m_currentChatId = m_chats.first().id;
     }
 
-    qDebug() << "Successfully loaded" << m_chats.size() << "chats, current:" << m_currentChatId;
+    qDebug() << "Loaded" << m_chats.size() << "chats from database";
+}
+
+void ChatManager::saveChatToDb(const Chat &chat)
+{
+    QSqlQuery query;
+    query.prepare("INSERT INTO chats (id, title, lastMessage, lastTimestamp, created_at) "
+                  "VALUES (?, ?, ?, ?, ?)");
+    query.addBindValue(chat.id);
+    query.addBindValue(chat.title);
+    query.addBindValue(chat.lastMessage);
+    query.addBindValue(chat.lastTimestamp);
+    query.addBindValue(chat.lastTimestamp);
+
+    if (!query.exec()) {
+        qDebug() << "Failed to save chat:" << query.lastError().text();
+    }
+}
+
+void ChatManager::updateChatInDb(const Chat &chat)
+{
+    QSqlQuery query;
+    query.prepare("UPDATE chats SET title = ?, lastMessage = ?, lastTimestamp = ? WHERE id = ?");
+    query.addBindValue(chat.title);
+    query.addBindValue(chat.lastMessage);
+    query.addBindValue(chat.lastTimestamp);
+    query.addBindValue(chat.id);
+
+    if (!query.exec()) {
+        qDebug() << "Failed to update chat:" << query.lastError().text();
+    }
+}
+
+void ChatManager::deleteChatFromDb(const QString &chatId)
+{
+    QSqlQuery query;
+    query.prepare("DELETE FROM chats WHERE id = ?");
+    query.addBindValue(chatId);
+
+    if (!query.exec()) {
+        qDebug() << "Failed to delete chat:" << query.lastError().text();
+    }
+
+    // Удаляем сообщения (если не настроен CASCADE)
+    query.prepare("DELETE FROM messages WHERE chat_id = ?");
+    query.addBindValue(chatId);
+    query.exec();
 }
 
 QString ChatManager::generateChatId()
