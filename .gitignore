@@ -68,6 +68,27 @@ CMakeLists.txt.user*
 # Python byte code
 *.pyc
 
+# ----------------------------------------------------------------------------
+# LLM & GGUF MODELS
+# ----------------------------------------------------------------------------
+
+# Ignore GGUF model files (usually large)
+*.gguf
+models/
+
+# ----------------------------------------------------------------------------
+# EXTERNAL/THIRDPARTY LIBS
+# ----------------------------------------------------------------------------
+
+# Ignore submodule service files
+# The external/llama.cpp folder itself is tracked by git, but its artifacts are not.
+external/llama.cpp/build/
+
+# ----------------------------------------------------------------------------
+
+
+
+
 # Binaries
 # --------
 *.dll

@@ -6,6 +6,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(Qt6 REQUIRED COMPONENTS Quick Network Sql)
 
+add_subdirectory(external/llama.cpp)
+
 qt_standard_project_setup()
 
 qt_add_executable(appAIChatGUI
@@ -43,7 +45,7 @@ set_target_properties(appAIChatGUI PROPERTIES
 )
 
 target_link_libraries(appAIChatGUI
-    PRIVATE Qt6::Quick Qt6::Network Qt6::Sql
+    PRIVATE Qt6::Quick Qt6::Network Qt6::Sql llama ggml common
 )
 
 include(GNUInstallDirs)
