@@ -6,6 +6,9 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(Qt6 REQUIRED COMPONENTS Quick Network Sql)
 
+set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build static libraries" FORCE)
+set(LLAMA_BUILD_SHARED OFF CACHE BOOL "Build llama as static library" FORCE)
+
 add_subdirectory(external/llama.cpp)
 
 qt_standard_project_setup()

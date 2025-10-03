@@ -16,10 +16,18 @@ int main(int argc, char *argv[])
     QQmlApplicationEngine engine;
 
     LlamaConnector connector;
-    if (!connector.loadModel("models/qwen2.5-coder-3b-instruct-q4_k_m.gguf")) {
-        qWarning() << "Failed to load model!";
+
+    QString modelPath = QCoreApplication::applicationDirPath() + "/models/qwen2.5-coder-3b-instruct-q4_k_m.gguf";
+    qDebug() << "Loading model from:" << modelPath;
+
+    if (!connector.loadModel(modelPath)) {
+        qWarning() << "Failed to load model from:" << modelPath;
+        qWarning() << "Make sure the model file exists at this location";
         return -1;
     }
+
+    qDebug() << "Model loaded successfully!";
+
     ChatManager chatManager;
 
     ClipboardHelper clipboardHelper;
