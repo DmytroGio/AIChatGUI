@@ -12,8 +12,8 @@ qt_standard_project_setup()
 
 qt_add_executable(appAIChatGUI
     main.cpp
-    lmstudioconnector.h
-    lmstudioconnector.cpp
+    llamaconnector.h
+    llamaconnector.cpp
     chatmanager.h
     chatmanager.cpp
     clipboardhelper.h
@@ -26,12 +26,16 @@ qt_add_executable(appAIChatGUI
 qt_add_qml_module(appAIChatGUI
     URI AIChatGUI
     VERSION 1.0
+    RESOURCE_PREFIX "/"
     QML_FILES
         Main.qml
         MessageBubble.qml
         ChatList.qml
-        SOURCES syntaxhighlighter.h syntaxhighlighter.cpp
+    SOURCES
+        syntaxhighlighter.h
+        syntaxhighlighter.cpp
 )
+
 
 # Qt for iOS sets MACOSX_BUNDLE_GUI_IDENTIFIER automatically since Qt 6.1.
 # If you are developing for iOS or macOS you should consider setting an
@@ -45,7 +49,7 @@ set_target_properties(appAIChatGUI PROPERTIES
 )
 
 target_link_libraries(appAIChatGUI
-    PRIVATE Qt6::Quick Qt6::Network Qt6::Sql llama ggml common
+    PRIVATE Qt6::Quick Qt6::Network Qt6::Sql llama ggml
 )
 
 include(GNUInstallDirs)

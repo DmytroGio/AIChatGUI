@@ -1,7 +1,7 @@
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
-#include "lmstudioconnector.h"
+#include "llamaconnector.h"
 #include <QtCore/QString>
 #include "chatmanager.h"
 #include <QClipboard>
@@ -15,13 +15,17 @@ int main(int argc, char *argv[])
     QGuiApplication app(argc, argv);
     QQmlApplicationEngine engine;
 
-    LMStudioConnector connector;
+    LlamaConnector connector;
+    if (!connector.loadModel("models/qwen2.5-coder-3b-instruct-q4_k_m.gguf")) {
+        qWarning() << "Failed to load model!";
+        return -1;
+    }
     ChatManager chatManager;
 
     ClipboardHelper clipboardHelper;
     engine.rootContext()->setContextProperty("clipboardHelper", &clipboardHelper);
 
-    engine.rootContext()->setContextProperty("lmstudio", &connector);
+    engine.rootContext()->setContextProperty("llamaConnector", &connector);
     engine.rootContext()->setContextProperty("chatManager", &chatManager);
     engine.rootContext()->setContextProperty("clipboard", QGuiApplication::clipboard());
 
