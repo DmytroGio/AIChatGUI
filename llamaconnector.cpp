@@ -48,6 +48,7 @@ bool LlamaWorker::initialize(const QString &modelPath)
     sampler = llama_sampler_chain_init(llama_sampler_chain_default_params());
     llama_sampler_chain_add(sampler, llama_sampler_init_temp(0.7f));
     llama_sampler_chain_add(sampler, llama_sampler_init_top_p(0.9f, 1));
+    llama_sampler_chain_add(sampler, llama_sampler_init_dist(LLAMA_DEFAULT_SEED));
 
     return true;
 }
@@ -66,80 +67,60 @@ void LlamaWorker::processMessage(const QString &message)
     std::string prompt_str = prompt.toStdString();
 
     // Токенизация
-    const int max_tokens_input = 2048;
-    std::vector<llama_token> tokens(max_tokens_input);
+    std::vector<llama_token> tokens(prompt_str.size() + 128);
     int n_tokens = llama_tokenize(
-        vocab,  // используем vocab вместо model
+        vocab,
         prompt_str.c_str(),
         prompt_str.length(),
         tokens.data(),
-        max_tokens_input,
+        tokens.size(),
         true,
         true
         );
 
     if (n_tokens < 0) {
+        tokens.resize(-n_tokens);
+        n_tokens = llama_tokenize(vocab, prompt_str.c_str(), prompt_str.length(),
+                                  tokens.data(), tokens.size(), true, true);
+    }
+
+    if (n_tokens <= 0) {
         emit errorOccurred("Failed to tokenize");
         return;
     }
     tokens.resize(n_tokens);
 
-    // Создание batch
-    llama_batch batch = llama_batch_init(n_tokens, 0, 1);
-
-    // Добавление токенов в batch
-    for (int i = 0; i < n_tokens; i++) {
-        batch.token[i] = tokens[i];
-        batch.pos[i] = i;
-        batch.n_seq_id[i] = 1;
-        batch.seq_id[i][0] = 0;
-        batch.logits[i] = false;
-    }
-    batch.logits[n_tokens - 1] = true;
-    batch.n_tokens = n_tokens;
+    // ИСПОЛЬЗУЕМ llama_batch_get_one для безопасности
+    llama_batch batch = llama_batch_get_one(tokens.data(), n_tokens);
 
     if (llama_decode(ctx, batch) != 0) {
-        emit errorOccurred("Failed to decode");
-        llama_batch_free(batch);
+        emit errorOccurred("Failed to decode prompt");
         return;
     }
 
+
     QString response;
-    int n_cur = n_tokens;
     int n_gen = 0;
-    const int max_gen_tokens = 2048;
+    const int max_gen_tokens = 512; // уменьшите для теста
 
     while (n_gen < max_gen_tokens) {
+        // Сэмплируем токен
         llama_token new_token = llama_sampler_sample(sampler, ctx, -1);
 
-        // Проверка на конец генерации
-        if (llama_vocab_is_eog(vocab, new_token)) {  // используем vocab
+        if (new_token < 0 || llama_vocab_is_eog(vocab, new_token)) {
             break;
         }
 
-        // Преобразование токена в текст
+        // Конвертируем токен в текст
         char piece[128];
-        int n_chars = llama_token_to_piece(
-            vocab,  // используем vocab вместо model
-            new_token,
-            piece,
-            sizeof(piece),
-            0,
-            true
-            );
+        int n_chars = llama_token_to_piece(vocab, new_token, piece, sizeof(piece), 0, true);
 
         if (n_chars > 0) {
             response += QString::fromUtf8(piece, n_chars);
         }
 
-        // Подготовка следующего токена
-        batch.n_tokens = 0;
-        batch.token[0] = new_token;
-        batch.pos[0] = n_cur++;
-        batch.n_seq_id[0] = 1;
-        batch.seq_id[0][0] = 0;
-        batch.logits[0] = true;
-        batch.n_tokens = 1;
+        // Декодируем следующий токен
+        batch = llama_batch_get_one(&new_token, 1);
 
         if (llama_decode(ctx, batch) != 0) {
             break;
@@ -148,9 +129,11 @@ void LlamaWorker::processMessage(const QString &message)
         n_gen++;
     }
 
-    llama_batch_free(batch);
-
     response = response.remove("<|im_end|>").trimmed();
+
+    if (response.isEmpty()) {
+        response = "Error: No response generated";
+    }
 
     emit messageReceived(response);
 }

@@ -120,7 +120,7 @@ ApplicationWindow {
                 }
 
                 Text {
-                    text: "Connected to LM Studio"
+                    text: "Connected to Local Model"
                     color: root.textSecondary
                     font.pixelSize: 12
                 }
@@ -339,7 +339,7 @@ ApplicationWindow {
                 Keys.onReturnPressed: {
                     if (inputField.text.trim() !== "") {
                         chatManager.addMessage(inputField.text.trim(), true)
-                        lmstudio.sendMessage(inputField.text.trim())
+                        llamaConnector.sendMessage(inputField.text.trim())
                         inputField.text = ""
                     }
                 }
@@ -379,8 +379,7 @@ ApplicationWindow {
         if (messageText !== "") {
             // Сначала добавляем сообщение пользователя в ChatManager
             chatManager.addMessage(messageText, true)
-            // Затем отправляем в LM Studio
-            lmstudio.sendMessage(messageText)
+            llamaConnector.sendMessage(messageText)
             inputField.text = ""
         }
     }
@@ -485,7 +484,7 @@ ApplicationWindow {
 
     // Connections for LM Studio
     Connections {
-        target: lmstudio
+        target: llamaConnector
         function onMessageReceived(response) {
             addMessage(response, false)
             scrollToBottom()
