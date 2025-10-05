@@ -34,3 +34,6 @@ Tech Stack: Qt6, QML, C++, HTTP API, LM Studio
 
 ## 2025-09-29
 - Project restructuring analysis and planning
+
+## 2025-10-05
+- Side panel planning - characteristics and model operation via llama.cpp
