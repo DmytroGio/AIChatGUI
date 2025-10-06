@@ -50,6 +50,8 @@ bool LlamaWorker::initialize(const QString &modelPath)
     llama_sampler_chain_add(sampler, llama_sampler_init_top_p(0.9f, 1));
     llama_sampler_chain_add(sampler, llama_sampler_init_dist(LLAMA_DEFAULT_SEED));
 
+    emit modelLoadedSuccessfully();
+
     return true;
 }
 
@@ -143,6 +145,8 @@ void LlamaWorker::processMessage(const QString &message)
 LlamaConnector::LlamaConnector(QObject *parent)
     : QObject(parent)
 {
+    modelInfo = new ModelInfo(this);
+
     worker = new LlamaWorker();
     worker->moveToThread(&workerThread);
 
@@ -162,7 +166,13 @@ LlamaConnector::~LlamaConnector()
 
 bool LlamaConnector::loadModel(const QString &modelPath)
 {
-    return worker->initialize(modelPath);
+    bool success = worker->initialize(modelPath);
+    if (success) {
+        QMetaObject::invokeMethod(worker, [this, modelPath]() {
+            modelInfo->setModel(worker->model, worker->ctx, modelPath);
+        }, Qt::QueuedConnection);
+    }
+    return success;
 }
 
 void LlamaConnector::sendMessage(const QString &message)

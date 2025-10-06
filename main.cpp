@@ -34,6 +34,7 @@ int main(int argc, char *argv[])
     engine.rootContext()->setContextProperty("clipboardHelper", &clipboardHelper);
 
     engine.rootContext()->setContextProperty("llamaConnector", &connector);
+    engine.rootContext()->setContextProperty("modelInfo", connector.getModelInfo());
     engine.rootContext()->setContextProperty("chatManager", &chatManager);
     engine.rootContext()->setContextProperty("clipboard", QGuiApplication::clipboard());
 

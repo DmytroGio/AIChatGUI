@@ -23,7 +23,8 @@ qt_add_executable(appAIChatGUI
     clipboardhelper.cpp
     syntaxhighlighter.h
     syntaxhighlighter.cpp
-
+    modelinfo.h
+    modelinfo.cpp
 )
 
 qt_add_qml_module(appAIChatGUI
@@ -38,6 +39,7 @@ qt_add_qml_module(appAIChatGUI
     SOURCES
         syntaxhighlighter.h
         syntaxhighlighter.cpp
+        SOURCES modelinfo.h modelinfo.cpp
 )
 
 

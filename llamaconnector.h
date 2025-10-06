@@ -4,6 +4,7 @@
 #include <QObject>
 #include <QThread>
 #include <llama.h>
+#include "modelinfo.h"
 
 class LlamaWorker : public QObject
 {
@@ -13,6 +14,8 @@ public:
     ~LlamaWorker();
 
     bool initialize(const QString &modelPath);
+    llama_model *model = nullptr;
+    llama_context *ctx = nullptr;
 
 public slots:
     void processMessage(const QString &message);
@@ -20,10 +23,10 @@ public slots:
 signals:
     void messageReceived(const QString &response);
     void errorOccurred(const QString &error);
+    void modelLoadedSuccessfully();
 
 private:
-    llama_model *model = nullptr;
-    llama_context *ctx = nullptr;
+
     llama_sampler *sampler = nullptr;
     const llama_vocab *vocab = nullptr;
 };
@@ -38,6 +41,8 @@ public:
     Q_INVOKABLE void sendMessage(const QString &message);
     Q_INVOKABLE bool loadModel(const QString &modelPath);
 
+    ModelInfo* getModelInfo() { return modelInfo; }
+
 signals:
     void messageReceived(const QString &response);
     void errorOccurred(const QString &error);
@@ -45,6 +50,8 @@ signals:
 private:
     QThread workerThread;
     LlamaWorker *worker;
+
+    ModelInfo *modelInfo;
 
 signals:
     void requestProcessing(const QString &message);

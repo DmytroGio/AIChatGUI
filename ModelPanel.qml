@@ -4,7 +4,7 @@ import QtQuick.Controls 2.15
 
 Rectangle {
     id: modelPanel
-    width: isOpen ? 350 : 0
+    width: isOpen ? 400 : 0
     height: parent.height
     color: backgroundColor
     clip: true
@@ -75,7 +75,7 @@ Rectangle {
                             width: parent.width - 40
 
                             Text {
-                                text: "No Model Loaded"
+                                text: modelInfo.isLoaded ? modelInfo.modelName : "No Model Loaded"
                                 color: modelPanel.textPrimary
                                 font.pixelSize: 16
                                 font.bold: true
@@ -84,7 +84,7 @@ Rectangle {
                             }
 
                             Text {
-                                text: "0.0GB • - • - ctx"
+                                text: modelInfo.modelSize + " • " + modelInfo.layers + " • " + modelInfo.contextSize + " ctx"
                                 color: modelPanel.textSecondary
                                 font.pixelSize: 12
                             }
@@ -99,16 +99,12 @@ Rectangle {
                             text: "Change Model"
                             width: parent.width * 0.65
                             height: 32
+                            enabled: false
+                            opacity: 0.5
 
                             background: Rectangle {
-                                color: parent.pressed ? modelPanel.primaryColor :
-                                       parent.hovered ? Qt.lighter(modelPanel.primaryColor, 1.2) :
-                                       modelPanel.primaryColor
+                                color: modelPanel.primaryColor
                                 radius: 8
-
-                                Behavior on color {
-                                    ColorAnimation { duration: 150 }
-                                }
                             }
 
                             contentItem: Text {
@@ -118,8 +114,6 @@ Rectangle {
                                 verticalAlignment: Text.AlignVCenter
                                 font.pixelSize: 13
                             }
-
-                            onClicked: root.showModelSelector = true
                         }
 
                         Button {
@@ -146,87 +140,57 @@ Rectangle {
                     }
                 }
             }
-
             // ========== MODEL INFO ==========
-            Rectangle {
+            Grid {
                 width: parent.width
-                height: modelInfoColumn.height + 20
-                color: modelPanel.surfaceColor
-                radius: 12
-                opacity: 0.8
+                columns: 2
+                rowSpacing: 8
+                columnSpacing: 10
 
+                // Left column
                 Column {
-                    id: modelInfoColumn
-                    anchors.centerIn: parent
-                    width: parent.width - 20
-                    spacing: 12
+                    width: parent.width / 2 - 5
+                    spacing: 8
 
-                    Text {
-                        text: "📋 MODEL INFO"
-                        color: modelPanel.textPrimary
-                        font.pixelSize: 14
-                        font.bold: true
-                    }
-
-                    Rectangle {
-                        width: parent.width
-                        height: 1
-                        color: modelPanel.textSecondary
-                        opacity: 0.3
-                    }
-
-                    Grid {
-                        width: parent.width
-                        columns: 2
-                        rowSpacing: 8
-                        columnSpacing: 10
-
-                        // Left column
-                        Column {
-                            width: parent.width / 2 - 5
-                            spacing: 8
-
-                            InfoRow { label: "Type:"; value: "-" }
-                            InfoRow { label: "Layers:"; value: "-" }
-                            InfoRow { label: "Quant:"; value: "-" }
-                        }
-
-                        // Right column
-                        Column {
-                            width: parent.width / 2 - 5
-                            spacing: 8
-
-                            InfoRow { label: "Params:"; value: "-" }
-                            InfoRow { label: "Embed:"; value: "-" }
-                            InfoRow { label: "Vocab:"; value: "-" }
-                        }
-                    }
-
-                    Column {
-                        width: parent.width
-                        spacing: 4
-
-                        Text {
-                            text: "Path:"
-                            color: modelPanel.textSecondary
-                            font.pixelSize: 11
-                        }
-
-                        Text {
-                            text: "-"
-                            color: modelPanel.textPrimary
-                            font.pixelSize: 10
-                            elide: Text.ElideMiddle
-                            width: parent.width
-                        }
-                    }
-
-                    Text {
-                        text: "Loaded: -"
-                        color: modelPanel.textSecondary
-                        font.pixelSize: 11
-                    }
+                    InfoRow { label: "Type:"; value: modelInfo.modelType }
+                    InfoRow { label: "Layers:"; value: modelInfo.layers.toString() }
+                    InfoRow { label: "Quant:"; value: modelInfo.quantization }
                 }
+
+                // Right column
+                Column {
+                    width: parent.width / 2 - 5
+                    spacing: 8
+
+                    InfoRow { label: "Params:"; value: modelInfo.parameters }
+                    InfoRow { label: "Embed:"; value: modelInfo.embedding }
+                    InfoRow { label: "Vocab:"; value: modelInfo.vocabSize }
+                }
+            }
+
+            Column {
+                width: parent.width
+                spacing: 4
+
+                Text {
+                    text: "Path:"
+                    color: modelPanel.textSecondary
+                    font.pixelSize: 11
+                }
+
+                Text {
+                    text: modelInfo.modelPath
+                    color: modelPanel.textPrimary
+                    font.pixelSize: 10
+                    elide: Text.ElideMiddle
+                    width: parent.width
+                }
+            }
+
+            Text {
+                text: "Loaded: " + modelInfo.loadedTime
+                color: modelPanel.textSecondary
+                font.pixelSize: 11
             }
 
             // ========== RUNTIME STATS ==========
@@ -258,18 +222,19 @@ Rectangle {
                             width: 12
                             height: 12
                             radius: 6
-                            color: "#808080"
+                            color: modelInfo.status === "Generating" ? "#4ade80" : "#808080"
                             anchors.verticalCenter: parent.verticalCenter
 
-                            Text {
-                                anchors.centerIn: parent
-                                text: "⚫"
-                                font.pixelSize: 8
+                            SequentialAnimation on opacity {
+                                running: modelInfo.status === "Generating"
+                                loops: Animation.Infinite
+                                NumberAnimation { to: 0.3; duration: 500 }
+                                NumberAnimation { to: 1.0; duration: 500 }
                             }
                         }
 
                         Text {
-                            text: "Idle"
+                            text: modelInfo.status
                             color: modelPanel.textSecondary
                             font.pixelSize: 12
                             anchors.verticalCenter: parent.verticalCenter
@@ -289,7 +254,7 @@ Rectangle {
                         spacing: 6
 
                         Text {
-                            text: "Speed: 0.0 tok/s"
+                            text: "Speed: " + modelInfo.speed.toFixed(1) + " tok/s"
                             color: modelPanel.textPrimary
                             font.pixelSize: 13
                         }
@@ -331,9 +296,15 @@ Rectangle {
                                     ctx.stroke()
                                 }
 
-                                Component.onCompleted: {
-                                    dataPoints = [0, 10, 25, 20, 35, 30, 45, 40, 50, 45]
-                                    requestPaint()
+                                Connections {
+                                    target: modelInfo
+                                    function onSpeedDataPoint(speed) {
+                                        speedCanvas.dataPoints.push(speed)
+                                        if (speedCanvas.dataPoints.length > 50) {
+                                            speedCanvas.dataPoints.shift()
+                                        }
+                                        speedCanvas.requestPaint()
+                                    }
                                 }
                             }
                         }
@@ -348,7 +319,9 @@ Rectangle {
                             width: parent.width
 
                             Text {
-                                text: "Memory: 0.0/0.0 GB (0%)"
+                                text: "Memory: " + modelInfo.memoryUsed.toFixed(1) + "/" +
+                                      modelInfo.memoryTotal.toFixed(1) + " GB (" +
+                                      modelInfo.memoryPercent + "%)"
                                 color: modelPanel.textPrimary
                                 font.pixelSize: 13
                             }
@@ -361,7 +334,7 @@ Rectangle {
                             color: "#0a0a15"
 
                             Rectangle {
-                                width: parent.width * 0
+                                width: parent.width * (modelInfo.memoryPercent / 100.0)
                                 height: parent.height
                                 radius: parent.radius
                                 color: modelPanel.primaryColor
@@ -381,32 +354,33 @@ Rectangle {
                         columnSpacing: 10
 
                         Text {
-                            text: "Threads: -"
+                            text: "Threads: " + modelInfo.threads
                             color: modelPanel.textSecondary
                             font.pixelSize: 12
                         }
 
                         Text {
-                            text: "Load: -"
+                            text: "Load: " + (modelInfo.isLoaded ? "OK" : "None")
                             color: modelPanel.textSecondary
                             font.pixelSize: 12
                         }
 
                         Text {
-                            text: "Avg Speed: -"
+                            text: "Avg Speed: " + modelInfo.speed.toFixed(1) + " tok/s"
                             color: modelPanel.textSecondary
                             font.pixelSize: 12
                         }
 
                         Text {
-                            text: "Avg Time: -"
+                            text: "Ctx: " + modelInfo.contextSize
                             color: modelPanel.textSecondary
                             font.pixelSize: 12
                         }
                     }
 
                     Text {
-                        text: "Total: 0 tok in • 0 tok out"
+                        text: "Total: " + modelInfo.tokensIn + " tok in • " +
+                              modelInfo.tokensOut + " tok out"
                         color: modelPanel.textSecondary
                         font.pixelSize: 11
                     }
