@@ -23,6 +23,8 @@ ApplicationWindow {
     property color messageUserBg: "#2d3748"
     property color messageAiBg: "#1a365d"
     property bool showChatList: false
+    property bool showModelPanel: false
+    property bool showModelSelector: false
 
 
     // Gradient background
@@ -44,12 +46,22 @@ ApplicationWindow {
         z: 10
     }
 
+    // Model panel
+    ModelPanel {
+        id: modelPanel
+        anchors.top: parent.top
+        anchors.bottom: parent.bottom
+        anchors.right: parent.right
+        isOpen: root.showModelPanel
+        z: 10
+    }
+
     // Header
     Rectangle {
         id: header
         anchors.top: parent.top
         anchors.left: chatList.right
-        anchors.right: parent.right
+        anchors.right: modelPanel.left
         height: 60
         color: "transparent"
 
@@ -144,6 +156,37 @@ ApplicationWindow {
                 NumberAnimation { to: 1.0; duration: 1000 }
             }
         }
+
+        // Model Panel button
+        Rectangle {
+            id: modelPanelButton
+            anchors.right: parent.right
+            anchors.rightMargin: 50
+            anchors.verticalCenter: parent.verticalCenter
+            width: 40
+            height: 40
+            radius: 8
+            color: root.showModelPanel ? root.primaryColor : "transparent"
+
+            Text {
+                anchors.centerIn: parent
+                text: "📊"
+                font.pixelSize: 20
+            }
+
+            MouseArea {
+                anchors.fill: parent
+                hoverEnabled: true
+                onClicked: root.showModelPanel = !root.showModelPanel
+
+                onEntered: parent.opacity = 0.8
+                onExited: parent.opacity = 1.0
+            }
+
+            Behavior on color {
+                ColorAnimation { duration: 200 }
+            }
+        }
     }
 
     // Main content area
@@ -151,7 +194,7 @@ ApplicationWindow {
         id: contentArea
         anchors.top: header.bottom
         anchors.left: chatList.right
-        anchors.right: parent.right
+        anchors.right: modelPanel.left
         anchors.bottom: inputArea.top
         anchors.margins: 20
         anchors.topMargin: 10
@@ -301,7 +344,7 @@ ApplicationWindow {
         id: inputArea
         anchors.bottom: parent.bottom
         anchors.left: chatList.right
-        anchors.right: parent.right
+        anchors.right: modelPanel.left
         height: 70
         color: root.surfaceColor
 

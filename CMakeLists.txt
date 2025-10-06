@@ -34,6 +34,7 @@ qt_add_qml_module(appAIChatGUI
         Main.qml
         MessageBubble.qml
         ChatList.qml
+        ModelPanel.qml
     SOURCES
         syntaxhighlighter.h
         syntaxhighlighter.cpp
