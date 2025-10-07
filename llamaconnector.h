@@ -25,6 +25,7 @@ signals:
     void errorOccurred(const QString &error);
     void modelLoadedSuccessfully();
     void generationFinished(int tokens, double duration_ms);
+    void generationStarted();
 
 private:
 

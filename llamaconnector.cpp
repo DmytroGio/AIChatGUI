@@ -104,6 +104,8 @@ void LlamaWorker::processMessage(const QString &message)
     }
 
 
+    emit generationStarted();
+
     QString response;
     int n_gen = 0;
     const int max_gen_tokens = 512; // уменьшите для теста
@@ -168,6 +170,10 @@ LlamaConnector::LlamaConnector(QObject *parent)
 
     connect(worker, &LlamaWorker::generationFinished, this, [this](int tokens, double duration_ms) {
         modelInfo->recordGeneration(tokens, duration_ms);
+    });
+
+    connect(worker, &LlamaWorker::generationStarted, this, [this]() {
+        modelInfo->setGenerating(true);
     });
 
     workerThread.start();

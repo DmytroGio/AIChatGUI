@@ -23,7 +23,7 @@ ApplicationWindow {
     property color messageUserBg: "#2d3748"
     property color messageAiBg: "#1a365d"
     property bool showChatList: false
-    property bool showModelPanel: false
+    property bool showModelPanel: true
     property bool showModelSelector: false
 
 

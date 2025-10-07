@@ -39,6 +39,7 @@ public:
     void clearModel();
     void updateStats(llama_context *ctx);
     void recordGeneration(int n_tokens, double duration_ms);
+    void setGenerating(bool generating);
 
     // Getters
     bool isLoaded() const { return m_isLoaded; }

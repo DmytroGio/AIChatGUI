@@ -141,8 +141,15 @@ void ModelInfo::recordGeneration(int n_tokens, double duration_ms)
             m_tokensOut = perf.n_eval;
         }
 
+        m_status = "Idle";
         emit statsChanged();
     }
+}
+
+void ModelInfo::setGenerating(bool generating)
+{
+    m_status = generating ? "Generating" : "Idle";
+    emit statsChanged();
 }
 
 void ModelInfo::updateCurrentStats()
