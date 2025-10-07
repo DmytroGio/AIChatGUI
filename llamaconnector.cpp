@@ -1,6 +1,7 @@
 #include "llamaconnector.h"
 #include <QDebug>
 #include <QFile>
+#include <chrono>
 
 LlamaWorker::LlamaWorker(QObject *parent)
     : QObject(parent)
@@ -61,6 +62,8 @@ void LlamaWorker::processMessage(const QString &message)
         emit errorOccurred("Model not loaded");
         return;
     }
+
+    auto start_time = std::chrono::high_resolution_clock::now();
 
     QString prompt = "<|im_start|>system\nYou are a helpful assistant.<|im_end|>\n"
                      "<|im_start|>user\n" + message + "<|im_end|>\n"
@@ -137,8 +140,16 @@ void LlamaWorker::processMessage(const QString &message)
         response = "Error: No response generated";
     }
 
+    // Вычисляем время генерации
+    auto end_time = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
+
+    // Отправляем статистику генерации
+    emit generationFinished(n_gen, duration.count());
+
     emit messageReceived(response);
 }
+
 
 // LlamaConnector implementation
 
@@ -154,6 +165,10 @@ LlamaConnector::LlamaConnector(QObject *parent)
     connect(this, &LlamaConnector::requestProcessing, worker, &LlamaWorker::processMessage);
     connect(worker, &LlamaWorker::messageReceived, this, &LlamaConnector::messageReceived);
     connect(worker, &LlamaWorker::errorOccurred, this, &LlamaConnector::errorOccurred);
+
+    connect(worker, &LlamaWorker::generationFinished, this, [this](int tokens, double duration_ms) {
+        modelInfo->recordGeneration(tokens, duration_ms);
+    });
 
     workerThread.start();
 }

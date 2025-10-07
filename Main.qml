@@ -5,8 +5,8 @@ import QtQuick.Effects
 ApplicationWindow {
     id: root
     visible: true
-    width: 1200
-    height: 800
+    width: 1600
+    height: 1000
     minimumWidth: 400
     minimumHeight: 500
     title: "AI Chat Assistant"

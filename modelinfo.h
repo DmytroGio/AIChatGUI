@@ -68,6 +68,9 @@ signals:
     void statsChanged();
     void speedDataPoint(float speed);
 
+public slots:
+    void updateCurrentStats();
+
 private:
     bool m_isLoaded = false;
     QString m_modelName;
@@ -90,6 +93,9 @@ private:
     QString m_status = "Idle";
     int m_tokensIn = 0;
     int m_tokensOut = 0;
+
+    QTimer *m_statsTimer;
+    llama_context *m_ctx = nullptr;
 };
 
 #endif // MODELINFO_H

@@ -5,13 +5,18 @@
 
 ModelInfo::ModelInfo(QObject *parent)
     : QObject(parent)
+    , m_ctx(nullptr)
 {
+    m_statsTimer = new QTimer(this);
+    connect(m_statsTimer, &QTimer::timeout, this, &ModelInfo::updateCurrentStats);
+    m_statsTimer->setInterval(1000);  // Обновление каждую секунду
 }
 
 void ModelInfo::setModel(llama_model *model, llama_context *ctx, const QString &path)
 {
     if (!model || !ctx) return;
 
+    m_ctx = ctx;
     m_isLoaded = true;
     m_modelPath = path;
 
@@ -60,11 +65,18 @@ void ModelInfo::setModel(llama_model *model, llama_context *ctx, const QString &
 
     m_threads = llama_n_threads(ctx);
 
+    m_statsTimer->start();
+
+    emit modelChanged();
+
     emit modelChanged();
 }
 
 void ModelInfo::clearModel()
 {
+    m_statsTimer->stop();
+    m_ctx = nullptr;
+
     m_isLoaded = false;
     m_modelName = "No Model Loaded";
     m_modelSize = "0.0GB";
@@ -117,9 +129,52 @@ void ModelInfo::updateStats(llama_context *ctx)
 
 void ModelInfo::recordGeneration(int n_tokens, double duration_ms)
 {
-    if (duration_ms > 0) {
-        m_speed = (n_tokens * 1000.0) / duration_ms;
-        emit speedDataPoint(m_speed);
+    if (duration_ms > 0 && n_tokens > 0) {
+        float speed = (n_tokens * 1000.0) / duration_ms;
+        m_speed = speed;
+        emit speedDataPoint(speed);
+
+        // Обновляем статистику
+        if (m_ctx) {
+            struct llama_perf_context_data perf = llama_perf_context(m_ctx);
+            m_tokensIn = perf.n_p_eval;
+            m_tokensOut = perf.n_eval;
+        }
+
         emit statsChanged();
     }
+}
+
+void ModelInfo::updateCurrentStats()
+{
+    if (!m_ctx || !m_isLoaded) return;
+
+    // Получаем данные производительности
+    struct llama_perf_context_data perf = llama_perf_context(m_ctx);
+
+    // Обновляем статус на основе количества сгенерированных токенов
+    bool isGenerating = (perf.n_eval > m_tokensOut);
+    m_status = isGenerating ? "Generating" : "Idle";
+
+    // Обновляем скорость если есть генерация
+    if (perf.n_eval > 0 && perf.t_eval_ms > 0) {
+        m_speed = (perf.n_eval * 1000.0) / perf.t_eval_ms;
+
+        // Отправляем точку данных для графика только если генерируем
+        if (isGenerating) {
+            emit speedDataPoint(m_speed);
+        }
+    }
+
+    // Обновляем счетчики токенов
+    m_tokensIn = perf.n_p_eval;
+    m_tokensOut = perf.n_eval;
+
+    // Примерная оценка памяти (TODO: получить реальные данные)
+    // Можно использовать системные вызовы или оставить как есть
+    m_memoryTotal = 8.0f;
+    m_memoryUsed = 2.5f; // Временное значение
+    m_memoryPercent = static_cast<int>((m_memoryUsed / m_memoryTotal) * 100);
+
+    emit statsChanged();
 }

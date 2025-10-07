@@ -24,6 +24,7 @@ signals:
     void messageReceived(const QString &response);
     void errorOccurred(const QString &error);
     void modelLoadedSuccessfully();
+    void generationFinished(int tokens, double duration_ms);
 
 private:
 
@@ -41,7 +42,7 @@ public:
     Q_INVOKABLE void sendMessage(const QString &message);
     Q_INVOKABLE bool loadModel(const QString &modelPath);
 
-    ModelInfo* getModelInfo() { return modelInfo; }
+    ModelInfo* getModelInfo() const { return modelInfo; }
 
 signals:
     void messageReceived(const QString &response);
