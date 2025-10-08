@@ -451,13 +451,10 @@ Rectangle {
                         height: parent.height - 80
                         clip: true
 
-                        model: ListModel {
-                            id: logModel
-                            // Placeholder
-                        }
+                        model: modelInfo.requestLog
 
                         delegate: Rectangle {
-                            width: parent.width
+                            width: parent ? parent.width : 0
                             height: 30
                             color: "transparent"
 
@@ -466,28 +463,28 @@ Rectangle {
                                 spacing: 8
 
                                 Text {
-                                    text: "14:23"
+                                    text: model.time
                                     color: modelPanel.textSecondary
-                                    font.pixelSize: 11
-                                    width: 40
-                                }
-
-                                Text {
-                                    text: "12→54"
-                                    color: modelPanel.textPrimary
-                                    font.pixelSize: 11
-                                    width: 50
-                                }
-
-                                Text {
-                                    text: "42tk/s"
-                                    color: modelPanel.primaryColor
                                     font.pixelSize: 11
                                     width: 60
                                 }
 
                                 Text {
-                                    text: "1.2s"
+                                    text: model.tokensIn + "→" + model.tokensOut
+                                    color: modelPanel.textPrimary
+                                    font.pixelSize: 11
+                                    width: 60
+                                }
+
+                                Text {
+                                    text: model.speed.toFixed(1) + "tk/s"
+                                    color: modelPanel.primaryColor
+                                    font.pixelSize: 11
+                                    width: 70
+                                }
+
+                                Text {
+                                    text: (model.duration / 1000).toFixed(1) + "s"
                                     color: modelPanel.textSecondary
                                     font.pixelSize: 11
                                 }
@@ -500,7 +497,7 @@ Rectangle {
                             color: modelPanel.textSecondary
                             font.pixelSize: 12
                             opacity: 0.6
-                            visible: logModel.count === 0
+                            visible: parent.count === 0
                         }
                     }
 
@@ -508,6 +505,9 @@ Rectangle {
                         text: "Clear Log"
                         width: parent.width
                         height: 28
+                        enabled: modelInfo.requestLog.rowCount() > 0
+
+                        onClicked: modelInfo.requestLog.clear()
 
                         background: Rectangle {
                             color: parent.pressed ? "#c0392b" :
@@ -516,6 +516,7 @@ Rectangle {
                             radius: 8
                             border.color: "#e74c3c"
                             border.width: 1
+                            opacity: parent.enabled ? 1.0 : 0.5
 
                             Behavior on color {
                                 ColorAnimation { duration: 150 }

@@ -5,6 +5,43 @@
 #include <QString>
 #include <QTimer>
 #include <llama.h>
+#include <QAbstractListModel>
+
+// Модель для логирования запросов
+class RequestLogModel : public QAbstractListModel
+{
+    Q_OBJECT
+
+public:
+    enum RequestRoles {
+        TimeRole = Qt::UserRole + 1,
+        TokensInRole,
+        TokensOutRole,
+        SpeedRole,
+        DurationRole
+    };
+
+    explicit RequestLogModel(QObject *parent = nullptr);
+
+    int rowCount(const QModelIndex &parent = QModelIndex()) const override;
+    QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override;
+    QHash<int, QByteArray> roleNames() const override;
+
+    Q_INVOKABLE void addRequest(const QString &time, int tokensIn, int tokensOut,
+                                float speed, double duration);
+    Q_INVOKABLE void clear();
+
+private:
+    struct RequestEntry {
+        QString time;
+        int tokensIn;
+        int tokensOut;
+        float speed;
+        double duration;
+    };
+
+    QList<RequestEntry> m_requests;
+};
 
 class ModelInfo : public QObject
 {
@@ -31,6 +68,7 @@ class ModelInfo : public QObject
     Q_PROPERTY(QString status READ status NOTIFY statsChanged)
     Q_PROPERTY(int tokensIn READ tokensIn NOTIFY statsChanged)
     Q_PROPERTY(int tokensOut READ tokensOut NOTIFY statsChanged)
+    Q_PROPERTY(QObject* requestLog READ requestLog CONSTANT)
 
 public:
     explicit ModelInfo(QObject *parent = nullptr);
@@ -40,6 +78,8 @@ public:
     void updateStats(llama_context *ctx);
     void recordGeneration(int n_tokens, double duration_ms);
     void setGenerating(bool generating);
+
+    QObject* requestLog() const { return m_requestLog; }
 
     // Getters
     bool isLoaded() const { return m_isLoaded; }
@@ -97,6 +137,9 @@ private:
 
     QTimer *m_statsTimer;
     llama_context *m_ctx = nullptr;
+
+    RequestLogModel *m_requestLog;
+    int m_lastTokensIn = 0;
 };
 
 #endif // MODELINFO_H

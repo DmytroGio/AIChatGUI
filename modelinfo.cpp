@@ -3,10 +3,79 @@
 #include <QDateTime>
 #include <cmath>
 
+// RequestLogModel implementation
+RequestLogModel::RequestLogModel(QObject *parent)
+    : QAbstractListModel(parent)
+{
+}
+
+int RequestLogModel::rowCount(const QModelIndex &parent) const
+{
+    if (parent.isValid())
+        return 0;
+    return m_requests.count();
+}
+
+QVariant RequestLogModel::data(const QModelIndex &index, int role) const
+{
+    if (!index.isValid() || index.row() >= m_requests.count())
+        return QVariant();
+
+    const RequestEntry &entry = m_requests.at(index.row());
+
+    switch (role) {
+    case TimeRole:
+        return entry.time;
+    case TokensInRole:
+        return entry.tokensIn;
+    case TokensOutRole:
+        return entry.tokensOut;
+    case SpeedRole:
+        return entry.speed;
+    case DurationRole:
+        return entry.duration;
+    default:
+        return QVariant();
+    }
+}
+
+QHash<int, QByteArray> RequestLogModel::roleNames() const
+{
+    QHash<int, QByteArray> roles;
+    roles[TimeRole] = "time";
+    roles[TokensInRole] = "tokensIn";
+    roles[TokensOutRole] = "tokensOut";
+    roles[SpeedRole] = "speed";
+    roles[DurationRole] = "duration";
+    return roles;
+}
+
+void RequestLogModel::addRequest(const QString &time, int tokensIn, int tokensOut,
+                                 float speed, double duration)
+{
+    beginInsertRows(QModelIndex(), 0, 0);
+    m_requests.prepend({time, tokensIn, tokensOut, speed, duration});
+
+    if (m_requests.count() > 100) {
+        m_requests.removeLast();
+    }
+
+    endInsertRows();
+}
+
+void RequestLogModel::clear()
+{
+    beginResetModel();
+    m_requests.clear();
+    endResetModel();
+}
+
 ModelInfo::ModelInfo(QObject *parent)
     : QObject(parent)
     , m_ctx(nullptr)
+    , m_lastTokensIn(0)
 {
+    m_requestLog = new RequestLogModel(this);
     m_statsTimer = new QTimer(this);
     connect(m_statsTimer, &QTimer::timeout, this, &ModelInfo::updateCurrentStats);
     m_statsTimer->setInterval(1000);  // Обновление каждую секунду
@@ -134,12 +203,20 @@ void ModelInfo::recordGeneration(int n_tokens, double duration_ms)
         m_speed = speed;
         emit speedDataPoint(speed);
 
-        // Обновляем статистику
+        int currentTokensIn = 0;
         if (m_ctx) {
             struct llama_perf_context_data perf = llama_perf_context(m_ctx);
             m_tokensIn = perf.n_p_eval;
             m_tokensOut = perf.n_eval;
+            currentTokensIn = perf.n_p_eval;
         }
+
+        // Добавляем запись в лог
+        QString currentTime = QDateTime::currentDateTime().toString("HH:mm:ss");
+        int tokensInThisRequest = currentTokensIn - m_lastTokensIn;
+        m_lastTokensIn = currentTokensIn;
+
+        m_requestLog->addRequest(currentTime, tokensInThisRequest, n_tokens, speed, duration_ms);
 
         m_status = "Idle";
         emit statsChanged();
