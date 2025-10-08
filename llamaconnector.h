@@ -46,6 +46,8 @@ public:
     ModelInfo* getModelInfo() const { return modelInfo; }
 
 signals:
+    void modelLoadingStarted();
+    void modelLoadingFinished(bool success);
     void messageReceived(const QString &response);
     void errorOccurred(const QString &error);
 

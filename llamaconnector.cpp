@@ -19,6 +19,21 @@ LlamaWorker::~LlamaWorker()
 
 bool LlamaWorker::initialize(const QString &modelPath)
 {
+    // Очищаем предыдущие ресурсы если есть
+    if (sampler) {
+        llama_sampler_free(sampler);
+        sampler = nullptr;
+    }
+    if (ctx) {
+        llama_free(ctx);
+        ctx = nullptr;
+    }
+    if (model) {
+        llama_model_free(model);
+        model = nullptr;
+    }
+
+    // Остальной код
     if (!QFile::exists(modelPath)) {
         emit errorOccurred("Model file not found: " + modelPath);
         return false;
@@ -187,12 +202,22 @@ LlamaConnector::~LlamaConnector()
 
 bool LlamaConnector::loadModel(const QString &modelPath)
 {
-    bool success = worker->initialize(modelPath);
-    if (success) {
-        QMetaObject::invokeMethod(worker, [this, modelPath]() {
-            modelInfo->setModel(worker->model, worker->ctx, modelPath);
-        }, Qt::QueuedConnection);
+    emit modelLoadingStarted();
+
+    // Очищаем предыдущую модель если была
+    if (worker->model || worker->ctx) {
+        modelInfo->clearModel();
+        QThread::msleep(100);
     }
+
+    bool success = worker->initialize(modelPath);
+
+    if (success) {
+        modelInfo->setModel(worker->model, worker->ctx, modelPath);
+    }
+
+    emit modelLoadingFinished(success);
+
     return success;
 }
 

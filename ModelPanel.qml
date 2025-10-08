@@ -1,5 +1,6 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
+import QtQuick.Dialogs
 
 
 Rectangle {
@@ -99,12 +100,19 @@ Rectangle {
                             text: "Change Model"
                             width: parent.width * 0.65
                             height: 32
-                            enabled: false
-                            opacity: 0.5
+                            enabled: true
+
+                            onClicked: fileDialog.open()
 
                             background: Rectangle {
-                                color: modelPanel.primaryColor
+                                color: parent.pressed ? Qt.darker(modelPanel.primaryColor, 1.2) :
+                                       parent.hovered ? Qt.lighter(modelPanel.primaryColor, 1.1) :
+                                       modelPanel.primaryColor
                                 radius: 8
+
+                                Behavior on color {
+                                    ColorAnimation { duration: 150 }
+                                }
                             }
 
                             contentItem: Text {
@@ -554,6 +562,236 @@ Rectangle {
             color: modelPanel.textPrimary
             font.pixelSize: 11
             font.bold: true
+        }
+    }
+
+    // File Dialog для выбора модели
+    FileDialog {
+        id: fileDialog
+        title: "Select Model File"
+        nameFilters: ["GGUF Models (*.gguf)", "All Files (*)"]
+        fileMode: FileDialog.OpenFile
+        currentFolder: {
+            if (modelInfo.isLoaded && modelInfo.modelPath !== "-") {
+                var path = modelInfo.modelPath
+                var lastSlash = Math.max(path.lastIndexOf('/'), path.lastIndexOf('\\'))
+                if (lastSlash > 0) {
+                    return "file:///" + path.substring(0, lastSlash)
+                }
+            }
+            return ""
+        }
+
+        onAccepted: {
+            var path = fileDialog.selectedFile.toString()
+            path = path.replace(/^(file:\/{3})/, "")
+            if (Qt.platform.os === "windows") {
+                path = path.replace(/^\//, "")
+            }
+
+            loadingPopup.open()
+            llamaConnector.loadModel(path)
+        }
+    }
+
+    // Loading Popup
+    Popup {
+        id: loadingPopup
+        anchors.centerIn: Overlay.overlay
+        width: 300
+        height: 150
+        modal: true
+        focus: true
+        closePolicy: Popup.NoAutoClose
+
+        background: Rectangle {
+            color: modelPanel.surfaceColor
+            radius: 12
+            border.color: modelPanel.primaryColor
+            border.width: 2
+        }
+
+        Column {
+            anchors.centerIn: parent
+            spacing: 20
+
+            BusyIndicator {
+                anchors.horizontalCenter: parent.horizontalCenter
+                running: loadingPopup.visible
+
+                contentItem: Item {
+                    implicitWidth: 64
+                    implicitHeight: 64
+
+                    Item {
+                        id: item
+                        x: parent.width / 2 - 32
+                        y: parent.height / 2 - 32
+                        width: 64
+                        height: 64
+                        opacity: loadingPopup.visible ? 1 : 0
+
+                        Behavior on opacity {
+                            OpacityAnimator {
+                                duration: 250
+                            }
+                        }
+
+                        RotationAnimator {
+                            target: item
+                            running: loadingPopup.visible
+                            from: 0
+                            to: 360
+                            loops: Animation.Infinite
+                            duration: 1250
+                        }
+
+                        Repeater {
+                            id: repeater
+                            model: 6
+
+                            Rectangle {
+                                x: item.width / 2 - width / 2
+                                y: item.height / 2 - height / 2
+                                implicitWidth: 10
+                                implicitHeight: 10
+                                radius: 5
+                                color: modelPanel.primaryColor
+                                transform: [
+                                    Translate {
+                                        y: -Math.min(item.width, item.height) * 0.5 + 5
+                                    },
+                                    Rotation {
+                                        angle: index / repeater.count * 360
+                                        origin.x: 5
+                                        origin.y: 5
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                }
+            }
+
+            Text {
+                text: "Loading model..."
+                color: modelPanel.textPrimary
+                font.pixelSize: 14
+                anchors.horizontalCenter: parent.horizontalCenter
+            }
+
+            Text {
+                text: "Please wait"
+                color: modelPanel.textSecondary
+                font.pixelSize: 12
+                anchors.horizontalCenter: parent.horizontalCenter
+            }
+        }
+
+        Connections {
+            target: llamaConnector
+
+            function onModelLoadingFinished(success) {
+                loadingPopup.close()
+                if (!success) {
+                    errorPopup.errorText = "Failed to load model"
+                    errorPopup.open()
+                }
+            }
+
+            function onErrorOccurred(error) {
+                loadingPopup.close()
+                errorPopup.errorText = error
+                errorPopup.open()
+            }
+        }
+    }
+
+    // Error Popup
+    Popup {
+        id: errorPopup
+        anchors.centerIn: Overlay.overlay
+        width: 350
+        height: 180
+        modal: true
+        focus: true
+
+        property string errorText: ""
+
+        background: Rectangle {
+            color: modelPanel.surfaceColor
+            radius: 12
+            border.color: "#e74c3c"
+            border.width: 2
+        }
+
+        Column {
+            anchors.fill: parent
+            anchors.margins: 20
+            spacing: 15
+
+            Row {
+                spacing: 10
+                anchors.horizontalCenter: parent.horizontalCenter
+
+                Text {
+                    text: "⚠️"
+                    font.pixelSize: 32
+                }
+
+                Text {
+                    text: "Error Loading Model"
+                    color: modelPanel.textPrimary
+                    font.pixelSize: 16
+                    font.bold: true
+                    anchors.verticalCenter: parent.verticalCenter
+                }
+            }
+
+            Rectangle {
+                width: parent.width
+                height: 1
+                color: modelPanel.textSecondary
+                opacity: 0.3
+            }
+
+            Text {
+                text: errorPopup.errorText
+                color: modelPanel.textSecondary
+                font.pixelSize: 12
+                width: parent.width
+                wrapMode: Text.WordWrap
+                horizontalAlignment: Text.AlignHCenter
+            }
+
+            Button {
+                text: "OK"
+                width: 100
+                height: 35
+                anchors.horizontalCenter: parent.horizontalCenter
+
+                onClicked: errorPopup.close()
+
+                background: Rectangle {
+                    color: parent.pressed ? "#c0392b" :
+                           parent.hovered ? "#e74c3c" :
+                           "#e74c3c"
+                    radius: 8
+
+                    Behavior on color {
+                        ColorAnimation { duration: 150 }
+                    }
+                }
+
+                contentItem: Text {
+                    text: parent.text
+                    color: "white"
+                    horizontalAlignment: Text.AlignHCenter
+                    verticalAlignment: Text.AlignVCenter
+                    font.pixelSize: 13
+                    font.bold: true
+                }
+            }
         }
     }
 }
