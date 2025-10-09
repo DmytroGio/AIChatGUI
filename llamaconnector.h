@@ -26,6 +26,7 @@ signals:
     void modelLoadedSuccessfully();
     void generationFinished(int tokens, double duration_ms);
     void generationStarted();
+    void tokenGenerated(const QString &token);
 
 private:
 
@@ -50,6 +51,7 @@ signals:
     void modelLoadingFinished(bool success);
     void messageReceived(const QString &response);
     void errorOccurred(const QString &error);
+    void tokenGenerated(const QString &token);
 
 private:
     QThread workerThread;

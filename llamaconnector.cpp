@@ -126,22 +126,21 @@ void LlamaWorker::processMessage(const QString &message)
     const int max_gen_tokens = 512; // уменьшите для теста
 
     while (n_gen < max_gen_tokens) {
-        // Сэмплируем токен
         llama_token new_token = llama_sampler_sample(sampler, ctx, -1);
 
         if (new_token < 0 || llama_vocab_is_eog(vocab, new_token)) {
             break;
         }
 
-        // Конвертируем токен в текст
         char piece[128];
         int n_chars = llama_token_to_piece(vocab, new_token, piece, sizeof(piece), 0, true);
 
         if (n_chars > 0) {
-            response += QString::fromUtf8(piece, n_chars);
+            QString tokenText = QString::fromUtf8(piece, n_chars);
+            response += tokenText;
+            emit tokenGenerated(tokenText);  // ДОБАВИТЬ ЭТУ СТРОКУ - эмитим каждый токен
         }
 
-        // Декодируем следующий токен
         batch = llama_batch_get_one(&new_token, 1);
 
         if (llama_decode(ctx, batch) != 0) {
@@ -182,6 +181,7 @@ LlamaConnector::LlamaConnector(QObject *parent)
     connect(this, &LlamaConnector::requestProcessing, worker, &LlamaWorker::processMessage);
     connect(worker, &LlamaWorker::messageReceived, this, &LlamaConnector::messageReceived);
     connect(worker, &LlamaWorker::errorOccurred, this, &LlamaConnector::errorOccurred);
+    connect(worker, &LlamaWorker::tokenGenerated, this, &LlamaConnector::tokenGenerated);
 
     connect(worker, &LlamaWorker::generationFinished, this, [this](int tokens, double duration_ms) {
         modelInfo->recordGeneration(tokens, duration_ms);

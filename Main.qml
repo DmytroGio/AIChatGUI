@@ -475,20 +475,38 @@ ApplicationWindow {
                 "isUserMessage": isUser,
                 "width": Qt.binding(function() { return chatContent.width })
             })
-            if (!messageObject) {
-                console.log("Failed to create MessageBubble")
-            }
-        } else if (messageComponent.status === Component.Error) {
-            console.log("MessageBubble error:", messageComponent.errorString())
+            return messageObject  // ДОБАВИТЬ
         }
+        return null  // ДОБАВИТЬ
     }
 
     // Connections for LM Studio
     Connections {
         target: llamaConnector
-        function onMessageReceived(response) {
-            // Сразу показываем И сохраняем
-            chatManager.addMessage(response, false)
+
+        property string currentResponse: ""
+        property var currentBubble: null
+
+        function onTokenGenerated(token) {
+            currentResponse += token
+
+            if (!currentBubble) {
+                // Создаём баббл при первом токене
+                currentBubble = createMessageBubble(currentResponse, false)
+            } else {
+                // Обновляем текст существующего баббла
+                currentBubble.messageText = currentResponse
+            }
+
+            scrollToBottom()
+        }
+
+        function onGenerationFinished(tokens, duration) {
+            if (currentResponse !== "") {
+                chatManager.addMessage(currentResponse, false)
+                currentResponse = ""
+                currentBubble = null
+            }
         }
     }
     // Connections for ChatManager
