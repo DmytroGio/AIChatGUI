@@ -108,6 +108,7 @@ void ChatManager::addMessage(const QString &text, bool isUser)
         }
     }
 
+    emit messageAdded(text, isUser);
     emit chatListChanged();
     emit messagesChanged();
 }

@@ -27,6 +27,7 @@ ApplicationWindow {
     property bool showModelSelector: false
 
 
+
     // Gradient background
     Rectangle {
         anchors.fill: parent
@@ -412,28 +413,30 @@ ApplicationWindow {
             }
         }
     }
-    // Function to add messages
-    function addMessage(text, isUser) {
-        chatManager.addMessage(text, isUser)
+
+    function scrollToBottom() {
+        if (flickable.contentHeight > flickable.height) {
+            flickable.contentY = flickable.contentHeight - flickable.height
+        }
     }
 
     function sendMessage() {
         var messageText = inputField.text.trim()
         if (messageText !== "") {
-            // Сначала добавляем сообщение пользователя в ChatManager
+            inputField.text = ""
+
+            // Сразу добавляем в UI И в БД одним действием
             chatManager.addMessage(messageText, true)
             llamaConnector.sendMessage(messageText)
-            inputField.text = ""
         }
     }
 
     function loadMessages() {
-        // Очищаем все сообщения кроме welcome message (первый элемент)
+        // Очищаем все сообщения кроме welcome message
         for (var i = chatContent.children.length - 1; i >= 1; i--) {
             chatContent.children[i].destroy()
         }
 
-        // Загружаем сообщения текущего чата
         var messages = chatManager.getCurrentMessages()
         for (var j = 0; j < messages.length; j++) {
             var msg = messages[j]
@@ -441,6 +444,26 @@ ApplicationWindow {
         }
 
         scrollToBottom()
+    }
+
+    // НОВАЯ функция для добавления одного сообщения без перезагрузки всех
+    function addSingleMessage(text, isUser) {
+        createSimpleBubble(text, isUser)
+        scrollToBottom()
+    }
+
+
+
+    function createSimpleBubble(text, isUser) {
+        var bubble = messageBubbleComponent.createObject(chatContent, {
+            "messageText": text,
+            "isUserMessage": isUser,
+            "width": Qt.binding(function() { return chatContent.width })
+        })
+
+        if (!bubble) {
+            console.log("ERROR: Failed to create MessageBubble")
+        }
     }
 
     // Добавить новую функцию для создания сообщений
@@ -452,76 +475,11 @@ ApplicationWindow {
                 "isUserMessage": isUser,
                 "width": Qt.binding(function() { return chatContent.width })
             })
-        } else {
-            console.log("MessageBubble component error:", messageComponent.errorString())
-            addSimpleMessage(text, isUser)
-        }
-    }
-
-    // Удалить старую функцию addMessage и addSimpleMessage, заменить на:
-    function addSimpleMessage(text, isUser) {
-        // Проверяем есть ли код в сообщении
-        var hasCode = text.includes('```')
-
-        if (hasCode && !isUser) {
-            // Если есть код, используем MessageBubble компонент
-            var messageComponent = Qt.createComponent("MessageBubble.qml")
-            if (messageComponent.status === Component.Ready) {
-                var messageObject = messageComponent.createObject(chatContent, {
-                    "messageText": text,
-                    "isUserMessage": isUser,
-                    "width": Qt.binding(function() { return chatContent.width })
-                })
-                scrollToBottom()
-                return
+            if (!messageObject) {
+                console.log("Failed to create MessageBubble")
             }
-        }
-
-        // Обычное сообщение без кода
-        var messageRect = Qt.createQmlObject(`
-            import QtQuick 2.15
-            Rectangle {
-                width: parent.width
-                height: messageText.height + 20
-                color: "transparent"
-
-                Rectangle {
-                    anchors.right: ${isUser ? 'parent.right' : 'undefined'}
-                    anchors.left: ${isUser ? 'undefined' : 'parent.left'}
-                    anchors.rightMargin: ${isUser ? '0' : 'Math.max(50, parent.width * 0.2)'}
-                    anchors.leftMargin: ${isUser ? 'Math.max(50, parent.width * 0.2)' : '0'}
-                    width: Math.min(messageText.implicitWidth + 30, Math.min(550, parent.width * 0.8))
-                    height: parent.height
-                    color: "${isUser ? root.messageUserBg : root.messageAiBg}"
-                    radius: 15
-                    opacity: 0.8
-
-                    Text {
-                         id: messageText
-                         anchors.centerIn: parent
-                         text: "${text.replace(/"/g, '\\"').replace(/\n/g, '\\n')}"
-                         color: "${root.textPrimary}"
-                         font.pixelSize: 14
-                         wrapMode: Text.Wrap
-                         width: parent.width - 20
-                         horizontalAlignment: ${isUser ? 'Text.AlignRight' : 'Text.AlignLeft'}
-                     }
-                }
-            }
-        `, chatContent)
-
-        scrollToBottom()
-    }
-
-    function scrollToBottom() {
-        scrollTimer.restart()
-    }
-
-    Timer {
-        id: scrollTimer
-        interval: 50
-        onTriggered: {
-            flickable.contentY = Math.max(0, flickable.contentHeight - flickable.height)
+        } else if (messageComponent.status === Component.Error) {
+            console.log("MessageBubble error:", messageComponent.errorString())
         }
     }
 
@@ -529,17 +487,22 @@ ApplicationWindow {
     Connections {
         target: llamaConnector
         function onMessageReceived(response) {
-            addMessage(response, false)
-            scrollToBottom()
+            // Сразу показываем И сохраняем
+            chatManager.addMessage(response, false)
         }
     }
-
     // Connections for ChatManager
     Connections {
         target: chatManager
-        function onMessagesChanged() {
-            // Добавляем небольшую задержку для корректного обновления
-            Qt.callLater(loadMessages)
+        function onCurrentChatChanged() {
+            // Перезагружаем только при смене чата
+            loadMessages()
+        }
+
+        function onMessageAdded(text, isUser) {
+            // Добавляем одно сообщение без перезагрузки всего чата
+            createMessageBubble(text, isUser)
+            scrollToBottom()
         }
     }
 

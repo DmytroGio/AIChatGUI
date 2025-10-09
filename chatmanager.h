@@ -50,6 +50,7 @@ signals:
     void chatListChanged();
     void currentChatChanged();
     void messagesChanged();
+    void messageAdded(const QString& text, bool isUser);
 
 private:
     void initDatabase();
