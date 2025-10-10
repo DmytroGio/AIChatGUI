@@ -52,6 +52,7 @@ signals:
     void messageReceived(const QString &response);
     void errorOccurred(const QString &error);
     void tokenGenerated(const QString &token);
+    void generationFinished(int tokens, double duration_ms);
 
 private:
     QThread workerThread;

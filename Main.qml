@@ -481,44 +481,56 @@ ApplicationWindow {
     }
 
     // Connections for LM Studio
-    Connections {
-        target: llamaConnector
+        Connections {
+            target: llamaConnector
 
-        property string currentResponse: ""
-        property var currentBubble: null
+            property string currentResponse: ""
+            property var currentBubble: null
 
-        function onTokenGenerated(token) {
-            currentResponse += token
+            function onTokenGenerated(token) {
+                currentResponse += token
 
-            if (!currentBubble) {
-                // Создаём баббл при первом токене
-                currentBubble = createMessageBubble(currentResponse, false)
-            } else {
-                // Обновляем текст существующего баббла
-                currentBubble.messageText = currentResponse
+                if (!currentBubble) {
+                    currentBubble = createMessageBubble(currentResponse, false)
+                } else {
+                    currentBubble.messageText = currentResponse
+                }
+
+                scrollToBottom()
             }
 
-            scrollToBottom()
-        }
+            function onGenerationFinished(tokens, duration) {
+                if (currentResponse !== "" && currentBubble) {
+                    // ВАЖНО: НЕ удаляем временный бабл!
+                    // Просто превращаем его в постоянный, сохраняя в БД
+                    chatManager.addMessage(currentResponse, false)
 
-        function onGenerationFinished(tokens, duration) {
-            if (currentResponse !== "") {
-                chatManager.addMessage(currentResponse, false)
-                currentResponse = ""
-                currentBubble = null
+                    // Сбрасываем состояние для следующего сообщения
+                    currentBubble = null
+                    currentResponse = ""
+                }
             }
         }
-    }
+
     // Connections for ChatManager
     Connections {
         target: chatManager
+
         function onCurrentChatChanged() {
-            // Перезагружаем только при смене чата
+            if (llamaConnector.currentBubble) {
+                llamaConnector.currentBubble.destroy()
+                llamaConnector.currentBubble = null
+                llamaConnector.currentResponse = ""
+            }
             loadMessages()
         }
 
         function onMessageAdded(text, isUser) {
-            // Добавляем одно сообщение без перезагрузки всего чата
+
+            if (!isUser && llamaConnector.currentBubble !== null) {
+                return
+            }
+
             createMessageBubble(text, isUser)
             scrollToBottom()
         }

@@ -160,9 +160,8 @@ void LlamaWorker::processMessage(const QString &message)
     auto end_time = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
 
-    // Отправляем статистику генерации
+    // КРИТИЧЕСКИ ВАЖНО: сначала эмитим завершение, ПОТОМ response
     emit generationFinished(n_gen, duration.count());
-
     emit messageReceived(response);
 }
 
@@ -185,6 +184,8 @@ LlamaConnector::LlamaConnector(QObject *parent)
 
     connect(worker, &LlamaWorker::generationFinished, this, [this](int tokens, double duration_ms) {
         modelInfo->recordGeneration(tokens, duration_ms);
+
+        emit generationFinished(tokens, duration_ms);
     });
 
     connect(worker, &LlamaWorker::generationStarted, this, [this]() {

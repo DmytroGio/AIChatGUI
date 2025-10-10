@@ -254,7 +254,6 @@ Rectangle {
 
     function getCodeBlocks() {
         var parsed = parseMessage(messageText)
-        console.log("getCodeBlocks returning:", parsed.codeBlocks ? parsed.codeBlocks.length : 0, "blocks")
         return parsed.codeBlocks || []
     }
 
