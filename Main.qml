@@ -381,6 +381,9 @@ ApplicationWindow {
                 }
 
                 Keys.onReturnPressed: {
+                    if (llamaConnector.isGenerating) {
+                            return  // Блокируем отправку во время генерации
+                        }
                     if (inputField.text.trim() !== "") {
                         chatManager.addMessage(inputField.text.trim(), true)
                         llamaConnector.sendMessage(inputField.text.trim())
@@ -398,18 +401,29 @@ ApplicationWindow {
             width: 40
             height: 40
             radius: 20
-            color: root.primaryColor
+            color: llamaConnector.isGenerating ? "#1A77EB" : root.primaryColor
+
+            Behavior on color {
+                ColorAnimation { duration: 200 }
+            }
 
             Text {
                 anchors.centerIn: parent
-                text: "→"
+                text: llamaConnector.isGenerating ? "■" : "↑"
                 color: "white"
-                font.pixelSize: 16
+                font.pixelSize: llamaConnector.isGenerating ? 14 : 16
+                font.bold: true
             }
 
             MouseArea {
                 anchors.fill: parent
-                onClicked: sendMessage()
+                onClicked: {
+                    if (llamaConnector.isGenerating) {
+                        llamaConnector.stopGeneration()
+                    } else {
+                        sendMessage()
+                    }
+                }
             }
         }
     }
@@ -421,11 +435,13 @@ ApplicationWindow {
     }
 
     function sendMessage() {
+        if (llamaConnector.isGenerating) {
+            return  // Блокируем отправку во время генерации
+        }
+
         var messageText = inputField.text.trim()
         if (messageText !== "") {
             inputField.text = ""
-
-            // Сразу добавляем в UI И в БД одним действием
             chatManager.addMessage(messageText, true)
             llamaConnector.sendMessage(messageText)
         }

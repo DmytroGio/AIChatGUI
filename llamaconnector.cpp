@@ -4,7 +4,7 @@
 #include <chrono>
 
 LlamaWorker::LlamaWorker(QObject *parent)
-    : QObject(parent)
+    : QObject(parent), m_shouldStop(0)
 {
     llama_backend_init();
 }
@@ -15,6 +15,11 @@ LlamaWorker::~LlamaWorker()
     if (ctx) llama_free(ctx);
     if (model) llama_model_free(model);  // было llama_free_model
     llama_backend_free();
+}
+
+void LlamaWorker::stopGeneration()
+{
+    m_shouldStop.storeRelaxed(1);
 }
 
 bool LlamaWorker::initialize(const QString &modelPath)
@@ -78,6 +83,8 @@ void LlamaWorker::processMessage(const QString &message)
         return;
     }
 
+    m_shouldStop.storeRelaxed(0);
+
     auto start_time = std::chrono::high_resolution_clock::now();
 
     QString prompt = "<|im_start|>system\nYou are a helpful assistant.<|im_end|>\n"
@@ -110,7 +117,6 @@ void LlamaWorker::processMessage(const QString &message)
     }
     tokens.resize(n_tokens);
 
-    // ИСПОЛЬЗУЕМ llama_batch_get_one для безопасности
     llama_batch batch = llama_batch_get_one(tokens.data(), n_tokens);
 
     if (llama_decode(ctx, batch) != 0) {
@@ -118,14 +124,26 @@ void LlamaWorker::processMessage(const QString &message)
         return;
     }
 
-
     emit generationStarted();
 
     QString response;
     int n_gen = 0;
-    const int max_gen_tokens = 512; // уменьшите для теста
+    const int max_gen_tokens = 512;
 
     while (n_gen < max_gen_tokens) {
+        // Проверка флага остановки
+        if (m_shouldStop.loadRelaxed() == 1) {
+            response = response.remove("<|im_end|>").trimmed();
+
+            auto end_time = std::chrono::high_resolution_clock::now();
+            auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
+
+            emit generationStopped();
+            emit generationFinished(n_gen, duration.count());
+            emit messageReceived(response.isEmpty() ? "Generation stopped" : response);
+            return;
+        }
+
         llama_token new_token = llama_sampler_sample(sampler, ctx, -1);
 
         if (new_token < 0 || llama_vocab_is_eog(vocab, new_token)) {
@@ -138,7 +156,7 @@ void LlamaWorker::processMessage(const QString &message)
         if (n_chars > 0) {
             QString tokenText = QString::fromUtf8(piece, n_chars);
             response += tokenText;
-            emit tokenGenerated(tokenText);  // ДОБАВИТЬ ЭТУ СТРОКУ - эмитим каждый токен
+            emit tokenGenerated(tokenText);
         }
 
         batch = llama_batch_get_one(&new_token, 1);
@@ -156,15 +174,12 @@ void LlamaWorker::processMessage(const QString &message)
         response = "Error: No response generated";
     }
 
-    // Вычисляем время генерации
     auto end_time = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
 
-    // КРИТИЧЕСКИ ВАЖНО: сначала эмитим завершение, ПОТОМ response
     emit generationFinished(n_gen, duration.count());
     emit messageReceived(response);
 }
-
 
 // LlamaConnector implementation
 
@@ -182,14 +197,22 @@ LlamaConnector::LlamaConnector(QObject *parent)
     connect(worker, &LlamaWorker::errorOccurred, this, &LlamaConnector::errorOccurred);
     connect(worker, &LlamaWorker::tokenGenerated, this, &LlamaConnector::tokenGenerated);
 
+    connect(worker, &LlamaWorker::generationStarted, this, [this]() {
+        modelInfo->setGenerating(true);
+        m_isGenerating = true;
+        emit generatingChanged();
+    });
+
     connect(worker, &LlamaWorker::generationFinished, this, [this](int tokens, double duration_ms) {
         modelInfo->recordGeneration(tokens, duration_ms);
-
+        m_isGenerating = false;
+        emit generatingChanged();
         emit generationFinished(tokens, duration_ms);
     });
 
-    connect(worker, &LlamaWorker::generationStarted, this, [this]() {
-        modelInfo->setGenerating(true);
+    connect(worker, &LlamaWorker::generationStopped, this, [this]() {
+        m_isGenerating = false;
+        emit generatingChanged();
     });
 
     workerThread.start();
@@ -199,6 +222,13 @@ LlamaConnector::~LlamaConnector()
 {
     workerThread.quit();
     workerThread.wait();
+}
+
+void LlamaConnector::stopGeneration()
+{
+    if (worker) {
+        worker->stopGeneration();
+    }
 }
 
 bool LlamaConnector::loadModel(const QString &modelPath)

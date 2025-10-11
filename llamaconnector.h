@@ -19,6 +19,7 @@ public:
 
 public slots:
     void processMessage(const QString &message);
+    void stopGeneration();
 
 signals:
     void messageReceived(const QString &response);
@@ -27,16 +28,19 @@ signals:
     void generationFinished(int tokens, double duration_ms);
     void generationStarted();
     void tokenGenerated(const QString &token);
+    void generationStopped();
 
 private:
 
     llama_sampler *sampler = nullptr;
     const llama_vocab *vocab = nullptr;
+    QAtomicInt m_shouldStop;
 };
 
 class LlamaConnector : public QObject
 {
     Q_OBJECT
+    Q_PROPERTY(bool isGenerating READ isGenerating NOTIFY generatingChanged)
 public:
     explicit LlamaConnector(QObject *parent = nullptr);
     ~LlamaConnector();
@@ -46,6 +50,9 @@ public:
 
     ModelInfo* getModelInfo() const { return modelInfo; }
 
+    Q_INVOKABLE void stopGeneration();  // НОВЫЙ МЕТОД
+    bool isGenerating() const { return m_isGenerating; }
+
 signals:
     void modelLoadingStarted();
     void modelLoadingFinished(bool success);
@@ -53,12 +60,14 @@ signals:
     void errorOccurred(const QString &error);
     void tokenGenerated(const QString &token);
     void generationFinished(int tokens, double duration_ms);
+    void generatingChanged();
 
 private:
     QThread workerThread;
     LlamaWorker *worker;
 
     ModelInfo *modelInfo;
+    bool m_isGenerating = false;
 
 signals:
     void requestProcessing(const QString &message);
