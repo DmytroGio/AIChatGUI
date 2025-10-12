@@ -37,3 +37,6 @@ Tech Stack: Qt6, QML, C++, HTTP API, LM Studio
 
 ## 2025-10-05
 - Side panel planning - characteristics and model operation via llama.cpp
+
+## 2025-10-12
+- Planning to accelerate local models - using GPUs, number of threads, Flash Attention...
