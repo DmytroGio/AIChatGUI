@@ -7,8 +7,6 @@
 LlamaWorker::LlamaWorker(QObject *parent)
     : QObject(parent), m_shouldStop(0)
 {
-    qputenv("CUDA_VISIBLE_DEVICES", "0");
-    qputenv("GGML_CUDA_NO_PINNED", "1");
 
     llama_backend_init();
 
@@ -55,9 +53,9 @@ bool LlamaWorker::initialize(const QString &modelPath)
 
     // Всегда пробуем GPU, даже если проверка не прошла
     qDebug() << "GPU offload support:" << llama_supports_gpu_offload();
-    model_params.n_gpu_layers = 35;  // для 3B модели достаточно
-    model_params.main_gpu = 0;
-    model_params.split_mode = LLAMA_SPLIT_MODE_LAYER;
+    model_params.n_gpu_layers = 0;  // ВРЕМЕННО отключаем GPU
+    // model_params.main_gpu = 0;  // ЗАКОММЕНТИРУЙТЕ
+    // model_params.split_mode = LLAMA_SPLIT_MODE_NONE;  // ЗАКОММЕНТИРУЙТЕ
 
     qDebug() << "Loading model from:" << modelPath;
     model = llama_model_load_from_file(modelPath.toUtf8().constData(), model_params);
@@ -79,8 +77,9 @@ bool LlamaWorker::initialize(const QString &modelPath)
     llama_context_params ctx_params = llama_context_default_params();
     ctx_params.n_ctx = 2048;
     ctx_params.n_batch = 512;  // обратно для стабильности
-    ctx_params.n_threads = 4;
-    ctx_params.n_threads_batch = 4;
+    ctx_params.n_ubatch = 512;  // ДОБАВИТЬ эту строку
+    ctx_params.n_threads = 8;   // ИЗМЕНЕНО с 4 на 8
+    ctx_params.n_threads_batch = 8;
 
     // ВСЕГДА включаем GPU параметры
     ctx_params.offload_kqv = true;
@@ -109,27 +108,28 @@ bool LlamaWorker::initialize(const QString &modelPath)
 
 void LlamaWorker::processMessage(const QString &message)
 {
-    qDebug() << "=== processMessage started ===";
-    qDebug() << "Message:" << message;
+    qDebug() << "=== processMessage START ===";
 
     if (!model || !ctx || !vocab) {
-        qDebug() << "ERROR: model=" << (model != nullptr)
-        << "ctx=" << (ctx != nullptr)
-        << "vocab=" << (vocab != nullptr);
+        qDebug() << "ERROR: Model not loaded";
         emit errorOccurred("Model not loaded");
         return;
     }
 
     m_shouldStop.storeRelaxed(0);
-
     auto start_time = std::chrono::high_resolution_clock::now();
+
+    // КРИТИЧНО: Очистка KV cache перед новым сообщением
+    llama_memory_t memory = llama_get_memory(ctx);
+    llama_memory_clear(memory, false);
+    qDebug() << "KV cache cleared";
 
     QString prompt = "<|im_start|>system\nYou are a helpful assistant.<|im_end|>\n"
                      "<|im_start|>user\n" + message + "<|im_end|>\n"
                                  "<|im_start|>assistant\n";
 
     std::string prompt_str = prompt.toStdString();
-    qDebug() << "Prompt prepared, length:" << prompt_str.length();
+    qDebug() << "Prompt length:" << prompt_str.length();
 
     // Токенизация
     std::vector<llama_token> tokens(prompt_str.size() + 128);
@@ -144,14 +144,14 @@ void LlamaWorker::processMessage(const QString &message)
         );
 
     if (n_tokens < 0) {
-        qDebug() << "Need to resize tokens buffer, required:" << -n_tokens;
+        qDebug() << "Resizing tokens buffer to" << -n_tokens;
         tokens.resize(-n_tokens);
         n_tokens = llama_tokenize(vocab, prompt_str.c_str(), prompt_str.length(),
                                   tokens.data(), tokens.size(), true, true);
     }
 
     if (n_tokens <= 0) {
-        qDebug() << "ERROR: Failed to tokenize, n_tokens=" << n_tokens;
+        qDebug() << "ERROR: Tokenization failed, n_tokens =" << n_tokens;
         emit errorOccurred("Failed to tokenize");
         return;
     }
@@ -159,33 +159,44 @@ void LlamaWorker::processMessage(const QString &message)
     tokens.resize(n_tokens);
     qDebug() << "Tokenized successfully, n_tokens:" << n_tokens;
 
-    // КРИТИЧНО: Очищаем KV cache перед новым промптом
-    llama_memory_clear(llama_get_memory(ctx), false);
+    // ИСПРАВЛЕНО: Правильное создание batch для промпта
+    qDebug() << "Creating batch for prompt...";
+    llama_batch batch = llama_batch_init(n_tokens, 0, 1);
 
-    qDebug() << "Creating batch...";
-    std::vector<llama_token> batch_tokens(tokens.begin(), tokens.end());
-    llama_batch batch = llama_batch_get_one(batch_tokens.data(), n_tokens);
-    batch.logits[n_tokens - 1] = true;  // только последний токен
-    qDebug() << "Batch created, n_tokens:" << batch.n_tokens;
+    for (int i = 0; i < n_tokens; i++) {
+        batch.token[i] = tokens[i];
+        batch.pos[i] = i;
+        batch.n_seq_id[i] = 1;
+        batch.seq_id[i] = (llama_seq_id*)malloc(sizeof(llama_seq_id));
+        batch.seq_id[i][0] = 0;
+        batch.logits[i] = (i == n_tokens - 1) ? 1 : 0;  // только последний
+    }
+    batch.n_tokens = n_tokens;
 
     qDebug() << "Decoding prompt...";
     int decode_result = llama_decode(ctx, batch);
-    qDebug() << "Decode returned:" << decode_result;
+    qDebug() << "Decode result:" << decode_result;
+
+    // Освобождение памяти batch
+    for (int i = 0; i < n_tokens; i++) {
+        if (batch.seq_id[i]) free(batch.seq_id[i]);
+    }
+    llama_batch_free(batch);
 
     if (decode_result != 0) {
-        qDebug() << "ERROR: Failed to decode prompt, error code:" << decode_result;
+        qDebug() << "ERROR: Failed to decode prompt, code:" << decode_result;
         emit errorOccurred("Failed to decode prompt, code: " + QString::number(decode_result));
         return;
     }
-    qDebug() << "Prompt decoded successfully";
 
+    qDebug() << "Prompt decoded successfully";
     emit generationStarted();
 
     QString response;
     int n_gen = 0;
     const int max_gen_tokens = 512;
 
-    qDebug() << "Starting token generation loop...";
+    qDebug() << "Starting generation loop...";
 
     while (n_gen < max_gen_tokens) {
         if (m_shouldStop.loadRelaxed() == 1) {
@@ -204,7 +215,7 @@ void LlamaWorker::processMessage(const QString &message)
         llama_token new_token = llama_sampler_sample(sampler, ctx, -1);
 
         if (new_token < 0 || llama_vocab_is_eog(vocab, new_token)) {
-            qDebug() << "EOG token detected at position" << n_gen;
+            qDebug() << "EOG token at position" << n_gen;
             break;
         }
 
@@ -217,10 +228,10 @@ void LlamaWorker::processMessage(const QString &message)
             emit tokenGenerated(tokenText);
         }
 
-        // ИСПРАВЛЕНО: Правильная инициализация batch для одного токена
+        // ИСПРАВЛЕНО: Правильное создание batch для одного токена
         llama_batch single_batch = llama_batch_init(1, 0, 1);
         single_batch.token[0] = new_token;
-        single_batch.pos[0] = n_gen + n_tokens;
+        single_batch.pos[0] = n_tokens + n_gen;
         single_batch.n_seq_id[0] = 1;
         single_batch.seq_id[0] = (llama_seq_id*)malloc(sizeof(llama_seq_id));
         single_batch.seq_id[0][0] = 0;
@@ -229,35 +240,35 @@ void LlamaWorker::processMessage(const QString &message)
 
         int result = llama_decode(ctx, single_batch);
 
+        // Освобождение
         if (single_batch.seq_id[0]) free(single_batch.seq_id[0]);
         llama_batch_free(single_batch);
 
         if (result != 0) {
-            qDebug() << "Decode failed at token" << n_gen;
+            qDebug() << "Decode failed at token" << n_gen << "with code" << result;
             break;
         }
 
         n_gen++;
     }
 
-    qDebug() << "Generation loop finished, generated tokens:" << n_gen;
+    qDebug() << "Generation loop finished, tokens:" << n_gen;
 
     response = response.remove("<|im_end|>").trimmed();
 
     if (response.isEmpty()) {
-        qDebug() << "WARNING: Empty response generated";
+        qDebug() << "WARNING: Empty response";
         response = "Error: No response generated";
     }
 
     auto end_time = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
 
-    qDebug() << "Sending response, length:" << response.length();
+    qDebug() << "Response length:" << response.length();
     emit generationFinished(n_gen, duration.count());
     emit messageReceived(response);
-    qDebug() << "=== processMessage finished ===";
+    qDebug() << "=== processMessage FINISHED ===";
 }
-
 // LlamaConnector implementation
 
 LlamaConnector::LlamaConnector(QObject *parent)

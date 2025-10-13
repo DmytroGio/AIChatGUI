@@ -9,8 +9,10 @@ find_package(Qt6 REQUIRED COMPONENTS Quick Network Sql)
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build static libraries" FORCE)
 set(LLAMA_BUILD_SHARED OFF CACHE BOOL "Build llama as static library" FORCE)
 
-set(GGML_CUDA ON CACHE BOOL "Enable CUDA support" FORCE)
-set(GGML_NATIVE OFF CACHE BOOL "Disable native optimizations for compatibility" FORCE)
+set(GGML_CUDA ON CACHE BOOL "Enable CUDA" FORCE)
+set(GGML_CUDA_NO_PEER_COPY ON CACHE BOOL "Disable peer copy" FORCE)
+set(CMAKE_CUDA_ARCHITECTURES "86" CACHE STRING "CUDA arch" FORCE)
+set(CMAKE_CUDA_COMPILER "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v13.0/bin/nvcc.exe" CACHE FILEPATH "CUDA compiler" FORCE)
 
 add_subdirectory(external/llama.cpp)
 
