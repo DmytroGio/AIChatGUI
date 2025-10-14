@@ -35,6 +35,9 @@ private:
     llama_sampler *sampler = nullptr;
     const llama_vocab *vocab = nullptr;
     QAtomicInt m_shouldStop;
+
+    int m_n_past = 0;  // количество токенов в контексте
+    std::vector<llama_token> m_session_tokens;  // история токенов
 };
 
 class LlamaConnector : public QObject
