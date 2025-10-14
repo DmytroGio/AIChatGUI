@@ -23,11 +23,6 @@ LlamaWorker::~LlamaWorker()
     llama_backend_free();
 }
 
-void LlamaWorker::stopGeneration()
-{
-    m_shouldStop.storeRelaxed(1);
-}
-
 bool LlamaWorker::initialize(const QString &modelPath)
 {
     // Очищаем предыдущие ресурсы если есть
@@ -78,8 +73,8 @@ bool LlamaWorker::initialize(const QString &modelPath)
     ctx_params.n_ctx = 4096;
     ctx_params.n_batch = 2048;  // обратно для стабильности
     ctx_params.n_ubatch = 512;  // ДОБАВИТЬ эту строку
-    ctx_params.n_threads = 8;   // ИЗМЕНЕНО с 4 на 8
-    ctx_params.n_threads_batch = 8;
+    ctx_params.n_threads = 12;   // ИЗМЕНЕНО с 4 на 8
+    ctx_params.n_threads_batch = 12;
 
     // ВСЕГДА включаем GPU параметры
     ctx_params.offload_kqv = true;
@@ -206,6 +201,34 @@ void LlamaWorker::processMessage(const QString &message)
     int n_gen = 0;
     const int max_gen_tokens = 512;
 
+    // Если контекст близок к лимиту - очищаем старую историю
+    const int max_context = llama_n_ctx(ctx);
+    if (m_n_past + n_tokens + max_gen_tokens > max_context * 0.9) {
+        qDebug() << "Context nearly full, clearing old messages";
+        llama_memory_t memory = llama_get_memory(ctx);
+        llama_memory_clear(memory, false);
+        m_n_past = 0;
+        m_session_tokens.clear();
+
+        // Перезапускаем с системным промптом
+        prompt = "<|im_start|>system\nYou are a helpful assistant.<|im_end|>\n"
+                 "<|im_start|>user\n" + message + "<|im_end|>\n"
+                             "<|im_start|>assistant\n";
+        prompt_str = prompt.toStdString();
+
+        // Перетокенизируем с новым промптом
+        tokens.resize(prompt_str.size() + 128);
+        n_tokens = llama_tokenize(vocab, prompt_str.c_str(), prompt_str.length(),
+                                  tokens.data(), tokens.size(), true, true);
+        if (n_tokens < 0) {
+            tokens.resize(-n_tokens);
+            n_tokens = llama_tokenize(vocab, prompt_str.c_str(), prompt_str.length(),
+                                      tokens.data(), tokens.size(), true, true);
+        }
+        tokens.resize(n_tokens);
+        m_session_tokens.assign(tokens.begin(), tokens.end());
+    }
+
     // Создаём batch для генерации ОДИН РАЗ
     llama_batch gen_batch = llama_batch_init(1, 0, 1);
     gen_batch.n_seq_id[0] = 1;
@@ -293,6 +316,24 @@ void LlamaWorker::processMessage(const QString &message)
     emit messageReceived(response);
     qDebug() << "=== processMessage FINISHED ===";
 }
+
+void LlamaWorker::stopGeneration()
+{
+    m_shouldStop.storeRelaxed(1);
+}
+
+// ДОБАВИТЬ ПОСЛЕ stopGeneration():
+void LlamaWorker::clearContext()
+{
+    if (ctx) {
+        llama_memory_t memory = llama_get_memory(ctx);
+        llama_memory_clear(memory, false);
+        m_n_past = 0;
+        m_session_tokens.clear();
+        qDebug() << "Context cleared manually";
+    }
+}
+
 // LlamaConnector implementation
 
 LlamaConnector::LlamaConnector(QObject *parent)
@@ -386,4 +427,9 @@ bool LlamaConnector::loadModel(const QString &modelPath)
 void LlamaConnector::sendMessage(const QString &message)
 {
     emit requestProcessing(message);
+}
+
+void LlamaConnector::clearContext()
+{
+    QMetaObject::invokeMethod(worker, &LlamaWorker::clearContext, Qt::QueuedConnection);
 }

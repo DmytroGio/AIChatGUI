@@ -20,6 +20,7 @@ public:
 public slots:
     void processMessage(const QString &message);
     void stopGeneration();
+    void clearContext();
 
 signals:
     void messageReceived(const QString &response);
@@ -50,6 +51,7 @@ public:
 
     Q_INVOKABLE void sendMessage(const QString &message);
     Q_INVOKABLE bool loadModel(const QString &modelPath);
+    Q_INVOKABLE void clearContext();
 
     ModelInfo* getModelInfo() const { return modelInfo; }
 
