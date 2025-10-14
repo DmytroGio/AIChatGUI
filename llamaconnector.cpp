@@ -167,9 +167,8 @@ void LlamaWorker::processMessage(const QString &message)
         batch.token[i] = tokens[i];
         batch.pos[i] = i;
         batch.n_seq_id[i] = 1;
-        batch.seq_id[i] = (llama_seq_id*)malloc(sizeof(llama_seq_id));
         batch.seq_id[i][0] = 0;
-        batch.logits[i] = (i == n_tokens - 1) ? 1 : 0;  // только последний
+        batch.logits[i] = (i == n_tokens - 1) ? 1 : 0;
     }
     batch.n_tokens = n_tokens;
 
@@ -178,9 +177,6 @@ void LlamaWorker::processMessage(const QString &message)
     qDebug() << "Decode result:" << decode_result;
 
     // Освобождение памяти batch
-    for (int i = 0; i < n_tokens; i++) {
-        if (batch.seq_id[i]) free(batch.seq_id[i]);
-    }
     llama_batch_free(batch);
 
     if (decode_result != 0) {
@@ -233,7 +229,6 @@ void LlamaWorker::processMessage(const QString &message)
         single_batch.token[0] = new_token;
         single_batch.pos[0] = n_tokens + n_gen;
         single_batch.n_seq_id[0] = 1;
-        single_batch.seq_id[0] = (llama_seq_id*)malloc(sizeof(llama_seq_id));
         single_batch.seq_id[0][0] = 0;
         single_batch.logits[0] = 1;
         single_batch.n_tokens = 1;
@@ -241,7 +236,6 @@ void LlamaWorker::processMessage(const QString &message)
         int result = llama_decode(ctx, single_batch);
 
         // Освобождение
-        if (single_batch.seq_id[0]) free(single_batch.seq_id[0]);
         llama_batch_free(single_batch);
 
         if (result != 0) {
