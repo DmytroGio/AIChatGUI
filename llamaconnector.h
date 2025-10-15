@@ -52,6 +52,7 @@ public:
     Q_INVOKABLE void sendMessage(const QString &message);
     Q_INVOKABLE bool loadModel(const QString &modelPath);
     Q_INVOKABLE void clearContext();
+    Q_INVOKABLE QString getLastRawResponse() const { return m_lastRawResponse; }
 
     ModelInfo* getModelInfo() const { return modelInfo; }
 
@@ -73,6 +74,7 @@ private:
 
     ModelInfo *modelInfo;
     bool m_isGenerating = false;
+    QString m_lastRawResponse;
 
 signals:
     void requestProcessing(const QString &message);

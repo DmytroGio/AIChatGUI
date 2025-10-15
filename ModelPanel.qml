@@ -395,6 +395,148 @@ Rectangle {
                 }
             }
 
+            // ========== RAW OUTPUT (COLLAPSIBLE) ==========
+            Rectangle {
+                width: parent.width
+                height: rawOutputCollapsed ? 50 : 250
+                color: modelPanel.surfaceColor
+                radius: 12
+                opacity: 0.8
+
+                property bool rawOutputCollapsed: true
+
+                Behavior on height {
+                    NumberAnimation { duration: 200; easing.type: Easing.OutCubic }
+                }
+
+                Column {
+                    anchors.fill: parent
+                    anchors.margins: 10
+                    spacing: 10
+
+                    // Header
+                    Row {
+                        width: parent.width
+                        spacing: 8
+
+                        Text {
+                            text: "🔍 RAW OUTPUT"
+                            color: modelPanel.textPrimary
+                            font.pixelSize: 14
+                            font.bold: true
+                            width: parent.width - 80
+                        }
+
+                        Button {
+                            text: parent.parent.parent.rawOutputCollapsed ? "▼" : "▲"
+                            width: 30
+                            height: 24
+
+                            onClicked: parent.parent.parent.rawOutputCollapsed = !parent.parent.parent.rawOutputCollapsed
+
+                            background: Rectangle {
+                                color: parent.pressed ? Qt.darker(modelPanel.surfaceColor, 1.2) :
+                                       parent.hovered ? Qt.lighter(modelPanel.surfaceColor, 1.2) :
+                                       "transparent"
+                                radius: 6
+                                border.color: modelPanel.textSecondary
+                                border.width: 1
+
+                                Behavior on color {
+                                    ColorAnimation { duration: 150 }
+                                }
+                            }
+
+                            contentItem: Text {
+                                text: parent.text
+                                color: modelPanel.textPrimary
+                                horizontalAlignment: Text.AlignHCenter
+                                verticalAlignment: Text.AlignVCenter
+                                font.pixelSize: 12
+                            }
+                        }
+
+                        Button {
+                            text: "📋"
+                            width: 30
+                            height: 24
+                            visible: !parent.parent.parent.rawOutputCollapsed
+
+                            onClicked: {
+                                clipboardHelper.copyText(llamaConnector.getLastRawResponse())
+                            }
+
+                            background: Rectangle {
+                                color: parent.pressed ? modelPanel.accentColor :
+                                       parent.hovered ? Qt.lighter(modelPanel.accentColor, 1.2) :
+                                       "transparent"
+                                radius: 6
+                                border.color: modelPanel.accentColor
+                                border.width: 1
+
+                                Behavior on color {
+                                    ColorAnimation { duration: 150 }
+                                }
+                            }
+
+                            contentItem: Text {
+                                text: parent.text
+                                horizontalAlignment: Text.AlignHCenter
+                                verticalAlignment: Text.AlignVCenter
+                                font.pixelSize: 14
+                            }
+                        }
+                    }
+
+                    Rectangle {
+                        width: parent.width
+                        height: 1
+                        color: modelPanel.textSecondary
+                        opacity: 0.3
+                        visible: !parent.parent.rawOutputCollapsed
+                    }
+
+                    // Raw text content
+                    ScrollView {
+                        width: parent.width
+                        height: parent.parent.height - 70
+                        visible: !parent.parent.rawOutputCollapsed
+                        clip: true
+
+                        TextArea {
+                            id: rawOutputText
+                            text: llamaConnector.getLastRawResponse()
+                            color: modelPanel.textPrimary
+                            font.pixelSize: 11
+                            font.family: "Consolas, Monaco, monospace"
+                            wrapMode: Text.Wrap
+                            readOnly: true
+                            selectByMouse: true
+
+                            background: Rectangle {
+                                color: "#0a0a15"
+                                radius: 6
+                            }
+
+                            Connections {
+                                target: llamaConnector
+                                function onMessageReceived(response) {
+                                    rawOutputText.text = response
+                                }
+                            }
+                        }
+                    }
+
+                    Text {
+                        text: "Last AI response (unprocessed)"
+                        color: modelPanel.textSecondary
+                        font.pixelSize: 10
+                        visible: !parent.parent.rawOutputCollapsed
+                        anchors.horizontalCenter: parent.horizontalCenter
+                    }
+                }
+            }
+
             // ========== REQUEST LOG ==========
             Rectangle {
                 width: parent.width

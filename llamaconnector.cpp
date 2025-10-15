@@ -346,9 +346,13 @@ LlamaConnector::LlamaConnector(QObject *parent)
 
     connect(&workerThread, &QThread::finished, worker, &QObject::deleteLater);
     connect(this, &LlamaConnector::requestProcessing, worker, &LlamaWorker::processMessage);
-    connect(worker, &LlamaWorker::messageReceived, this, &LlamaConnector::messageReceived);
     connect(worker, &LlamaWorker::errorOccurred, this, &LlamaConnector::errorOccurred);
     connect(worker, &LlamaWorker::tokenGenerated, this, &LlamaConnector::tokenGenerated);
+
+    connect(worker, &LlamaWorker::messageReceived, this, [this](const QString& response) {
+        m_lastRawResponse = response;
+        emit messageReceived(response);
+    });
 
     connect(worker, &LlamaWorker::generationStarted, this, [this]() {
         modelInfo->setGenerating(true);
