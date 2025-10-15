@@ -369,7 +369,7 @@ Rectangle {
                             enabled: modelInfo.isLoaded
 
                             onClicked: {
-                                // TODO: Open model settings dialog
+                                settingsPopup.open()
                             }
 
                             background: Rectangle {
@@ -955,6 +955,120 @@ Rectangle {
 
             loadingPopup.open()
             llamaConnector.loadModel(path)
+        }
+    }
+
+    // ========== MODEL SETTINGS POPUP (PLACEHOLDER) ==========
+    Popup {
+        id: settingsPopup
+        anchors.centerIn: Overlay.overlay
+        width: 450
+        height: 550
+        modal: true
+        focus: true
+
+        background: Rectangle {
+            color: modelPanel.surfaceColor
+            radius: 12
+            border.color: modelPanel.accentColor
+            border.width: 2
+        }
+
+        Column {
+            anchors.fill: parent
+            anchors.margins: 20
+            spacing: 20
+
+            Row {
+                width: parent.width
+                spacing: 12
+
+                Text {
+                    text: "⚙️"
+                    font.pixelSize: 28
+                    anchors.verticalCenter: parent.verticalCenter
+                }
+
+                Text {
+                    text: "Model Settings"
+                    color: modelPanel.textPrimary
+                    font.pixelSize: 20
+                    font.bold: true
+                    anchors.verticalCenter: parent.verticalCenter
+                }
+            }
+
+            Rectangle {
+                width: parent.width
+                height: 1
+                color: modelPanel.textSecondary
+                opacity: 0.3
+            }
+
+            // Placeholder content
+            Column {
+                width: parent.width
+                spacing: 15
+
+                Text {
+                    text: "⚠️ Coming Soon"
+                    color: modelPanel.primaryColor
+                    font.pixelSize: 16
+                    font.bold: true
+                    anchors.horizontalCenter: parent.horizontalCenter
+                }
+
+                Text {
+                    text: "Advanced model configuration options will be available here:"
+                    color: modelPanel.textSecondary
+                    font.pixelSize: 13
+                    width: parent.width
+                    wrapMode: Text.WordWrap
+                }
+
+                Column {
+                    width: parent.width
+                    spacing: 8
+
+                    Text { text: "• Temperature control"; color: modelPanel.textSecondary; font.pixelSize: 12 }
+                    Text { text: "• Top-P / Top-K sampling"; color: modelPanel.textSecondary; font.pixelSize: 12 }
+                    Text { text: "• Max tokens"; color: modelPanel.textSecondary; font.pixelSize: 12 }
+                    Text { text: "• Context size adjustment"; color: modelPanel.textSecondary; font.pixelSize: 12 }
+                    Text { text: "• GPU layers configuration"; color: modelPanel.textSecondary; font.pixelSize: 12 }
+                    Text { text: "• Thread count"; color: modelPanel.textSecondary; font.pixelSize: 12 }
+                }
+            }
+
+            Item { height: 20 }
+
+            Button {
+                text: "Close"
+                width: 120
+                height: 40
+                anchors.horizontalCenter: parent.horizontalCenter
+
+                onClicked: settingsPopup.close()
+
+                background: Rectangle {
+                    color: parent.pressed ? Qt.darker(modelPanel.accentColor, 1.2) :
+                           parent.hovered ? Qt.lighter(modelPanel.accentColor, 1.1) :
+                           modelPanel.accentColor
+                    radius: 8
+
+                    Behavior on color {
+                        ColorAnimation { duration: 150 }
+                    }
+                }
+
+                contentItem: Text {
+                    text: parent.text
+                    color: "white"
+                    horizontalAlignment: Text.AlignHCenter
+                    verticalAlignment: Text.AlignVCenter
+                    font.pixelSize: 14
+                    font.bold: true
+                }
+            }
         }
     }
 

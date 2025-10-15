@@ -23,6 +23,30 @@ LlamaWorker::~LlamaWorker()
     llama_backend_free();
 }
 
+void LlamaWorker::unloadModel()
+{
+    qDebug() << "=== LlamaWorker::unloadModel ===";
+
+    if (sampler) {
+        llama_sampler_free(sampler);
+        sampler = nullptr;
+    }
+    if (ctx) {
+        llama_free(ctx);
+        ctx = nullptr;
+    }
+    if (model) {
+        llama_model_free(model);
+        model = nullptr;
+    }
+
+    vocab = nullptr;
+    m_n_past = 0;
+    m_session_tokens.clear();
+
+    qDebug() << "Model unloaded successfully";
+}
+
 bool LlamaWorker::initialize(const QString &modelPath)
 {
     // Очищаем предыдущие ресурсы если есть
@@ -379,6 +403,30 @@ LlamaConnector::~LlamaConnector()
 {
     workerThread.quit();
     workerThread.wait();
+}
+
+void LlamaConnector::unloadModel()
+{
+    qDebug() << "=== unloadModel called ===";
+
+    if (m_isGenerating) {
+        qDebug() << "Stopping generation before unloading...";
+        worker->stopGeneration();
+
+        int waitCount = 0;
+        while (m_isGenerating && waitCount < 50) {
+            QThread::msleep(100);
+            QCoreApplication::processEvents();
+            waitCount++;
+        }
+    }
+
+    // Вызываем метод worker через Qt signal/slot систему для потокобезопасности
+    QMetaObject::invokeMethod(worker, &LlamaWorker::unloadModel, Qt::BlockingQueuedConnection);
+
+    modelInfo->clearModel();
+
+    qDebug() << "Model unloaded successfully";
 }
 
 void LlamaConnector::stopGeneration()
