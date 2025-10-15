@@ -142,19 +142,20 @@ ApplicationWindow {
 
         // Connection status indicator
         Rectangle {
+            width: 12
+            height: 12
+            radius: 6
+            color: modelInfo.isLoaded ? root.primaryColor : "#808080"
             anchors.right: parent.right
             anchors.rightMargin: 20
             anchors.verticalCenter: parent.verticalCenter
-            width: 10
-            height: 10
-            radius: 5
-            color: root.secondaryColor
+            visible: !root.showModelPanel  // Скрываем когда панель открыта
 
             SequentialAnimation on opacity {
-                running: true
+                running: modelInfo.status === "Generating"
                 loops: Animation.Infinite
-                NumberAnimation { to: 0.3; duration: 1000 }
-                NumberAnimation { to: 1.0; duration: 1000 }
+                NumberAnimation { to: 0.3; duration: 500 }
+                NumberAnimation { to: 1.0; duration: 500 }
             }
         }
 
@@ -162,7 +163,7 @@ ApplicationWindow {
         Rectangle {
             id: modelPanelButton
             anchors.right: parent.right
-            anchors.rightMargin: 50
+            anchors.rightMargin: root.showModelPanel ? 20 : 50  // Смещаем влево когда панель открыта
             anchors.verticalCenter: parent.verticalCenter
             width: 40
             height: 40
@@ -186,6 +187,11 @@ ApplicationWindow {
 
             Behavior on color {
                 ColorAnimation { duration: 200 }
+            }
+
+            // Добавляем плавную анимацию смещения
+            Behavior on anchors.rightMargin {
+                NumberAnimation { duration: 200; easing.type: Easing.OutQuad }
             }
         }
     }
