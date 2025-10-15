@@ -5,7 +5,7 @@ import QtQuick.Dialogs
 
 Rectangle {
     id: modelPanel
-    width: isOpen ? 400 : 0
+    width: isOpen ? 700 : 0
     height: parent.height
     color: backgroundColor
     clip: true
@@ -46,10 +46,189 @@ Rectangle {
             width: parent.width
             spacing: 20
 
-            // ========== MODEL SELECTOR ==========
+            // ========== PINNED METRICS BAR (Quick Overview) ==========
             Rectangle {
                 width: parent.width
-                height: selectorColumn.height + 20
+                height: 70
+                color: modelPanel.surfaceColor
+                radius: 12
+                border.color: modelInfo.isLoaded ? "#4ade80" : modelPanel.textSecondary
+                border.width: 2
+                opacity: 0.95
+
+                Row {
+                    anchors.fill: parent
+                    anchors.margins: 12
+                    spacing: 12
+
+                    // Status Column
+                    Column {
+                        width: 80
+                        spacing: 4
+                        anchors.verticalCenter: parent.verticalCenter
+
+                        Row {
+                            spacing: 6
+                            Rectangle {
+                                width: 12
+                                height: 12
+                                radius: 6
+                                color: modelInfo.isLoaded ? "#4ade80" : "#808080"
+                                anchors.verticalCenter: parent.verticalCenter
+
+                                SequentialAnimation on opacity {
+                                    running: modelInfo.status === "Generating"
+                                    loops: Animation.Infinite
+                                    NumberAnimation { to: 0.3; duration: 500 }
+                                    NumberAnimation { to: 1.0; duration: 500 }
+                                }
+                            }
+
+                            Text {
+                                text: modelInfo.isLoaded ? "READY" : "IDLE"
+                                color: modelPanel.textPrimary
+                                font.pixelSize: 12
+                                font.bold: true
+                            }
+                        }
+
+                        Text {
+                            text: modelInfo.status
+                            color: modelPanel.textSecondary
+                            font.pixelSize: 10
+                        }
+                    }
+
+                    Rectangle {
+                        width: 1
+                        height: parent.height - 20
+                        color: modelPanel.textSecondary
+                        opacity: 0.3
+                        anchors.verticalCenter: parent.verticalCenter
+                    }
+
+                    // Speed Metric
+                    Column {
+                        width: 90
+                        spacing: 2
+                        anchors.verticalCenter: parent.verticalCenter
+
+                        Text {
+                            text: "⚡ SPEED"
+                            color: modelPanel.textSecondary
+                            font.pixelSize: 9
+                            font.bold: true
+                        }
+
+                        Text {
+                            text: modelInfo.speed.toFixed(1) + " tok/s"
+                            color: modelPanel.primaryColor
+                            font.pixelSize: 16
+                            font.bold: true
+                        }
+                    }
+
+                    Rectangle {
+                        width: 1
+                        height: parent.height - 20
+                        color: modelPanel.textSecondary
+                        opacity: 0.3
+                        anchors.verticalCenter: parent.verticalCenter
+                    }
+
+                    // Memory Metric
+                    Column {
+                        width: 110
+                        spacing: 2
+                        anchors.verticalCenter: parent.verticalCenter
+
+                        Text {
+                            text: "💾 MEMORY"
+                            color: modelPanel.textSecondary
+                            font.pixelSize: 9
+                            font.bold: true
+                        }
+
+                        Row {
+                            spacing: 4
+
+                            Text {
+                                text: modelInfo.memoryUsed.toFixed(1) + " GB"
+                                color: modelPanel.textPrimary
+                                font.pixelSize: 14
+                                font.bold: true
+                            }
+
+                            Text {
+                                text: "(" + modelInfo.memoryPercent + "%)"
+                                color: modelInfo.memoryPercent > 80 ? "#fbbf24" : modelPanel.textSecondary
+                                font.pixelSize: 11
+                                anchors.verticalCenter: parent.verticalCenter
+                            }
+                        }
+                    }
+
+                    Rectangle {
+                        width: 1
+                        height: parent.height - 20
+                        color: modelPanel.textSecondary
+                        opacity: 0.3
+                        anchors.verticalCenter: parent.verticalCenter
+                    }
+
+                    // Context Usage
+                    Column {
+                        width: parent.width - 350
+                        spacing: 2
+                        anchors.verticalCenter: parent.verticalCenter
+
+                        Row {
+                            spacing: 4
+
+                            Text {
+                                text: "📝 CONTEXT"
+                                color: modelPanel.textSecondary
+                                font.pixelSize: 9
+                                font.bold: true
+                            }
+
+                            Text {
+                                text: (modelInfo.tokensIn + modelInfo.tokensOut) + " / " + modelInfo.contextSize
+                                color: modelPanel.textPrimary
+                                font.pixelSize: 10
+                            }
+                        }
+
+                        Rectangle {
+                            width: parent.width
+                            height: 6
+                            radius: 3
+                            color: "#0a0a15"
+
+                            Rectangle {
+                                width: parent.width * Math.min((modelInfo.tokensIn + modelInfo.tokensOut) / modelInfo.contextSize, 1.0)
+                                height: parent.height
+                                radius: parent.radius
+                                color: {
+                                    var usage = (modelInfo.tokensIn + modelInfo.tokensOut) / modelInfo.contextSize
+                                    if (usage > 0.9) return "#ef4444"
+                                    if (usage > 0.7) return "#fbbf24"
+                                    return modelPanel.primaryColor
+                                }
+
+                                Behavior on width {
+                                    NumberAnimation { duration: 300 }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // ========== MODEL SELECTOR & INFO ==========
+            Rectangle {
+                width: parent.width
+                height: modelDetailsColumn.height + 24
                 color: modelPanel.surfaceColor
                 radius: 12
                 border.color: modelPanel.primaryColor
@@ -57,56 +236,69 @@ Rectangle {
                 opacity: 0.9
 
                 Column {
-                    id: selectorColumn
+                    id: modelDetailsColumn
                     anchors.centerIn: parent
-                    width: parent.width - 20
-                    spacing: 10
+                    width: parent.width - 24
+                    spacing: 12
 
+                    // Model Name & Icon
                     Row {
                         width: parent.width
-                        spacing: 10
+                        spacing: 12
 
                         Text {
-                            text: "🎯"
+                            text: "🔮"
                             font.pixelSize: 24
                             anchors.verticalCenter: parent.verticalCenter
                         }
 
                         Column {
-                            width: parent.width - 40
+                            width: parent.width - 50
+                            spacing: 4
 
                             Text {
                                 text: modelInfo.isLoaded ? modelInfo.modelName : "No Model Loaded"
                                 color: modelPanel.textPrimary
-                                font.pixelSize: 16
+                                font.pixelSize: 18
                                 font.bold: true
                                 elide: Text.ElideRight
                                 width: parent.width
                             }
 
                             Text {
-                                text: modelInfo.modelSize + " • " + modelInfo.layers + " • " + modelInfo.contextSize + " ctx"
+                                text: modelInfo.isLoaded ?
+                                      modelInfo.modelSize + " • " + modelInfo.layers + " layers • " + modelInfo.contextSize + " ctx" :
+                                      "Select a GGUF model to begin"
                                 color: modelPanel.textSecondary
                                 font.pixelSize: 12
                             }
                         }
                     }
 
+                    Rectangle {
+                        width: parent.width
+                        height: 1
+                        color: modelPanel.textSecondary
+                        opacity: 0.3
+                    }
+
+                    // Action Buttons
                     Row {
                         width: parent.width
                         spacing: 10
 
                         Button {
-                            text: "Change Model"
-                            width: parent.width * 0.65
-                            height: 32
+                            id: loadModelButton
+                            text: modelInfo.isLoaded ? "Change Model" : "Load Model"
+                            width: parent.width * 0.48
+                            height: 38
                             enabled: true
 
                             onClicked: fileDialog.open()
 
                             background: Rectangle {
-                                color: parent.pressed ? Qt.darker(modelPanel.primaryColor, 1.2) :
-                                       parent.hovered ? Qt.lighter(modelPanel.primaryColor, 1.1) :
+                                color: loadModelButton.pressed ? Qt.darker(modelPanel.primaryColor, 1.2) :
+                                       loadModelButton.hovered ? Qt.lighter(modelPanel.primaryColor, 1.1) :
                                        modelPanel.primaryColor
                                 radius: 8
 
@@ -115,9 +307,54 @@ Rectangle {
                                 }
                             }
 
+                            contentItem: Row {
+                                anchors.centerIn: parent
+                                spacing: 6
+
+                                Text {
+                                    text: "📁"
+                                    font.pixelSize: 16
+                                    anchors.verticalCenter: parent.verticalCenter
+                                }
+
+                                Text {
+                                    text: loadModelButton.text
+                                    color: "white"
+                                    font.pixelSize: 13
+                                    font.bold: true
+                                    anchors.verticalCenter: parent.verticalCenter
+                                }
+                            }
+                        }
+
+                        Button {
+                            id: unloadButton
+                            text: "Unload"
+                            width: parent.width * 0.24
+                            height: 38
+                            enabled: modelInfo.isLoaded
+
+                            onClicked: {
+                                llamaConnector.unloadModel()
+                            }
+
+                            background: Rectangle {
+                                color: unloadButton.pressed ? "#c0392b" :
+                                       unloadButton.hovered ? "#e74c3c" :
+                                       "transparent"
+                                radius: 8
+                                border.color: "#e74c3c"
+                                border.width: 1
+                                opacity: unloadButton.enabled ? 1.0 : 0.4
+
+                                Behavior on color {
+                                    ColorAnimation { duration: 150 }
+                                }
+                            }
+
                             contentItem: Text {
-                                text: parent.text
-                                color: "white"
+                                text: unloadButton.text
+                                color: modelPanel.textPrimary
                                 horizontalAlignment: Text.AlignHCenter
                                 verticalAlignment: Text.AlignVCenter
                                 font.pixelSize: 13
@@ -125,56 +362,41 @@ Rectangle {
                         }
 
                         Button {
+                            id: settingsButton
                             text: "⚙️"
-                            width: parent.width * 0.3
-                            height: 32
-                            enabled: false
-                            opacity: 0.5
+                            width: parent.width * 0.24
+                            height: 38
+                            enabled: modelInfo.isLoaded
+
+                            onClicked: {
+                                // TODO: Open model settings dialog
+                            }
 
                             background: Rectangle {
-                                color: modelPanel.surfaceColor
+                                color: settingsButton.pressed ? Qt.darker(modelPanel.accentColor, 1.2) :
+                                       settingsButton.hovered ? Qt.lighter(modelPanel.accentColor, 1.1) :
+                                       "transparent"
                                 radius: 8
-                                border.color: modelPanel.textSecondary
+                                border.color: modelPanel.accentColor
                                 border.width: 1
+                                opacity: settingsButton.enabled ? 1.0 : 0.4
+
+                                Behavior on color {
+                                    ColorAnimation { duration: 150 }
+                                }
                             }
 
                             contentItem: Text {
-                                text: parent.text
+                                text: settingsButton.text
                                 horizontalAlignment: Text.AlignHCenter
                                 verticalAlignment: Text.AlignVCenter
-                                font.pixelSize: 16
+                                font.pixelSize: 18
                             }
                         }
                     }
                 }
             }
-            // ========== MODEL INFO ==========
-            Grid {
-                width: parent.width
-                columns: 2
-                rowSpacing: 8
-                columnSpacing: 10
 
-                // Left column
-                Column {
-                    width: parent.width / 2 - 5
-                    spacing: 8
-
-                    InfoRow { label: "Type:"; value: modelInfo.modelType }
-                    InfoRow { label: "Layers:"; value: modelInfo.layers.toString() }
-                    InfoRow { label: "Quant:"; value: modelInfo.quantization }
-                }
-
-                // Right column
-                Column {
-                    width: parent.width / 2 - 5
-                    spacing: 8
-
-                    InfoRow { label: "Params:"; value: modelInfo.parameters }
-                    InfoRow { label: "Embed:"; value: modelInfo.embedding }
-                    InfoRow { label: "Vocab:"; value: modelInfo.vocabSize }
-                }
-            }
 
             Column {
                 width: parent.width
