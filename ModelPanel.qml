@@ -426,25 +426,28 @@ Rectangle {
             // ========== RUNTIME STATS ==========
             Rectangle {
                 width: parent.width
-                height: runtimeColumn.height + 20
+                height: runtimeColumn.height + 30
                 color: modelPanel.surfaceColor
                 radius: 12
-                opacity: 0.8
+                opacity: 0.9
+                border.color: modelPanel.primaryColor
+                border.width: 1
 
                 Column {
                     id: runtimeColumn
                     anchors.centerIn: parent
-                    width: parent.width - 20
-                    spacing: 12
+                    width: parent.width - 30
+                    spacing: 16
 
+                    // Header
                     Row {
                         width: parent.width
                         spacing: 8
 
                         Text {
-                            text: "⚡ RUNTIME"
+                            text: "⚡ RUNTIME METRICS"
                             color: modelPanel.textPrimary
-                            font.pixelSize: 14
+                            font.pixelSize: 16
                             font.bold: true
                         }
 
@@ -466,7 +469,7 @@ Rectangle {
                         Text {
                             text: modelInfo.status
                             color: modelPanel.textSecondary
-                            font.pixelSize: 12
+                            font.pixelSize: 13
                             anchors.verticalCenter: parent.verticalCenter
                         }
                     }
@@ -478,27 +481,220 @@ Rectangle {
                         opacity: 0.3
                     }
 
-                    // Speed with sparkline
+                    // GPU Section
                     Column {
                         width: parent.width
-                        spacing: 6
+                        spacing: 12
+                        visible: modelInfo.gpuName !== "N/A"
 
-                        Text {
-                            text: "Speed: " + modelInfo.speed.toFixed(1) + " tok/s"
-                            color: modelPanel.textPrimary
-                            font.pixelSize: 13
+                        Row {
+                            width: parent.width
+                            spacing: 8
+
+                            Text {
+                                text: "🎮"
+                                font.pixelSize: 16
+                            }
+
+                            Text {
+                                text: "GPU: " + modelInfo.gpuName
+                                color: modelPanel.textPrimary
+                                font.pixelSize: 13
+                                font.bold: true
+                                elide: Text.ElideRight
+                                width: parent.width - 30
+                            }
+                        }
+
+                        // GPU Metrics Grid
+                        Grid {
+                            width: parent.width
+                            columns: 2
+                            columnSpacing: 15
+                            rowSpacing: 12
+
+                            // Temperature
+                            Column {
+                                width: (parent.width - 15) / 2
+                                spacing: 6
+
+                                Row {
+                                    spacing: 6
+
+                                    Text {
+                                        text: "🌡️"
+                                        font.pixelSize: 14
+                                    }
+
+                                    Text {
+                                        text: "Temperature"
+                                        color: modelPanel.textSecondary
+                                        font.pixelSize: 12
+                                    }
+                                }
+
+                                Rectangle {
+                                    width: parent.width
+                                    height: 35
+                                    radius: 8
+                                    color: "#0a0a15"
+
+                                    Text {
+                                        anchors.centerIn: parent
+                                        text: modelInfo.gpuTemp + "°C"
+                                        color: modelInfo.gpuTemp > 80 ? "#ef4444" :
+                                               modelInfo.gpuTemp > 70 ? "#fbbf24" : "#4ade80"
+                                        font.pixelSize: 18
+                                        font.bold: true
+                                    }
+                                }
+                            }
+
+                            // Utilization
+                            Column {
+                                width: (parent.width - 15) / 2
+                                spacing: 6
+
+                                Row {
+                                    spacing: 6
+
+                                    Text {
+                                        text: "⚙️"
+                                        font.pixelSize: 14
+                                    }
+
+                                    Text {
+                                        text: "Utilization"
+                                        color: modelPanel.textSecondary
+                                        font.pixelSize: 12
+                                    }
+                                }
+
+                                Rectangle {
+                                    width: parent.width
+                                    height: 35
+                                    radius: 8
+                                    color: "#0a0a15"
+
+                                    Rectangle {
+                                        width: parent.width * (modelInfo.gpuUtil / 100.0)
+                                        height: parent.height
+                                        radius: parent.radius
+                                        color: modelPanel.primaryColor
+                                        opacity: 0.3
+
+                                        Behavior on width {
+                                            NumberAnimation { duration: 300 }
+                                        }
+                                    }
+
+                                    Text {
+                                        anchors.centerIn: parent
+                                        text: modelInfo.gpuUtil + "%"
+                                        color: modelPanel.textPrimary
+                                        font.pixelSize: 18
+                                        font.bold: true
+                                    }
+                                }
+                            }
+
+                            // GPU Memory
+                            Column {
+                                width: parent.width
+                                spacing: 6
+
+                                Row {
+                                    spacing: 6
+
+                                    Text {
+                                        text: "💾"
+                                        font.pixelSize: 14
+                                    }
+
+                                    Text {
+                                        text: "GPU Memory: " + modelInfo.gpuMemUsed + " / " + modelInfo.gpuMemTotal + " MB"
+                                        color: modelPanel.textSecondary
+                                        font.pixelSize: 12
+                                    }
+                                }
+
+                                Rectangle {
+                                    width: parent.width
+                                    height: 10
+                                    radius: 5
+                                    color: "#0a0a15"
+
+                                    Rectangle {
+                                        width: parent.width * (modelInfo.gpuMemUsed / Math.max(modelInfo.gpuMemTotal, 1))
+                                        height: parent.height
+                                        radius: parent.radius
+                                        color: {
+                                            var usage = modelInfo.gpuMemUsed / modelInfo.gpuMemTotal
+                                            if (usage > 0.9) return "#ef4444"
+                                            if (usage > 0.7) return "#fbbf24"
+                                            return "#4ade80"
+                                        }
+
+                                        Behavior on width {
+                                            NumberAnimation { duration: 300 }
+                                        }
+                                    }
+                                }
+                            }
                         }
 
                         Rectangle {
                             width: parent.width
-                            height: 50
+                            height: 1
+                            color: modelPanel.textSecondary
+                            opacity: 0.2
+                        }
+                    }
+
+                    // Speed with enhanced sparkline
+                    Column {
+                        width: parent.width
+                        spacing: 8
+
+                        Row {
+                            width: parent.width
+                            spacing: 6
+
+                            Text {
+                                text: "⚡"
+                                font.pixelSize: 16
+                            }
+
+                            Text {
+                                text: "Generation Speed"
+                                color: modelPanel.textPrimary
+                                font.pixelSize: 13
+                                font.bold: true
+                            }
+
+                            Item { width: parent.width - 300 }
+
+                            Text {
+                                text: modelInfo.speed.toFixed(2) + " tok/s"
+                                color: modelPanel.primaryColor
+                                font.pixelSize: 16
+                                font.bold: true
+                            }
+                        }
+
+                        Rectangle {
+                            width: parent.width
+                            height: 60
                             color: "#0a0a15"
-                            radius: 6
+                            radius: 8
+                            border.color: modelPanel.primaryColor
+                            border.width: 1
+                            opacity: 0.8
 
                             Canvas {
                                 id: speedCanvas
                                 anchors.fill: parent
-                                anchors.margins: 5
+                                anchors.margins: 8
 
                                 property var dataPoints: []
 
@@ -508,12 +704,32 @@ Rectangle {
 
                                     if (dataPoints.length < 2) return
 
+                                    var maxY = Math.max(...dataPoints, 1)
+                                    var stepX = width / (dataPoints.length - 1)
+
+                                    // Gradient fill
+                                    var gradient = ctx.createLinearGradient(0, 0, 0, height)
+                                    gradient.addColorStop(0, modelPanel.primaryColor + "80")
+                                    gradient.addColorStop(1, modelPanel.primaryColor + "10")
+
+                                    ctx.fillStyle = gradient
+                                    ctx.beginPath()
+                                    ctx.moveTo(0, height)
+
+                                    for (var i = 0; i < dataPoints.length; i++) {
+                                        var x = i * stepX
+                                        var y = height - (dataPoints[i] / maxY) * height
+                                        ctx.lineTo(x, y)
+                                    }
+
+                                    ctx.lineTo(width, height)
+                                    ctx.closePath()
+                                    ctx.fill()
+
+                                    // Line
                                     ctx.strokeStyle = modelPanel.primaryColor
                                     ctx.lineWidth = 2
                                     ctx.beginPath()
-
-                                    var maxY = Math.max(...dataPoints, 1)
-                                    var stepX = width / (dataPoints.length - 1)
 
                                     for (var i = 0; i < dataPoints.length; i++) {
                                         var x = i * stepX
@@ -530,7 +746,7 @@ Rectangle {
                                     target: modelInfo
                                     function onSpeedDataPoint(speed) {
                                         speedCanvas.dataPoints.push(speed)
-                                        if (speedCanvas.dataPoints.length > 50) {
+                                        if (speedCanvas.dataPoints.length > 60) {
                                             speedCanvas.dataPoints.shift()
                                         }
                                         speedCanvas.requestPaint()
@@ -540,79 +756,80 @@ Rectangle {
                         }
                     }
 
-                    // Memory
-                    Column {
-                        width: parent.width
-                        spacing: 6
-
-                        Row {
-                            width: parent.width
-
-                            Text {
-                                text: "Memory: " + modelInfo.memoryUsed.toFixed(1) + "/" +
-                                      modelInfo.memoryTotal.toFixed(1) + " GB (" +
-                                      modelInfo.memoryPercent + "%)"
-                                color: modelPanel.textPrimary
-                                font.pixelSize: 13
-                            }
-                        }
-
-                        Rectangle {
-                            width: parent.width
-                            height: 8
-                            radius: 4
-                            color: "#0a0a15"
-
-                            Rectangle {
-                                width: parent.width * (modelInfo.memoryPercent / 100.0)
-                                height: parent.height
-                                radius: parent.radius
-                                color: modelPanel.primaryColor
-
-                                Behavior on width {
-                                    NumberAnimation { duration: 300 }
-                                }
-                            }
-                        }
-                    }
-
-                    // Other stats
+                    // System Memory & Threads
                     Grid {
                         width: parent.width
                         columns: 2
-                        rowSpacing: 6
-                        columnSpacing: 10
+                        columnSpacing: 15
+                        rowSpacing: 10
 
-                        Text {
-                            text: "Threads: " + modelInfo.threads
-                            color: modelPanel.textSecondary
-                            font.pixelSize: 12
+                        // RAM Usage
+                        Column {
+                            width: (parent.width - 15) / 2
+                            spacing: 6
+
+                            Row {
+                                spacing: 4
+
+                                Text {
+                                    text: "🖥️ RAM"
+                                    color: modelPanel.textSecondary
+                                    font.pixelSize: 11
+                                    font.bold: true
+                                }
+                            }
+
+                            Rectangle {
+                                width: parent.width
+                                height: 8
+                                radius: 4
+                                color: "#0a0a15"
+
+                                Rectangle {
+                                    width: parent.width * (modelInfo.memoryPercent / 100.0)
+                                    height: parent.height
+                                    radius: parent.radius
+                                    color: modelInfo.memoryPercent > 80 ? "#fbbf24" : modelPanel.primaryColor
+
+                                    Behavior on width {
+                                        NumberAnimation { duration: 300 }
+                                    }
+                                }
+                            }
+
+                            Text {
+                                text: modelInfo.memoryUsed.toFixed(1) + " / " +
+                                      modelInfo.memoryTotal.toFixed(1) + " GB (" +
+                                      modelInfo.memoryPercent + "%)"
+                                color: modelPanel.textPrimary
+                                font.pixelSize: 11
+                            }
                         }
 
-                        Text {
-                            text: "Load: " + (modelInfo.isLoaded ? "OK" : "None")
-                            color: modelPanel.textSecondary
-                            font.pixelSize: 12
-                        }
+                        // Threads
+                        Column {
+                            width: (parent.width - 15) / 2
+                            spacing: 6
 
-                        Text {
-                            text: "Avg Speed: " + modelInfo.speed.toFixed(1) + " tok/s"
-                            color: modelPanel.textSecondary
-                            font.pixelSize: 12
-                        }
+                            Text {
+                                text: "🔧 Threads: " + modelInfo.threads
+                                color: modelPanel.textSecondary
+                                font.pixelSize: 11
+                                font.bold: true
+                            }
 
-                        Text {
-                            text: "Ctx: " + modelInfo.contextSize
-                            color: modelPanel.textSecondary
-                            font.pixelSize: 12
-                        }
-                    }
+                            Text {
+                                text: "Context: " + modelInfo.contextSize
+                                color: modelPanel.textPrimary
+                                font.pixelSize: 11
+                            }
 
-                    Text {
-                        text: "Total: " + modelInfo.tokensIn + " tok in • " +
-                              modelInfo.tokensOut + " tok out"
-                        color: modelPanel.textSecondary
-                        font.pixelSize: 11
+                            Text {
+                                text: "In: " + modelInfo.tokensIn + " • Out: " + modelInfo.tokensOut
+                                color: modelPanel.textPrimary
+                                font.pixelSize: 11
+                            }
+                        }
                     }
                 }
             }

@@ -3,6 +3,32 @@
 #include <QDateTime>
 #include <cmath>
 
+#ifdef _WIN32
+#include <windows.h>
+
+// NVML function pointers
+typedef int (*nvmlInit_t)();
+typedef int (*nvmlShutdown_t)();
+typedef int (*nvmlDeviceGetHandleByIndex_t)(unsigned int, void**);
+typedef int (*nvmlDeviceGetName_t)(void*, char*, unsigned int);
+typedef int (*nvmlDeviceGetTemperature_t)(void*, int, unsigned int*);
+typedef int (*nvmlDeviceGetUtilizationRates_t)(void*, void*);
+typedef int (*nvmlDeviceGetMemoryInfo_t)(void*, void*);
+typedef int (*nvmlDeviceGetPowerUsage_t)(void*, unsigned int*);
+typedef int (*nvmlDeviceGetClockInfo_t)(void*, int, unsigned int*);
+
+struct nvmlUtilization_t {
+    unsigned int gpu;
+    unsigned int memory;
+};
+
+struct nvmlMemory_t {
+    unsigned long long total;
+    unsigned long long free;
+    unsigned long long used;
+};
+#endif
+
 // RequestLogModel implementation
 RequestLogModel::RequestLogModel(QObject *parent)
     : QAbstractListModel(parent)
@@ -79,6 +105,37 @@ ModelInfo::ModelInfo(QObject *parent)
     m_statsTimer = new QTimer(this);
     connect(m_statsTimer, &QTimer::timeout, this, &ModelInfo::updateCurrentStats);
     m_statsTimer->setInterval(1000);  // Обновление каждую секунду
+
+    // GPU monitoring setup (добавить в конец конструктора после m_statsTimer->setInterval(1000);)
+    m_gpuTimer = new QTimer(this);
+    connect(m_gpuTimer, &QTimer::timeout, this, &ModelInfo::updateGPUMetrics);
+    m_gpuTimer->setInterval(500);
+    m_gpuTimer->start();
+
+#ifdef _WIN32
+    // Initialize NVML
+    m_nvmlLib = LoadLibraryA("nvml.dll");
+    if (m_nvmlLib) {
+        auto nvmlInit = (nvmlInit_t)GetProcAddress((HMODULE)m_nvmlLib, "nvmlInit_v2");
+        auto nvmlDeviceGetHandleByIndex = (nvmlDeviceGetHandleByIndex_t)GetProcAddress((HMODULE)m_nvmlLib, "nvmlDeviceGetHandleByIndex_v2");
+        auto nvmlDeviceGetName = (nvmlDeviceGetName_t)GetProcAddress((HMODULE)m_nvmlLib, "nvmlDeviceGetName");
+
+        if (nvmlInit && nvmlDeviceGetHandleByIndex && nvmlDeviceGetName) {
+            if (nvmlInit() == 0) {
+                if (nvmlDeviceGetHandleByIndex(0, &m_nvmlDevice) == 0) {
+                    char name[256] = {0};
+                    if (nvmlDeviceGetName(m_nvmlDevice, name, sizeof(name)) == 0) {
+                        m_gpuName = QString::fromLocal8Bit(name);
+                        m_gpuAvailable = true;
+                        m_gpuTimer->start();
+                    }
+                }
+            }
+        }
+    }
+#endif
+
+    updateGPUMetrics();
 }
 
 void ModelInfo::setModel(llama_model *model, llama_context *ctx, const QString &path)
@@ -136,7 +193,10 @@ void ModelInfo::setModel(llama_model *model, llama_context *ctx, const QString &
 
     m_statsTimer->start();
 
-    emit modelChanged();
+    m_statsTimer->start();
+    if (m_gpuTimer) {
+        m_gpuTimer->start();
+    }
 
     emit modelChanged();
 }
@@ -168,6 +228,23 @@ void ModelInfo::clearModel()
     m_tokensOut = 0;
 
     emit modelChanged();
+
+    if (m_gpuTimer) {
+        m_gpuTimer->stop();
+    }
+
+#ifdef _WIN32
+    if (m_nvmlLib) {
+        auto nvmlShutdown = (nvmlShutdown_t)GetProcAddress((HMODULE)m_nvmlLib, "nvmlShutdown");
+        if (nvmlShutdown) {
+            nvmlShutdown();
+        }
+        FreeLibrary((HMODULE)m_nvmlLib);
+        m_nvmlLib = nullptr;
+        m_nvmlDevice = nullptr;
+    }
+#endif
+
     emit statsChanged();
 }
 
@@ -261,4 +338,62 @@ void ModelInfo::updateCurrentStats()
     m_memoryPercent = static_cast<int>((m_memoryUsed / m_memoryTotal) * 100);
 
     emit statsChanged();
+}
+
+void ModelInfo::updateGPUMetrics()
+{
+#ifdef _WIN32
+    if (!m_gpuAvailable || !m_nvmlDevice || !m_nvmlLib) {
+        return;
+    }
+
+    auto nvmlDeviceGetTemperature = (nvmlDeviceGetTemperature_t)GetProcAddress((HMODULE)m_nvmlLib, "nvmlDeviceGetTemperature");
+    auto nvmlDeviceGetUtilizationRates = (nvmlDeviceGetUtilizationRates_t)GetProcAddress((HMODULE)m_nvmlLib, "nvmlDeviceGetUtilizationRates");
+    auto nvmlDeviceGetMemoryInfo = (nvmlDeviceGetMemoryInfo_t)GetProcAddress((HMODULE)m_nvmlLib, "nvmlDeviceGetMemoryInfo");
+    auto nvmlDeviceGetPowerUsage = (nvmlDeviceGetPowerUsage_t)GetProcAddress((HMODULE)m_nvmlLib, "nvmlDeviceGetPowerUsage");
+    auto nvmlDeviceGetClockInfo = (nvmlDeviceGetClockInfo_t)GetProcAddress((HMODULE)m_nvmlLib, "nvmlDeviceGetClockInfo");
+
+    // Temperature
+    if (nvmlDeviceGetTemperature) {
+        unsigned int temp = 0;
+        if (nvmlDeviceGetTemperature(m_nvmlDevice, 0, &temp) == 0) {
+            m_gpuTemp = static_cast<int>(temp);
+        }
+    }
+
+    // Utilization
+    if (nvmlDeviceGetUtilizationRates) {
+        nvmlUtilization_t util;
+        if (nvmlDeviceGetUtilizationRates(m_nvmlDevice, &util) == 0) {
+            m_gpuUtil = static_cast<int>(util.gpu);
+        }
+    }
+
+    // Memory
+    if (nvmlDeviceGetMemoryInfo) {
+        nvmlMemory_t mem;
+        if (nvmlDeviceGetMemoryInfo(m_nvmlDevice, &mem) == 0) {
+            m_gpuMemUsed = static_cast<int>(mem.used / (1024 * 1024)); // MB
+            m_gpuMemTotal = static_cast<int>(mem.total / (1024 * 1024)); // MB
+        }
+    }
+
+    // Power
+    if (nvmlDeviceGetPowerUsage) {
+        unsigned int power = 0;
+        if (nvmlDeviceGetPowerUsage(m_nvmlDevice, &power) == 0) {
+            m_gpuPower = static_cast<int>(power / 1000); // Convert mW to W
+        }
+    }
+
+    // Clock speed
+    if (nvmlDeviceGetClockInfo) {
+        unsigned int clock = 0;
+        if (nvmlDeviceGetClockInfo(m_nvmlDevice, 0, &clock) == 0) { // 0 = Graphics clock
+            m_gpuClock = static_cast<int>(clock);
+        }
+    }
+
+    emit gpuMetricsChanged();
+#endif
 }

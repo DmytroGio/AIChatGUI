@@ -70,6 +70,16 @@ class ModelInfo : public QObject
     Q_PROPERTY(int tokensOut READ tokensOut NOTIFY statsChanged)
     Q_PROPERTY(QObject* requestLog READ requestLog CONSTANT)
 
+    // GPU Properties
+    Q_PROPERTY(bool gpuAvailable READ gpuAvailable NOTIFY gpuMetricsChanged)
+    Q_PROPERTY(QString gpuName READ gpuName NOTIFY gpuMetricsChanged)
+    Q_PROPERTY(int gpuTemp READ gpuTemp NOTIFY gpuMetricsChanged)
+    Q_PROPERTY(int gpuUtil READ gpuUtil NOTIFY gpuMetricsChanged)
+    Q_PROPERTY(int gpuMemUsed READ gpuMemUsed NOTIFY gpuMetricsChanged)
+    Q_PROPERTY(int gpuMemTotal READ gpuMemTotal NOTIFY gpuMetricsChanged)
+    Q_PROPERTY(int gpuPower READ gpuPower NOTIFY gpuMetricsChanged)
+    Q_PROPERTY(int gpuClock READ gpuClock NOTIFY gpuMetricsChanged)
+
 public:
     explicit ModelInfo(QObject *parent = nullptr);
 
@@ -104,10 +114,21 @@ public:
     int tokensIn() const { return m_tokensIn; }
     int tokensOut() const { return m_tokensOut; }
 
+    // GPU getters
+    bool gpuAvailable() const { return m_gpuAvailable; }
+    QString gpuName() const { return m_gpuName; }
+    int gpuTemp() const { return m_gpuTemp; }
+    int gpuUtil() const { return m_gpuUtil; }
+    int gpuMemUsed() const { return m_gpuMemUsed; }
+    int gpuMemTotal() const { return m_gpuMemTotal; }
+    int gpuPower() const { return m_gpuPower; }
+    int gpuClock() const { return m_gpuClock; }
+
 signals:
     void modelChanged();
     void statsChanged();
     void speedDataPoint(float speed);
+    void gpuMetricsChanged();
 
 public slots:
     void updateCurrentStats();
@@ -139,7 +160,26 @@ private:
     llama_context *m_ctx = nullptr;
 
     RequestLogModel *m_requestLog;
+
+
     int m_lastTokensIn = 0;
+
+    void updateGPUMetrics();
+    // GPU monitoring
+    bool m_gpuAvailable = false;
+    QString m_gpuName = "N/A";
+    int m_gpuTemp = 0;
+    int m_gpuUtil = 0;
+    int m_gpuMemUsed = 0;
+    int m_gpuMemTotal = 0;
+    int m_gpuPower = 0;
+    int m_gpuClock = 0;
+    QTimer *m_gpuTimer = nullptr;
+
+    #ifdef _WIN32
+    void* m_nvmlDevice = nullptr;
+    void* m_nvmlLib = nullptr;
+    #endif
 };
 
 #endif // MODELINFO_H
