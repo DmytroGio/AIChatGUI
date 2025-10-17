@@ -7,6 +7,12 @@
 #include <llama.h>
 #include <QAbstractListModel>
 
+#ifdef _WIN32
+#include <comdef.h>
+#include <Wbemidl.h>
+#pragma comment(lib, "wbemuuid.lib")
+#endif
+
 // Модель для логирования запросов
 class RequestLogModel : public QAbstractListModel
 {
@@ -80,6 +86,12 @@ class ModelInfo : public QObject
     Q_PROPERTY(int gpuPower READ gpuPower NOTIFY gpuMetricsChanged)
     Q_PROPERTY(int gpuClock READ gpuClock NOTIFY gpuMetricsChanged)
 
+    // CPU
+    Q_PROPERTY(QString cpuName READ cpuName NOTIFY cpuMetricsChanged)
+    Q_PROPERTY(int cpuTemp READ cpuTemp NOTIFY cpuMetricsChanged)
+    Q_PROPERTY(int cpuUsage READ cpuUsage NOTIFY cpuMetricsChanged)
+    Q_PROPERTY(int cpuClock READ cpuClock NOTIFY cpuMetricsChanged)
+
 public:
     explicit ModelInfo(QObject *parent = nullptr);
 
@@ -124,11 +136,18 @@ public:
     int gpuPower() const { return m_gpuPower; }
     int gpuClock() const { return m_gpuClock; }
 
+    // CPU getters
+    QString cpuName() const { return m_cpuName; }
+    int cpuTemp() const { return m_cpuTemp; }
+    int cpuUsage() const { return m_cpuUsage; }
+    int cpuClock() const { return m_cpuClock; }
+
 signals:
     void modelChanged();
     void statsChanged();
     void speedDataPoint(float speed);
     void gpuMetricsChanged();
+    void cpuMetricsChanged();
 
 public slots:
     void updateCurrentStats();
@@ -180,6 +199,12 @@ private:
     void* m_nvmlDevice = nullptr;
     void* m_nvmlLib = nullptr;
     #endif
+
+    // CPU monitoring
+    QString m_cpuName = "N/A";
+    int m_cpuTemp = 0;
+    int m_cpuUsage = 0;
+    int m_cpuClock = 0; // MHz
 };
 
 #endif // MODELINFO_H

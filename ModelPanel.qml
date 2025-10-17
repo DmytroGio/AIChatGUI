@@ -481,119 +481,108 @@ Rectangle {
                         opacity: 0.3
                     }
 
-                    // GPU Section
-                    Column {
+                    // GPU & CPU Section
+                    Row {
                         width: parent.width
-                        spacing: 12
-                        visible: modelInfo.gpuName !== "N/A"
+                        spacing: 20
+                        visible: modelInfo.gpuName !== "N/A" || modelInfo.cpuName !== "N/A"
 
-                        Row {
-                            width: parent.width
-                            spacing: 8
+                        // GPU Column
+                        Column {
+                            width: (parent.width - 20) / 2
+                            spacing: 12
+                            visible: modelInfo.gpuName !== "N/A"
 
-                            Text {
-                                text: "🎮"
-                                font.pixelSize: 16
+                            Row {
+                                width: parent.width
+                                spacing: 8
+
+                                Text {
+                                    text: "🎮"
+                                    font.pixelSize: 16
+                                }
+
+                                Text {
+                                    text: "GPU: " + modelInfo.gpuName
+                                    color: modelPanel.textPrimary
+                                    font.pixelSize: 13
+                                    font.bold: true
+                                    elide: Text.ElideRight
+                                    width: parent.width - 30
+                                }
                             }
 
-                            Text {
-                                text: "GPU: " + modelInfo.gpuName
-                                color: modelPanel.textPrimary
-                                font.pixelSize: 13
-                                font.bold: true
-                                elide: Text.ElideRight
-                                width: parent.width - 30
-                            }
-                        }
+                            // GPU Metrics Grid
+                            Grid {
+                                width: parent.width
+                                columns: 2
+                                columnSpacing: 10
+                                rowSpacing: 10
 
-                        // GPU Metrics Grid
-                        Grid {
-                            width: parent.width
-                            columns: 2
-                            columnSpacing: 15
-                            rowSpacing: 12
-
-                            // Temperature
-                            Column {
-                                width: (parent.width - 15) / 2
-                                spacing: 6
-
-                                Row {
-                                    spacing: 6
+                                // Temperature
+                                Column {
+                                    width: (parent.width - 10) / 2
+                                    spacing: 4
 
                                     Text {
-                                        text: "🌡️"
-                                        font.pixelSize: 14
-                                    }
-
-                                    Text {
-                                        text: "Temperature"
+                                        text: "🌡️ Temp"
                                         color: modelPanel.textSecondary
-                                        font.pixelSize: 12
+                                        font.pixelSize: 10
                                     }
-                                }
-
-                                Rectangle {
-                                    width: parent.width
-                                    height: 35
-                                    radius: 8
-                                    color: "#0a0a15"
-
-                                    Text {
-                                        anchors.centerIn: parent
-                                        text: modelInfo.gpuTemp + "°C"
-                                        color: modelInfo.gpuTemp > 80 ? "#ef4444" :
-                                               modelInfo.gpuTemp > 70 ? "#fbbf24" : "#4ade80"
-                                        font.pixelSize: 18
-                                        font.bold: true
-                                    }
-                                }
-                            }
-
-                            // Utilization
-                            Column {
-                                width: (parent.width - 15) / 2
-                                spacing: 6
-
-                                Row {
-                                    spacing: 6
-
-                                    Text {
-                                        text: "⚙️"
-                                        font.pixelSize: 14
-                                    }
-
-                                    Text {
-                                        text: "Utilization"
-                                        color: modelPanel.textSecondary
-                                        font.pixelSize: 12
-                                    }
-                                }
-
-                                Rectangle {
-                                    width: parent.width
-                                    height: 35
-                                    radius: 8
-                                    color: "#0a0a15"
 
                                     Rectangle {
-                                        width: parent.width * (modelInfo.gpuUtil / 100.0)
-                                        height: parent.height
-                                        radius: parent.radius
-                                        color: modelPanel.primaryColor
-                                        opacity: 0.3
+                                        width: parent.width
+                                        height: 32
+                                        radius: 6
+                                        color: "#0a0a15"
 
-                                        Behavior on width {
-                                            NumberAnimation { duration: 300 }
+                                        Text {
+                                            anchors.centerIn: parent
+                                            text: modelInfo.gpuTemp + "°C"
+                                            color: modelInfo.gpuTemp > 80 ? "#ef4444" :
+                                                   modelInfo.gpuTemp > 70 ? "#fbbf24" : "#4ade80"
+                                            font.pixelSize: 16
+                                            font.bold: true
                                         }
                                     }
+                                }
+
+                                // Utilization
+                                Column {
+                                    width: (parent.width - 10) / 2
+                                    spacing: 4
 
                                     Text {
-                                        anchors.centerIn: parent
-                                        text: modelInfo.gpuUtil + "%"
-                                        color: modelPanel.textPrimary
-                                        font.pixelSize: 18
-                                        font.bold: true
+                                        text: "⚙️ Util"
+                                        color: modelPanel.textSecondary
+                                        font.pixelSize: 10
+                                    }
+
+                                    Rectangle {
+                                        width: parent.width
+                                        height: 32
+                                        radius: 6
+                                        color: "#0a0a15"
+
+                                        Rectangle {
+                                            width: parent.width * (modelInfo.gpuUtil / 100.0)
+                                            height: parent.height
+                                            radius: parent.radius
+                                            color: modelPanel.primaryColor
+                                            opacity: 0.3
+
+                                            Behavior on width {
+                                                NumberAnimation { duration: 300 }
+                                            }
+                                        }
+
+                                        Text {
+                                            anchors.centerIn: parent
+                                            text: modelInfo.gpuUtil + "%"
+                                            color: modelPanel.textPrimary
+                                            font.pixelSize: 16
+                                            font.bold: true
+                                        }
                                     }
                                 }
                             }
@@ -601,27 +590,18 @@ Rectangle {
                             // GPU Memory
                             Column {
                                 width: parent.width
-                                spacing: 6
+                                spacing: 4
 
-                                Row {
-                                    spacing: 6
-
-                                    Text {
-                                        text: "💾"
-                                        font.pixelSize: 14
-                                    }
-
-                                    Text {
-                                        text: "GPU Memory: " + modelInfo.gpuMemUsed + " / " + modelInfo.gpuMemTotal + " MB"
-                                        color: modelPanel.textSecondary
-                                        font.pixelSize: 12
-                                    }
+                                Text {
+                                    text: "💾 Memory: " + modelInfo.gpuMemUsed + " / " + modelInfo.gpuMemTotal + " MB"
+                                    color: modelPanel.textSecondary
+                                    font.pixelSize: 10
                                 }
 
                                 Rectangle {
                                     width: parent.width
-                                    height: 10
-                                    radius: 5
+                                    height: 8
+                                    radius: 4
                                     color: "#0a0a15"
 
                                     Rectangle {
@@ -643,12 +623,142 @@ Rectangle {
                             }
                         }
 
-                        Rectangle {
-                            width: parent.width
-                            height: 1
-                            color: modelPanel.textSecondary
-                            opacity: 0.2
+                        // CPU Column
+                        Column {
+                            width: (parent.width - 20) / 2
+                            spacing: 12
+                            visible: modelInfo.cpuName !== "N/A"
+
+                            Row {
+                                width: parent.width
+                                spacing: 8
+
+                                Text {
+                                    text: "🖥️"
+                                    font.pixelSize: 16
+                                }
+
+                                Text {
+                                    text: "CPU: " + modelInfo.cpuName
+                                    color: modelPanel.textPrimary
+                                    font.pixelSize: 13
+                                    font.bold: true
+                                    elide: Text.ElideRight
+                                    width: parent.width - 30
+                                }
+                            }
+
+                            // CPU Metrics Grid
+                            Grid {
+                                width: parent.width
+                                columns: 2
+                                columnSpacing: 10
+                                rowSpacing: 10
+
+                                // Usage
+                                Column {
+                                    width: (parent.width - 10) / 2
+                                    spacing: 4
+
+                                    Text {
+                                        text: "⚙️ Usage"
+                                        color: modelPanel.textSecondary
+                                        font.pixelSize: 10
+                                    }
+
+                                    Rectangle {
+                                        width: parent.width
+                                        height: 32
+                                        radius: 6
+                                        color: "#0a0a15"
+
+                                        Rectangle {
+                                            width: parent.width * (modelInfo.cpuUsage / 100.0)
+                                            height: parent.height
+                                            radius: parent.radius
+                                            color: modelPanel.primaryColor
+                                            opacity: 0.3
+
+                                            Behavior on width {
+                                                NumberAnimation { duration: 300 }
+                                            }
+                                        }
+
+                                        Text {
+                                            anchors.centerIn: parent
+                                            text: modelInfo.cpuUsage + "%"
+                                            color: modelPanel.textPrimary
+                                            font.pixelSize: 16
+                                            font.bold: true
+                                        }
+                                    }
+                                }
+
+                                // Clock Speed
+                                Column {
+                                    width: (parent.width - 10) / 2
+                                    spacing: 4
+
+                                    Text {
+                                        text: "⚡ Clock"
+                                        color: modelPanel.textSecondary
+                                        font.pixelSize: 10
+                                    }
+
+                                    Rectangle {
+                                        width: parent.width
+                                        height: 32
+                                        radius: 6
+                                        color: "#0a0a15"
+
+                                        Text {
+                                            anchors.centerIn: parent
+                                            text: modelInfo.cpuClock > 0 ? (modelInfo.cpuClock / 1000.0).toFixed(1) + " GHz" : "N/A"
+                                            color: "#4ade80"
+                                            font.pixelSize: 14
+                                            font.bold: true
+                                        }
+                                    }
+                                }
+                            }
+
+                            // RAM Usage (перенесено сюда)
+                            Column {
+                                width: parent.width
+                                spacing: 4
+
+                                Text {
+                                    text: "💾 RAM: " + modelInfo.memoryUsed.toFixed(1) + " / " + modelInfo.memoryTotal.toFixed(1) + " GB"
+                                    color: modelPanel.textSecondary
+                                    font.pixelSize: 10
+                                }
+
+                                Rectangle {
+                                    width: parent.width
+                                    height: 8
+                                    radius: 4
+                                    color: "#0a0a15"
+
+                                    Rectangle {
+                                        width: parent.width * (modelInfo.memoryPercent / 100.0)
+                                        height: parent.height
+                                        radius: parent.radius
+                                        color: modelInfo.memoryPercent > 80 ? "#fbbf24" : "#4ade80"
+
+                                        Behavior on width {
+                                            NumberAnimation { duration: 300 }
+                                        }
+                                    }
+                                }
+                            }
                         }
+                    }
+
+                    Rectangle {
+                        width: parent.width
+                        height: 1
+                        color: modelPanel.textSecondary
+                        opacity: 0.2
                     }
 
                     // Speed with enhanced sparkline

@@ -5,6 +5,8 @@
 
 #ifdef _WIN32
 #include <windows.h>
+#include <pdh.h>
+#pragma comment(lib, "pdh.lib")
 
 // NVML function pointers
 typedef int (*nvmlInit_t)();
@@ -132,6 +134,22 @@ ModelInfo::ModelInfo(QObject *parent)
                 }
             }
         }
+    }
+#endif
+
+#ifdef _WIN32
+    // Get CPU name
+    HKEY hKey;
+    if (RegOpenKeyExA(HKEY_LOCAL_MACHINE,
+                      "HARDWARE\\DESCRIPTION\\System\\CentralProcessor\\0",
+                      0, KEY_READ, &hKey) == ERROR_SUCCESS) {
+        char cpuName[256] = {0};
+        DWORD size = sizeof(cpuName);
+        if (RegQueryValueExA(hKey, "ProcessorNameString", NULL, NULL,
+                             (LPBYTE)cpuName, &size) == ERROR_SUCCESS) {
+            m_cpuName = QString::fromLocal8Bit(cpuName).trimmed();
+        }
+        RegCloseKey(hKey);
     }
 #endif
 
@@ -395,5 +413,32 @@ void ModelInfo::updateGPUMetrics()
     }
 
     emit gpuMetricsChanged();
+
+    // CPU metrics (можно вызывать реже для экономии ресурсов)
+    static int cpuUpdateCounter = 0;
+    if (++cpuUpdateCounter >= 4) { // Обновлять каждые 2 секунды
+        cpuUpdateCounter = 0;
+
+        // CPU Usage через PDH (Performance Data Helper)
+        static PDH_HQUERY cpuQuery = NULL;
+        static PDH_HCOUNTER cpuCounter = NULL;
+
+        if (!cpuQuery) {
+            PdhOpenQueryA(NULL, 0, &cpuQuery);
+            PdhAddCounterA(cpuQuery, "\\Processor(_Total)\\% Processor Time", 0, &cpuCounter);
+            PdhCollectQueryData(cpuQuery);
+        } else {
+            PDH_FMT_COUNTERVALUE counterVal;
+            PdhCollectQueryData(cpuQuery);
+            if (PdhGetFormattedCounterValue(cpuCounter, PDH_FMT_DOUBLE, NULL, &counterVal) == ERROR_SUCCESS) {
+                m_cpuUsage = static_cast<int>(counterVal.doubleValue);
+            }
+        }
+    }
+
+
+
+    emit cpuMetricsChanged();
+
 #endif
 }
