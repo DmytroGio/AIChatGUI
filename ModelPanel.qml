@@ -272,6 +272,26 @@ Rectangle {
                                 color: modelPanel.textSecondary
                                 font.pixelSize: 12
                             }
+
+                            // Path (collapsed, subtle)
+                            Text {
+                                text: modelInfo.isLoaded ? modelInfo.modelPath : ""
+                                color: modelPanel.textSecondary
+                                font.pixelSize: 9
+                                elide: Text.ElideMiddle
+                                width: parent.width
+                                opacity: 0.6
+                                visible: modelInfo.isLoaded
+                            }
+
+                            // Loaded time (subtle)
+                            Text {
+                                text: modelInfo.isLoaded ? "Loaded: " + modelInfo.loadedTime : ""
+                                color: modelPanel.textSecondary
+                                font.pixelSize: 9
+                                opacity: 0.5
+                                visible: modelInfo.isLoaded
+                            }
                         }
                     }
 
@@ -395,32 +415,6 @@ Rectangle {
                         }
                     }
                 }
-            }
-
-
-            Column {
-                width: parent.width
-                spacing: 4
-
-                Text {
-                    text: "Path:"
-                    color: modelPanel.textSecondary
-                    font.pixelSize: 11
-                }
-
-                Text {
-                    text: modelInfo.modelPath
-                    color: modelPanel.textPrimary
-                    font.pixelSize: 10
-                    elide: Text.ElideMiddle
-                    width: parent.width
-                }
-            }
-
-            Text {
-                text: "Loaded: " + modelInfo.loadedTime
-                color: modelPanel.textSecondary
-                font.pixelSize: 11
             }
 
             // ========== RUNTIME STATS ==========
@@ -694,13 +688,13 @@ Rectangle {
                                     }
                                 }
 
-                                // Clock Speed
+                                // CPU Base/Current Frequency
                                 Column {
                                     width: (parent.width - 10) / 2
                                     spacing: 4
 
                                     Text {
-                                        text: "⚡ Clock"
+                                        text: "📊 Frequency"
                                         color: modelPanel.textSecondary
                                         font.pixelSize: 10
                                     }
@@ -711,12 +705,19 @@ Rectangle {
                                         radius: 6
                                         color: "#0a0a15"
 
-                                        Text {
+                                        Column {
                                             anchors.centerIn: parent
-                                            text: modelInfo.cpuClock > 0 ? (modelInfo.cpuClock / 1000.0).toFixed(1) + " GHz" : "N/A"
-                                            color: "#4ade80"
-                                            font.pixelSize: 14
-                                            font.bold: true
+                                            spacing: 2
+
+                                            Text {
+                                                text: modelInfo.cpuClock > 0 ?
+                                                      (modelInfo.cpuClock / 1000.0).toFixed(2) + " GHz" :
+                                                      "N/A"
+                                                color: "#4ade80"
+                                                font.pixelSize: 11
+                                                font.bold: true
+                                                anchors.horizontalCenter: parent.horizontalCenter
+                                            }
                                         }
                                     }
                                 }

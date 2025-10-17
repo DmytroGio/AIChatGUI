@@ -205,6 +205,10 @@ private:
     int m_cpuTemp = 0;
     int m_cpuUsage = 0;
     int m_cpuClock = 0; // MHz
+
+    void updateCPUMetrics();
+    int m_cpuBaseFreq = 0;  // MHz
+    int m_cpuCurrentFreq = 0;  // MHz
 };
 
 #endif // MODELINFO_H

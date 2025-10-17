@@ -434,8 +434,70 @@ void ModelInfo::updateGPUMetrics()
                 m_cpuUsage = static_cast<int>(counterVal.doubleValue);
             }
         }
-    }
 
+        // CPU Frequency через WMI (выполнить один раз или редко)
+        static bool freqInitialized = false;
+        if (!freqInitialized) {
+            CoInitializeEx(0, COINIT_MULTITHREADED);
+
+            IWbemLocator *pLoc = NULL;
+            IWbemServices *pSvc = NULL;
+
+            HRESULT hres = CoCreateInstance(CLSID_WbemLocator, 0, CLSCTX_INPROC_SERVER,
+                                            IID_IWbemLocator, (LPVOID *)&pLoc);
+
+            if (SUCCEEDED(hres)) {
+                hres = pLoc->ConnectServer(_bstr_t(L"ROOT\\CIMV2"), NULL, NULL, 0, NULL, 0, 0, &pSvc);
+
+                if (SUCCEEDED(hres)) {
+                    CoSetProxyBlanket(pSvc, RPC_C_AUTHN_WINNT, RPC_C_AUTHZ_NONE, NULL,
+                                      RPC_C_AUTHN_LEVEL_CALL, RPC_C_IMP_LEVEL_IMPERSONATE, NULL, EOAC_NONE);
+
+                    IEnumWbemClassObject* pEnumerator = NULL;
+                    hres = pSvc->ExecQuery(bstr_t("WQL"),
+                                           bstr_t("SELECT MaxClockSpeed, CurrentClockSpeed FROM Win32_Processor"),
+                                           WBEM_FLAG_FORWARD_ONLY | WBEM_FLAG_RETURN_IMMEDIATELY,
+                                           NULL, &pEnumerator);
+
+                    if (SUCCEEDED(hres)) {
+                        IWbemClassObject *pclsObj = NULL;
+                        ULONG uReturn = 0;
+
+                        while (pEnumerator) {
+                            HRESULT hr = pEnumerator->Next(WBEM_INFINITE, 1, &pclsObj, &uReturn);
+                            if (0 == uReturn) break;
+
+                            VARIANT vtProp;
+
+                            // MaxClockSpeed (базовая частота)
+                            hr = pclsObj->Get(L"MaxClockSpeed", 0, &vtProp, 0, 0);
+                            if (SUCCEEDED(hr) && vtProp.vt == VT_I4) {
+                                m_cpuBaseFreq = vtProp.intVal;
+                            }
+                            VariantClear(&vtProp);
+
+                            // CurrentClockSpeed (текущая частота)
+                            hr = pclsObj->Get(L"CurrentClockSpeed", 0, &vtProp, 0, 0);
+                            if (SUCCEEDED(hr) && vtProp.vt == VT_I4) {
+                                m_cpuClock = vtProp.intVal;
+                            }
+                            VariantClear(&vtProp);
+
+                            pclsObj->Release();
+                        }
+
+                        pEnumerator->Release();
+                    }
+                    pSvc->Release();
+                }
+                pLoc->Release();
+            }
+
+            freqInitialized = true;
+        }
+
+        emit cpuMetricsChanged();
+    }
 
 
     emit cpuMetricsChanged();
