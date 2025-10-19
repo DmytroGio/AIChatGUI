@@ -40,3 +40,6 @@ Tech Stack: Qt6, QML, C++, HTTP API, LM Studio
 
 ## 2025-10-12
 - Planning to accelerate local models - using GPUs, number of threads, Flash Attention...
+
+## 2025-10-19
+- Planning and thinking about designs in Figma
