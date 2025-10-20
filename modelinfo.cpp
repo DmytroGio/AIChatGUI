@@ -2,6 +2,9 @@
 #include <QFileInfo>
 #include <QDateTime>
 #include <cmath>
+#include <QDir>
+#include <QSettings>
+#include <QRegularExpression>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -152,7 +155,8 @@ ModelInfo::ModelInfo(QObject *parent)
         RegCloseKey(hKey);
     }
 #endif
-
+    // Load saved settings
+    loadSettings();
     updateGPUMetrics();
 }
 
@@ -503,4 +507,120 @@ void ModelInfo::updateGPUMetrics()
     emit cpuMetricsChanged();
 
 #endif
+}
+
+
+void ModelInfo::setModelsFolder(const QString &folder)
+{
+    if (m_modelsFolder != folder) {
+        m_modelsFolder = folder;
+        emit modelsFolderChanged();
+        scanModelsFolder();
+        saveSettings();
+    }
+}
+
+void ModelInfo::setAutoLoadModelPath(const QString &path)
+{
+    if (m_autoLoadModelPath != path) {
+        m_autoLoadModelPath = path;
+        emit autoLoadModelPathChanged();
+        saveSettings();
+    }
+}
+
+void ModelInfo::scanModelsFolder()
+{
+    m_availableModels.clear();
+
+    if (m_modelsFolder.isEmpty()) {
+        emit availableModelsChanged();
+        return;
+    }
+
+    QDir dir(m_modelsFolder);
+    if (!dir.exists()) {
+        qWarning() << "Models folder does not exist:" << m_modelsFolder;
+        emit availableModelsChanged();
+        return;
+    }
+
+    QStringList filters;
+    filters << "*.gguf";
+    QFileInfoList fileList = dir.entryInfoList(filters, QDir::Files, QDir::Name);
+
+    for (const QFileInfo &fileInfo : fileList) {
+        ModelFileInfo modelInfo = parseModelFile(fileInfo.absoluteFilePath());
+
+        QVariantMap modelData;
+        modelData["fileName"] = modelInfo.fileName;
+        modelData["fullPath"] = modelInfo.fullPath;
+        modelData["size"] = modelInfo.sizeString;
+        modelData["parameters"] = modelInfo.parameters;
+        modelData["isAutoLoad"] = (modelInfo.fullPath == m_autoLoadModelPath);
+
+        m_availableModels.append(modelData);
+    }
+
+    qDebug() << "Found" << m_availableModels.count() << "models in" << m_modelsFolder;
+    emit availableModelsChanged();
+}
+
+ModelInfo::ModelFileInfo ModelInfo::parseModelFile(const QString &filePath)
+{
+    ModelFileInfo info;
+    QFileInfo fileInfo(filePath);
+
+    info.fileName = fileInfo.fileName();
+    info.fullPath = fileInfo.absoluteFilePath();
+    info.sizeBytes = fileInfo.size();
+
+    // Format size
+    double sizeGB = info.sizeBytes / (1024.0 * 1024.0 * 1024.0);
+    if (sizeGB >= 1.0) {
+        info.sizeString = QString::number(sizeGB, 'f', 1) + " GB";
+    } else {
+        double sizeMB = info.sizeBytes / (1024.0 * 1024.0);
+        info.sizeString = QString::number(sizeMB, 'f', 0) + " MB";
+    }
+
+    // Extract parameters from filename (e.g., "7b", "13b", "70b")
+    QString fileName = info.fileName.toLower();
+    QRegularExpression paramRegex("(\\d+\\.?\\d*)b");
+    QRegularExpressionMatch match = paramRegex.match(fileName);
+
+    if (match.hasMatch()) {
+        QString paramValue = match.captured(1);
+        double params = paramValue.toDouble();
+        if (params >= 1.0) {
+            info.parameters = QString::number(params, 'f', (params < 10 ? 1 : 0)) + "B";
+        } else {
+            info.parameters = QString::number(params * 1000, 'f', 0) + "M";
+        }
+    } else {
+        info.parameters = "Unknown";
+    }
+
+    return info;
+}
+
+void ModelInfo::saveSettings()
+{
+    QSettings settings("YourCompany", "AIChatGUI");
+    settings.setValue("modelsFolder", m_modelsFolder);
+    settings.setValue("autoLoadModelPath", m_autoLoadModelPath);
+    qDebug() << "Settings saved - Folder:" << m_modelsFolder << "AutoLoad:" << m_autoLoadModelPath;
+}
+
+void ModelInfo::loadSettings()
+{
+    QSettings settings("YourCompany", "AIChatGUI");
+    m_modelsFolder = settings.value("modelsFolder", "").toString();
+    m_autoLoadModelPath = settings.value("autoLoadModelPath", "").toString();
+
+    if (!m_modelsFolder.isEmpty()) {
+        scanModelsFolder();
+    }
+
+    qDebug() << "Settings loaded - Folder:" << m_modelsFolder << "AutoLoad:" << m_autoLoadModelPath;
 }

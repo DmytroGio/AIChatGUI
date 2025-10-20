@@ -92,6 +92,11 @@ class ModelInfo : public QObject
     Q_PROPERTY(int cpuUsage READ cpuUsage NOTIFY cpuMetricsChanged)
     Q_PROPERTY(int cpuClock READ cpuClock NOTIFY cpuMetricsChanged)
 
+    // Model list properties
+    Q_PROPERTY(QString modelsFolder READ modelsFolder WRITE setModelsFolder NOTIFY modelsFolderChanged)
+    Q_PROPERTY(QVariantList availableModels READ availableModels NOTIFY availableModelsChanged)
+    Q_PROPERTY(QString autoLoadModelPath READ autoLoadModelPath WRITE setAutoLoadModelPath NOTIFY autoLoadModelPathChanged)
+
 public:
     explicit ModelInfo(QObject *parent = nullptr);
 
@@ -142,12 +147,26 @@ public:
     int cpuUsage() const { return m_cpuUsage; }
     int cpuClock() const { return m_cpuClock; }
 
+    // Model list
+    QString modelsFolder() const { return m_modelsFolder; }
+    void setModelsFolder(const QString &folder);
+    QVariantList availableModels() const { return m_availableModels; }
+    QString autoLoadModelPath() const { return m_autoLoadModelPath; }
+    void setAutoLoadModelPath(const QString &path);
+
+    Q_INVOKABLE void scanModelsFolder();
+    Q_INVOKABLE void saveSettings();
+    Q_INVOKABLE void loadSettings();
+
 signals:
     void modelChanged();
     void statsChanged();
     void speedDataPoint(float speed);
     void gpuMetricsChanged();
     void cpuMetricsChanged();
+    void modelsFolderChanged();
+    void availableModelsChanged();
+    void autoLoadModelPathChanged();
 
 public slots:
     void updateCurrentStats();
@@ -209,6 +228,21 @@ private:
     void updateCPUMetrics();
     int m_cpuBaseFreq = 0;  // MHz
     int m_cpuCurrentFreq = 0;  // MHz
+
+    // Model list
+    QString m_modelsFolder;
+    QVariantList m_availableModels;
+    QString m_autoLoadModelPath;
+
+    struct ModelFileInfo {
+        QString fileName;
+        QString fullPath;
+        qint64 sizeBytes;
+        QString sizeString;
+        QString parameters; // Извлечено из имени файла
+    };
+
+    ModelFileInfo parseModelFile(const QString &filePath);
 };
 
 #endif // MODELINFO_H

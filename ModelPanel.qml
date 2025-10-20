@@ -228,7 +228,7 @@ Rectangle {
             // ========== MODEL SELECTOR & INFO ==========
             Rectangle {
                 width: parent.width
-                height: modelDetailsColumn.height + 24
+                height: modelSelectorColumn.height + 24
                 color: modelPanel.surfaceColor
                 radius: 12
                 border.color: modelPanel.primaryColor
@@ -236,15 +236,16 @@ Rectangle {
                 opacity: 0.9
 
                 Column {
-                    id: modelDetailsColumn
+                    id: modelSelectorColumn
                     anchors.centerIn: parent
                     width: parent.width - 24
                     spacing: 12
 
-                    // Model Name & Icon
+                    // Current Model Display (when loaded)
                     Row {
                         width: parent.width
                         spacing: 12
+                        visible: modelInfo.isLoaded
 
                         Text {
                             text: "🔮"
@@ -257,7 +258,7 @@ Rectangle {
                             spacing: 4
 
                             Text {
-                                text: modelInfo.isLoaded ? modelInfo.modelName : "No Model Loaded"
+                                text: modelInfo.modelName
                                 color: modelPanel.textPrimary
                                 font.pixelSize: 18
                                 font.bold: true
@@ -266,31 +267,9 @@ Rectangle {
                             }
 
                             Text {
-                                text: modelInfo.isLoaded ?
-                                      modelInfo.modelSize + " • " + modelInfo.layers + " layers • " + modelInfo.contextSize + " ctx" :
-                                      "Select a GGUF model to begin"
+                                text: modelInfo.modelSize + " • " + modelInfo.layers + " layers • " + modelInfo.contextSize + " ctx"
                                 color: modelPanel.textSecondary
                                 font.pixelSize: 12
-                            }
-
-                            // Path (collapsed, subtle)
-                            Text {
-                                text: modelInfo.isLoaded ? modelInfo.modelPath : ""
-                                color: modelPanel.textSecondary
-                                font.pixelSize: 9
-                                elide: Text.ElideMiddle
-                                width: parent.width
-                                opacity: 0.6
-                                visible: modelInfo.isLoaded
-                            }
-
-                            // Loaded time (subtle)
-                            Text {
-                                text: modelInfo.isLoaded ? "Loaded: " + modelInfo.loadedTime : ""
-                                color: modelPanel.textSecondary
-                                font.pixelSize: 9
-                                opacity: 0.5
-                                visible: modelInfo.isLoaded
                             }
                         }
                     }
@@ -300,50 +279,64 @@ Rectangle {
                         height: 1
                         color: modelPanel.textSecondary
                         opacity: 0.3
+                        visible: modelInfo.isLoaded
                     }
 
-                    // Action Buttons
+                    // Folder Selection
                     Row {
                         width: parent.width
                         spacing: 10
 
                         Button {
-                            id: loadModelButton
-                            text: modelInfo.isLoaded ? "Change Model" : "Load Model"
+                            text: modelInfo.modelsFolder ? "📁 Change Folder" : "📁 Choose Folder"
                             width: parent.width * 0.48
                             height: 38
-                            enabled: true
 
-                            onClicked: fileDialog.open()
+                            onClicked: folderDialog.open()
 
                             background: Rectangle {
-                                color: loadModelButton.pressed ? Qt.darker(modelPanel.primaryColor, 1.2) :
-                                       loadModelButton.hovered ? Qt.lighter(modelPanel.primaryColor, 1.1) :
+                                color: parent.pressed ? Qt.darker(modelPanel.primaryColor, 1.2) :
+                                       parent.hovered ? Qt.lighter(modelPanel.primaryColor, 1.1) :
                                        modelPanel.primaryColor
                                 radius: 8
-
-                                Behavior on color {
-                                    ColorAnimation { duration: 150 }
-                                }
                             }
 
-                            contentItem: Row {
-                                anchors.centerIn: parent
-                                spacing: 6
+                            contentItem: Text {
+                                text: parent.text
+                                color: "white"
+                                font.pixelSize: 13
+                                font.bold: true
+                                horizontalAlignment: Text.AlignHCenter
+                                verticalAlignment: Text.AlignVCenter
+                            }
+                        }
 
-                                Text {
-                                    text: "📁"
-                                    font.pixelSize: 16
-                                    anchors.verticalCenter: parent.verticalCenter
-                                }
+                        Button {
+                            text: "🔄"
+                            width: parent.width * 0.12
+                            height: 38
+                            enabled: modelInfo.modelsFolder !== ""
 
-                                Text {
-                                    text: loadModelButton.text
-                                    color: "white"
-                                    font.pixelSize: 13
-                                    font.bold: true
-                                    anchors.verticalCenter: parent.verticalCenter
-                                }
+                            onClicked: modelInfo.scanModelsFolder()
+
+                            ToolTip.visible: hovered
+                            ToolTip.text: "Rescan folder"
+
+                            background: Rectangle {
+                                color: parent.pressed ? Qt.darker(modelPanel.accentColor, 1.2) :
+                                       parent.hovered ? Qt.lighter(modelPanel.accentColor, 1.1) :
+                                       "transparent"
+                                radius: 8
+                                border.color: modelPanel.accentColor
+                                border.width: 1
+                                opacity: parent.enabled ? 1.0 : 0.4
+                            }
+
+                            contentItem: Text {
+                                text: parent.text
+                                font.pixelSize: 18
+                                horizontalAlignment: Text.AlignHCenter
+                                verticalAlignment: Text.AlignVCenter
                             }
                         }
 
@@ -354,26 +347,20 @@ Rectangle {
                             height: 38
                             enabled: modelInfo.isLoaded
 
-                            onClicked: {
-                                llamaConnector.unloadModel()
-                            }
+                            onClicked: llamaConnector.unloadModel()
 
                             background: Rectangle {
-                                color: unloadButton.pressed ? "#c0392b" :
-                                       unloadButton.hovered ? "#e74c3c" :
+                                color: parent.pressed ? "#c0392b" :
+                                       parent.hovered ? "#e74c3c" :
                                        "transparent"
                                 radius: 8
                                 border.color: "#e74c3c"
                                 border.width: 1
-                                opacity: unloadButton.enabled ? 1.0 : 0.4
-
-                                Behavior on color {
-                                    ColorAnimation { duration: 150 }
-                                }
+                                opacity: parent.enabled ? 1.0 : 0.4
                             }
 
                             contentItem: Text {
-                                text: unloadButton.text
+                                text: parent.text
                                 color: modelPanel.textPrimary
                                 horizontalAlignment: Text.AlignHCenter
                                 verticalAlignment: Text.AlignVCenter
@@ -384,33 +371,244 @@ Rectangle {
                         Button {
                             id: settingsButton
                             text: "⚙️"
-                            width: parent.width * 0.24
+                            width: parent.width * 0.12
                             height: 38
                             enabled: modelInfo.isLoaded
 
-                            onClicked: {
-                                settingsPopup.open()
-                            }
+                            onClicked: settingsPopup.open()
 
                             background: Rectangle {
-                                color: settingsButton.pressed ? Qt.darker(modelPanel.accentColor, 1.2) :
-                                       settingsButton.hovered ? Qt.lighter(modelPanel.accentColor, 1.1) :
+                                color: parent.pressed ? Qt.darker(modelPanel.accentColor, 1.2) :
+                                       parent.hovered ? Qt.lighter(modelPanel.accentColor, 1.1) :
                                        "transparent"
                                 radius: 8
                                 border.color: modelPanel.accentColor
                                 border.width: 1
-                                opacity: settingsButton.enabled ? 1.0 : 0.4
-
-                                Behavior on color {
-                                    ColorAnimation { duration: 150 }
-                                }
+                                opacity: parent.enabled ? 1.0 : 0.4
                             }
 
                             contentItem: Text {
-                                text: settingsButton.text
+                                text: parent.text
+                                font.pixelSize: 18
                                 horizontalAlignment: Text.AlignHCenter
                                 verticalAlignment: Text.AlignVCenter
-                                font.pixelSize: 18
+                            }
+                        }
+                    }
+
+                    // Folder path display
+                    Text {
+                        width: parent.width
+                        text: modelInfo.modelsFolder ? "📂 " + modelInfo.modelsFolder : "No folder selected"
+                        color: modelPanel.textSecondary
+                        font.pixelSize: 10
+                        elide: Text.ElideMiddle
+                        visible: modelInfo.modelsFolder !== ""
+                    }
+
+                    // Models List (collapsible)
+                    Rectangle {
+                        width: parent.width
+                        height: modelsListCollapsed ? 40 : Math.min(modelsListView.contentHeight + 50, 400)
+                        color: "#0a0a15"
+                        radius: 8
+                        visible: modelInfo.modelsFolder !== ""
+
+                        property bool modelsListCollapsed: false
+
+                        Behavior on height {
+                            NumberAnimation { duration: 200; easing.type: Easing.OutCubic }
+                        }
+
+                        Column {
+                            anchors.fill: parent
+                            anchors.margins: 10
+                            spacing: 8
+
+                            // Header
+                            Row {
+                                width: parent.width
+                                spacing: 8
+
+                                Text {
+                                    text: "📋 Available Models (" + modelInfo.availableModels.length + ")"
+                                    color: modelPanel.textPrimary
+                                    font.pixelSize: 13
+                                    font.bold: true
+                                    width: parent.width - 40
+                                }
+
+                                Button {
+                                    text: parent.parent.parent.modelsListCollapsed ? "▼" : "▲"
+                                    width: 30
+                                    height: 24
+
+                                    onClicked: parent.parent.parent.modelsListCollapsed = !parent.parent.parent.modelsListCollapsed
+
+                                    background: Rectangle {
+                                        color: parent.pressed ? Qt.darker(modelPanel.surfaceColor, 1.2) :
+                                               parent.hovered ? Qt.lighter(modelPanel.surfaceColor, 1.2) :
+                                               "transparent"
+                                        radius: 6
+                                        border.color: modelPanel.textSecondary
+                                        border.width: 1
+                                    }
+
+                                    contentItem: Text {
+                                        text: parent.text
+                                        color: modelPanel.textPrimary
+                                        horizontalAlignment: Text.AlignHCenter
+                                        verticalAlignment: Text.AlignVCenter
+                                        font.pixelSize: 12
+                                    }
+                                }
+                            }
+
+                            // Models ListView
+                            ListView {
+                                id: modelsListView
+                                width: parent.width
+                                height: parent.height - 40
+                                clip: true
+                                visible: !parent.parent.modelsListCollapsed
+
+                                model: modelInfo.availableModels
+
+                                delegate: Rectangle {
+                                    width: modelsListView.width
+                                    height: 70
+                                    color: modelArea.containsMouse ? Qt.lighter(modelPanel.surfaceColor, 1.1) : "transparent"
+                                    radius: 6
+
+                                    MouseArea {
+                                        id: modelArea
+                                        anchors.fill: parent
+                                        hoverEnabled: true
+
+                                        onClicked: {
+                                            if (modelData.fullPath !== modelInfo.modelPath) {
+                                                loadingPopup.open()
+                                                llamaConnector.loadModel(modelData.fullPath)
+                                            }
+                                        }
+                                    }
+
+                                    Row {
+                                        anchors.fill: parent
+                                        anchors.margins: 8
+                                        spacing: 12
+
+                                        // Auto-load checkbox
+                                        Rectangle {
+                                            width: 24
+                                            height: 24
+                                            radius: 4
+                                            color: "transparent"
+                                            border.color: modelData.isAutoLoad ? "#4ade80" : modelPanel.textSecondary
+                                            border.width: 2
+                                            anchors.verticalCenter: parent.verticalCenter
+
+                                            Text {
+                                                anchors.centerIn: parent
+                                                text: modelData.isAutoLoad ? "✓" : ""
+                                                color: "#4ade80"
+                                                font.pixelSize: 16
+                                                font.bold: true
+                                            }
+
+                                            MouseArea {
+                                                anchors.fill: parent
+                                                onClicked: {
+                                                    if (modelData.isAutoLoad) {
+                                                        modelInfo.autoLoadModelPath = ""
+                                                    } else {
+                                                        modelInfo.autoLoadModelPath = modelData.fullPath
+                                                    }
+                                                    modelInfo.scanModelsFolder()
+                                                }
+                                            }
+                                        }
+
+                                        Column {
+                                            width: parent.width - 40
+                                            spacing: 4
+                                            anchors.verticalCenter: parent.verticalCenter
+
+                                            Row {
+                                                width: parent.width
+                                                spacing: 8
+
+                                                Text {
+                                                    text: modelData.fileName
+                                                    color: modelData.fullPath === modelInfo.modelPath ? modelPanel.primaryColor : modelPanel.textPrimary
+                                                    font.pixelSize: 13
+                                                    font.bold: modelData.fullPath === modelInfo.modelPath
+                                                    elide: Text.ElideRight
+                                                    width: parent.width - 120
+                                                }
+
+                                                Rectangle {
+                                                    width: 55
+                                                    height: 20
+                                                    radius: 4
+                                                    color: modelPanel.accentColor
+                                                    opacity: 0.3
+                                                    visible: modelData.fullPath === modelInfo.modelPath
+
+                                                    Text {
+                                                        anchors.centerIn: parent
+                                                        text: "LOADED"
+                                                        color: modelPanel.textPrimary
+                                                        font.pixelSize: 9
+                                                        font.bold: true
+                                                    }
+                                                }
+                                            }
+
+                                            Row {
+                                                spacing: 12
+
+                                                Text {
+                                                    text: "📦 " + modelData.size
+                                                    color: modelPanel.textSecondary
+                                                    font.pixelSize: 11
+                                                }
+
+                                                Text {
+                                                    text: "🔢 " + modelData.parameters
+                                                    color: modelPanel.textSecondary
+                                                    font.pixelSize: 11
+                                                }
+
+                                                Text {
+                                                    text: modelData.isAutoLoad ? "⚡ Auto-load" : ""
+                                                    color: "#4ade80"
+                                                    font.pixelSize: 10
+                                                    font.bold: true
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    Rectangle {
+                                        width: parent.width - 16
+                                        height: 1
+                                        anchors.bottom: parent.bottom
+                                        anchors.horizontalCenter: parent.horizontalCenter
+                                        color: modelPanel.textSecondary
+                                        opacity: 0.2
+                                    }
+                                }
+
+                                Text {
+                                    anchors.centerIn: parent
+                                    text: "No models found\nClick 'Choose Folder' to select models directory"
+                                    color: modelPanel.textSecondary
+                                    font.pixelSize: 12
+                                    opacity: 0.6
+                                    visible: modelsListView.count === 0
+                                    horizontalAlignment: Text.AlignHCenter
+                                }
                             }
                         }
                     }
@@ -1257,32 +1455,20 @@ Rectangle {
         }
     }
 
-    // File Dialog для выбора модели
-    FileDialog {
-        id: fileDialog
-        title: "Select Model File"
-        nameFilters: ["GGUF Models (*.gguf)", "All Files (*)"]
-        fileMode: FileDialog.OpenFile
-        currentFolder: {
-            if (modelInfo.isLoaded && modelInfo.modelPath !== "-") {
-                var path = modelInfo.modelPath
-                var lastSlash = Math.max(path.lastIndexOf('/'), path.lastIndexOf('\\'))
-                if (lastSlash > 0) {
-                    return "file:///" + path.substring(0, lastSlash)
-                }
-            }
-            return ""
-        }
+    // Folder Dialog для выбора папки с моделями
+    FolderDialog {
+        id: folderDialog
+        title: "Select Models Folder"
+        currentFolder: modelInfo.modelsFolder ? "file:///" + modelInfo.modelsFolder : ""
 
         onAccepted: {
-            var path = fileDialog.selectedFile.toString()
+            var path = folderDialog.selectedFolder.toString()
             path = path.replace(/^(file:\/{3})/, "")
             if (Qt.platform.os === "windows") {
                 path = path.replace(/^\//, "")
             }
 
-            loadingPopup.open()
-            llamaConnector.loadModel(path)
+            modelInfo.modelsFolder = path
         }
     }
 

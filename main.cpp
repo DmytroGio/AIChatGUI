@@ -1,6 +1,7 @@
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
+#include <QFile>
 #include "llamaconnector.h"
 #include <QtCore/QString>
 #include "chatmanager.h"
@@ -17,16 +18,21 @@ int main(int argc, char *argv[])
 
     LlamaConnector connector;
 
-    QString modelPath = QCoreApplication::applicationDirPath() + "/models/qwen2.5-coder-3b-instruct-q4_k_m.gguf";
-    qDebug() << "Loading model from:" << modelPath;
+    // Загружаем настройки
+    connector.getModelInfo()->loadSettings();
 
-    if (!connector.loadModel(modelPath)) {
-        qWarning() << "Failed to load model from:" << modelPath;
-        qWarning() << "Make sure the model file exists at this location";
-        return -1;
+    // Проверяем, есть ли модель для автозагрузки
+    QString autoLoadPath = connector.getModelInfo()->autoLoadModelPath();
+    if (!autoLoadPath.isEmpty() && QFile::exists(autoLoadPath)) {
+        qDebug() << "Auto-loading model from:" << autoLoadPath;
+        if (connector.loadModel(autoLoadPath)) {
+            qDebug() << "Model auto-loaded successfully!";
+        } else {
+            qWarning() << "Failed to auto-load model";
+        }
+    } else {
+        qDebug() << "No model configured for auto-load";
     }
-
-    qDebug() << "Model loaded successfully!";
 
     ChatManager chatManager;
 
