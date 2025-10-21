@@ -83,6 +83,8 @@ models/
 # Ignore submodule service files
 # The external/llama.cpp folder itself is tracked by git, but its artifacts are not.
 external/llama.cpp/build/
+external/llama_build/
+external/llama_prebuilt/lib/
 
 # ----------------------------------------------------------------------------
 

@@ -9,12 +9,12 @@ find_package(Qt6 REQUIRED COMPONENTS Quick Network Sql)
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build static libraries" FORCE)
 set(LLAMA_BUILD_SHARED OFF CACHE BOOL "Build llama as static library" FORCE)
 
-set(GGML_CUDA ON CACHE BOOL "Enable CUDA" FORCE)
-set(GGML_CUDA_NO_PEER_COPY ON CACHE BOOL "Disable peer copy" FORCE)
-set(CMAKE_CUDA_ARCHITECTURES "86" CACHE STRING "CUDA arch" FORCE)
-set(CMAKE_CUDA_COMPILER "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v13.0/bin/nvcc.exe" CACHE FILEPATH "CUDA compiler" FORCE)
+# Убираем add_subdirectory(external/llama.cpp) и CUDA настройки
+# Теперь используем предсобранные библиотеки
 
-add_subdirectory(external/llama.cpp)
+# Путь к предсобранным библиотекам
+set(LLAMA_PREBUILT_DIR "${CMAKE_SOURCE_DIR}/external/llama_prebuilt")
+
 
 qt_standard_project_setup()
 
@@ -48,6 +48,13 @@ qt_add_qml_module(appAIChatGUI
 )
 
 
+# Заголовочные файлы llama.cpp
+target_include_directories(appAIChatGUI PRIVATE
+    ${CMAKE_SOURCE_DIR}/external/llama.cpp/include
+    ${CMAKE_SOURCE_DIR}/external/llama.cpp/ggml/include
+)
+
+
 # Qt for iOS sets MACOSX_BUNDLE_GUI_IDENTIFIER automatically since Qt 6.1.
 # If you are developing for iOS or macOS you should consider setting an
 # explicit, fixed bundle identifier manually though.
@@ -59,8 +66,29 @@ set_target_properties(appAIChatGUI PROPERTIES
     WIN32_EXECUTABLE TRUE
 )
 
+# Выбираем правильную папку с библиотеками
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    set(LLAMA_LIB_DIR "${LLAMA_PREBUILT_DIR}/lib/Debug")
+else()
+    set(LLAMA_LIB_DIR "${LLAMA_PREBUILT_DIR}/lib/Release")
+endif()
+
+# Находим CUDA Toolkit
+find_package(CUDAToolkit REQUIRED)
+
 target_link_libraries(appAIChatGUI
-    PRIVATE Qt6::Quick Qt6::Network Qt6::Sql llama ggml
+    PRIVATE
+    Qt6::Quick
+    Qt6::Network
+    Qt6::Sql
+    ${LLAMA_LIB_DIR}/llama.lib
+    ${LLAMA_LIB_DIR}/ggml.lib
+    ${LLAMA_LIB_DIR}/ggml-base.lib
+    ${LLAMA_LIB_DIR}/ggml-cpu.lib
+    ${LLAMA_LIB_DIR}/ggml-cuda.lib
+    CUDA::cudart
+    CUDA::cublas
+    CUDA::cuda_driver
 )
 
 include(GNUInstallDirs)
