@@ -13,6 +13,12 @@ LlamaWorker::LlamaWorker(QObject *parent)
     // ДОБАВИТЬ:
     qDebug() << "=== llama.cpp system info ===";
     qDebug() << llama_print_system_info();
+
+    // ДОБАВИТЬ эти проверки:
+    qDebug() << "=== GPU Support Check ===";
+    qDebug() << "GPU offload supported:" << llama_supports_gpu_offload();
+    qDebug() << "MMAP supported:" << llama_supports_mmap();
+    qDebug() << "MLOCK supported:" << llama_supports_mlock();
 }
 
 LlamaWorker::~LlamaWorker()
@@ -70,11 +76,21 @@ bool LlamaWorker::initialize(const QString &modelPath)
 
     llama_model_params model_params = llama_model_default_params();
 
-    // Всегда пробуем GPU, даже если проверка не прошла
+    qDebug() << "=== Model Loading Configuration ===";
     qDebug() << "GPU offload support:" << llama_supports_gpu_offload();
-    model_params.n_gpu_layers = 999;  // ВРЕМЕННО отключаем GPU
-    // model_params.main_gpu = 0;  // ЗАКОММЕНТИРУЙТЕ
-    // model_params.split_mode = LLAMA_SPLIT_MODE_NONE;  // ЗАКОММЕНТИРУЙТЕ
+
+    if (llama_supports_gpu_offload()) {
+        model_params.n_gpu_layers = 999;  // Все слои на GPU
+        model_params.main_gpu = 0;
+        model_params.split_mode = LLAMA_SPLIT_MODE_NONE;
+        qDebug() << "GPU offload ENABLED, requesting" << model_params.n_gpu_layers << "layers";
+    } else {
+        qDebug() << "WARNING: GPU offload NOT supported!";
+        model_params.n_gpu_layers = 0;
+    }
+
+    model_params.use_mmap = true;
+    model_params.use_mlock = false;
 
     qDebug() << "Loading model from:" << modelPath;
     model = llama_model_load_from_file(modelPath.toUtf8().constData(), model_params);
@@ -83,6 +99,12 @@ bool LlamaWorker::initialize(const QString &modelPath)
         emit errorOccurred("Failed to load model");
         return false;
     }
+
+    // ДОБАВИТЬ:
+    qDebug() << "=== Model Loaded ===";
+    qDebug() << "Requested GPU layers:" << model_params.n_gpu_layers;
+    qDebug() << "Model total layers:" << llama_model_n_layer(model);
+    qDebug() << "Model size:" << (llama_model_size(model) / (1024.0 * 1024.0 * 1024.0)) << "GB";
 
     vocab = llama_model_get_vocab(model);
 
@@ -101,8 +123,14 @@ bool LlamaWorker::initialize(const QString &modelPath)
     ctx_params.n_threads_batch = 12;
 
     // ВСЕГДА включаем GPU параметры
-    ctx_params.offload_kqv = true;
-    ctx_params.flash_attn_type = LLAMA_FLASH_ATTN_TYPE_ENABLED;
+    // ДОБАВИТЬ эти строки:
+    ctx_params.offload_kqv = true;  // Offload KV cache на GPU
+    ctx_params.flash_attn_type = LLAMA_FLASH_ATTN_TYPE_ENABLED;  // Flash Attention
+
+    qDebug() << "=== Context Configuration ===";
+    qDebug() << "Context size:" << ctx_params.n_ctx;
+    qDebug() << "KQV offload:" << ctx_params.offload_kqv;
+    qDebug() << "Flash attention:" << (ctx_params.flash_attn_type == LLAMA_FLASH_ATTN_TYPE_ENABLED ? "enabled" : "disabled");
 
     ctx = llama_init_from_model(model, ctx_params);
 
