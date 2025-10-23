@@ -7,6 +7,14 @@
 LlamaWorker::LlamaWorker(QObject *parent)
     : QObject(parent), m_shouldStop(0)
 {
+#ifdef _WIN32
+    _putenv("GGML_CUDA_FORCE_CUBLAS=1");
+    _putenv("GGML_CUDA_NO_PEER_COPY=1");
+    _putenv("CUDA_LAUNCH_BLOCKING=1");
+#else
+    setenv("GGML_CUDA_FORCE_CUBLAS", "1", 1);
+    setenv("GGML_CUDA_NO_PEER_COPY", "1", 1);  // И ЭТУ
+#endif
 
     llama_backend_init();
 

@@ -86,6 +86,9 @@ external/llama.cpp/build/
 external/llama_build/
 external/llama_prebuilt/lib/
 
+# Ignore custom script output
+external/PowerShell.txt
+
 # ----------------------------------------------------------------------------
 
 
