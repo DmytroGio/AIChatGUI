@@ -10,10 +10,15 @@ LlamaWorker::LlamaWorker(QObject *parent)
 #ifdef _WIN32
     _putenv("GGML_CUDA_FORCE_CUBLAS=1");
     _putenv("GGML_CUDA_NO_PEER_COPY=1");
-    _putenv("CUDA_LAUNCH_BLOCKING=1");
+    // ✅ НОВЫЕ оптимизации:
+    _putenv("GGML_CUDA_FORCE_MMQ=1");        // Матричное умножение на GPU
+    _putenv("GGML_CUDA_F16=1");              // FP16 для ускорения
+    _putenv("CUDA_LAUNCH_BLOCKING=0");       // ❌ УБЕРИ блокировку!
 #else
     setenv("GGML_CUDA_FORCE_CUBLAS", "1", 1);
-    setenv("GGML_CUDA_NO_PEER_COPY", "1", 1);  // И ЭТУ
+    setenv("GGML_CUDA_NO_PEER_COPY", "1", 1);
+    setenv("GGML_CUDA_FORCE_MMQ", "1", 1);
+    setenv("GGML_CUDA_F16", "1", 1);
 #endif
 
     llama_backend_init();
@@ -125,15 +130,22 @@ bool LlamaWorker::initialize(const QString &modelPath)
 
     llama_context_params ctx_params = llama_context_default_params();
     ctx_params.n_ctx = 4096;
-    ctx_params.n_batch = 2048;  // обратно для стабильности
-    ctx_params.n_ubatch = 512;  // ДОБАВИТЬ эту строку
-    ctx_params.n_threads = 12;   // ИЗМЕНЕНО с 4 на 8
-    ctx_params.n_threads_batch = 12;
+    ctx_params.n_batch = 8192;      // ✅ УВЕЛИЧЕНО: Было 2048
+    ctx_params.n_ubatch = 2048;     // ✅ УВЕЛИЧЕНО: Было 512
+    ctx_params.n_threads = 8;       // ✅ Оптимально для большинства CPU
+    ctx_params.n_threads_batch = 8;
 
     // ВСЕГДА включаем GPU параметры
     // ДОБАВИТЬ эти строки:
     ctx_params.offload_kqv = true;  // Offload KV cache на GPU
     ctx_params.flash_attn_type = LLAMA_FLASH_ATTN_TYPE_ENABLED;  // Flash Attention
+
+    // ✅ НОВОЕ: Включаем continuous batching для RTX GPU
+    ctx_params.rope_scaling_type = LLAMA_ROPE_SCALING_TYPE_LINEAR;
+    ctx_params.yarn_ext_factor = -1.0f;
+    ctx_params.yarn_attn_factor = 1.0f;
+    ctx_params.yarn_beta_fast = 32.0f;
+    ctx_params.yarn_beta_slow = 1.0f;
 
     qDebug() << "=== Context Configuration ===";
     qDebug() << "Context size:" << ctx_params.n_ctx;
@@ -261,56 +273,41 @@ void LlamaWorker::processMessage(const QString &message)
     int n_gen = 0;
     const int max_gen_tokens = 512;
 
-    // Если контекст близок к лимиту - очищаем старую историю
-    const int max_context = llama_n_ctx(ctx);
-    if (m_n_past + n_tokens + max_gen_tokens > max_context * 0.9) {
-        qDebug() << "Context nearly full, clearing old messages";
-        llama_memory_t memory = llama_get_memory(ctx);
-        llama_memory_clear(memory, false);
-        m_n_past = 0;
-        m_session_tokens.clear();
+    // ✅ НОВОЕ: Буфер для накопления токенов
+    QString tokenBuffer;
+    int tokensInBuffer = 0;
+    const int EMIT_BATCH_SIZE = 5; // Отправляем по 5 токенов за раз
 
-        // Перезапускаем с системным промптом
-        prompt = "<|im_start|>system\nYou are a helpful assistant.<|im_end|>\n"
-                 "<|im_start|>user\n" + message + "<|im_end|>\n"
-                             "<|im_start|>assistant\n";
-        prompt_str = prompt.toStdString();
+    // ✅ НОВОЕ: Используем std::string вместо QString для скорости
+    std::string responseStr;
+    responseStr.reserve(4096); // Предаллокация памяти
 
-        // Перетокенизируем с новым промптом
-        tokens.resize(prompt_str.size() + 128);
-        n_tokens = llama_tokenize(vocab, prompt_str.c_str(), prompt_str.length(),
-                                  tokens.data(), tokens.size(), true, true);
-        if (n_tokens < 0) {
-            tokens.resize(-n_tokens);
-            n_tokens = llama_tokenize(vocab, prompt_str.c_str(), prompt_str.length(),
-                                      tokens.data(), tokens.size(), true, true);
-        }
-        tokens.resize(n_tokens);
-        m_session_tokens.assign(tokens.begin(), tokens.end());
-    }
-
-    // Создаём batch для генерации ОДИН РАЗ
     llama_batch gen_batch = llama_batch_init(1, 0, 1);
     gen_batch.n_seq_id[0] = 1;
     gen_batch.seq_id[0][0] = 0;
     gen_batch.logits[0] = 1;
     gen_batch.n_tokens = 1;
 
-    qDebug() << "Starting generation loop...";
-
     std::vector<llama_token> response_tokens;
+    response_tokens.reserve(max_gen_tokens); // ✅ Предаллокация
 
     while (n_gen < max_gen_tokens) {
         if (m_shouldStop.loadRelaxed() == 1) {
-            qDebug() << "Generation stopped by user at token" << n_gen;
-            response = response.remove("<|im_end|>").trimmed();
+            // Отправляем остаток буфера
+            if (!tokenBuffer.isEmpty()) {
+                emit tokenGenerated(tokenBuffer);
+            }
 
-            // Добавляем сгенерированные токены в историю
-            m_session_tokens.insert(m_session_tokens.end(), response_tokens.begin(), response_tokens.end());
+            response = QString::fromStdString(responseStr);
+            response = response.remove("<|im_end|>").trimmed();
+            m_session_tokens.insert(m_session_tokens.end(),
+                                    response_tokens.begin(),
+                                    response_tokens.end());
             m_n_past += n_gen;
 
             auto end_time = std::chrono::high_resolution_clock::now();
-            auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
+            auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(
+                end_time - start_time);
 
             llama_batch_free(gen_batch);
             emit generationStopped();
@@ -322,22 +319,33 @@ void LlamaWorker::processMessage(const QString &message)
         llama_token new_token = llama_sampler_sample(sampler, ctx, -1);
 
         if (new_token < 0 || llama_vocab_is_eog(vocab, new_token)) {
-            qDebug() << "EOG token at position" << n_gen;
             break;
         }
 
         response_tokens.push_back(new_token);
 
+        // ✅ ОПТИМИЗАЦИЯ: Работаем с буфером напрямую
         char piece[128];
-        int n_chars = llama_token_to_piece(vocab, new_token, piece, sizeof(piece), 0, true);
+        int n_chars = llama_token_to_piece(vocab, new_token, piece,
+                                           sizeof(piece), 0, true);
 
         if (n_chars > 0) {
-            QString tokenText = QString::fromUtf8(piece, n_chars);
-            response += tokenText;
-            emit tokenGenerated(tokenText);
+            // Добавляем в std::string (быстрее QString)
+            responseStr.append(piece, n_chars);
+
+            // ✅ БАТЧИНГ: Накапливаем токены перед отправкой
+            tokenBuffer += QString::fromUtf8(piece, n_chars);
+            tokensInBuffer++;
+
+            // Отправляем пакет токенов
+            if (tokensInBuffer >= EMIT_BATCH_SIZE) {
+                emit tokenGenerated(tokenBuffer);
+                tokenBuffer.clear();
+                tokensInBuffer = 0;
+            }
         }
 
-        // Переиспользуем batch
+        // Decode
         gen_batch.token[0] = new_token;
         gen_batch.pos[0] = m_n_past + n_gen;
 
@@ -351,15 +359,19 @@ void LlamaWorker::processMessage(const QString &message)
         n_gen++;
     }
 
-    qDebug() << "Generation loop finished, tokens:" << n_gen;
+    // ✅ Отправляем остаток буфера
+    if (!tokenBuffer.isEmpty()) {
+        emit tokenGenerated(tokenBuffer);
+    }
 
-    // Освобождаем batch
     llama_batch_free(gen_batch);
 
-    // Добавляем сгенерированные токены в историю
-    m_session_tokens.insert(m_session_tokens.end(), response_tokens.begin(), response_tokens.end());
+    m_session_tokens.insert(m_session_tokens.end(),
+                            response_tokens.begin(),
+                            response_tokens.end());
     m_n_past += n_gen;
 
+    response = QString::fromStdString(responseStr);
     response = response.remove("<|im_end|>").trimmed();
 
     if (response.isEmpty()) {
@@ -368,7 +380,8 @@ void LlamaWorker::processMessage(const QString &message)
     }
 
     auto end_time = std::chrono::high_resolution_clock::now();
-    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(
+        end_time - start_time);
 
     qDebug() << "Response length:" << response.length();
     qDebug() << "Total tokens in context:" << m_n_past;

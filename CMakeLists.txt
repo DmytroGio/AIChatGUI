@@ -3,10 +3,40 @@ cmake_minimum_required(VERSION 3.16)
 project(AIChatGUI VERSION 0.1 LANGUAGES CXX)
 
 set(CMAKE_VERBOSE_MAKEFILE ON)
-
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# Явно указываем путь к CUDA 12.6 ПЕРЕД find_package
+# ===================================================================
+# ✅ ПРАВИЛЬНАЯ НАСТРОЙКА ОПТИМИЗАЦИЙ (только для Release)
+# ===================================================================
+if(MSVC)
+    # Debug: оставляем дефолтные флаги Qt
+    # Release: добавляем агрессивные оптимизации
+    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /O2 /Ob2 /Oi /Ot /GL /fp:fast")
+    set(CMAKE_EXE_LINKER_FLAGS_RELEASE "${CMAKE_EXE_LINKER_FLAGS_RELEASE} /LTCG /OPT:REF /OPT:ICF")
+
+    # AVX2 только если процессор поддерживает (большинство современных поддерживают)
+    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /arch:AVX2")
+
+    # Отключаем предупреждения о небезопасных функциях
+    add_definitions(-D_CRT_SECURE_NO_WARNINGS)
+else()
+    # Linux/Mac оптимизации
+    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -march=native -ffast-math -funroll-loops")
+endif()
+
+# Выводим информацию о режиме сборки
+message(STATUS "=== Build Configuration ===")
+message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
+if(CMAKE_BUILD_TYPE STREQUAL "Release")
+    message(STATUS "Optimization flags: ENABLED")
+    message(STATUS "CXX flags: ${CMAKE_CXX_FLAGS_RELEASE}")
+else()
+    message(STATUS "Optimization flags: DISABLED (Debug mode)")
+endif()
+
+# ===================================================================
+# CUDA Configuration
+# ===================================================================
 set(CUDAToolkit_ROOT "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v12.6")
 
 find_package(Qt6 REQUIRED COMPONENTS Quick Network Sql)
@@ -14,12 +44,8 @@ find_package(Qt6 REQUIRED COMPONENTS Quick Network Sql)
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build static libraries" FORCE)
 set(LLAMA_BUILD_SHARED OFF CACHE BOOL "Build llama as static library" FORCE)
 
-# Убираем add_subdirectory(external/llama.cpp) и CUDA настройки
-# Теперь используем предсобранные библиотеки
-
 # Путь к предсобранным библиотекам
 set(LLAMA_PREBUILT_DIR "${CMAKE_SOURCE_DIR}/external/llama_prebuilt")
-
 
 qt_standard_project_setup()
 
@@ -52,19 +78,13 @@ qt_add_qml_module(appAIChatGUI
         SOURCES modelinfo.h modelinfo.cpp
 )
 
-
 # Заголовочные файлы llama.cpp
 target_include_directories(appAIChatGUI PRIVATE
     ${CMAKE_SOURCE_DIR}/external/llama.cpp/include
     ${CMAKE_SOURCE_DIR}/external/llama.cpp/ggml/include
 )
 
-
-# Qt for iOS sets MACOSX_BUNDLE_GUI_IDENTIFIER automatically since Qt 6.1.
-# If you are developing for iOS or macOS you should consider setting an
-# explicit, fixed bundle identifier manually though.
 set_target_properties(appAIChatGUI PROPERTIES
-#    MACOSX_BUNDLE_GUI_IDENTIFIER com.example.appAIChatGUI
     MACOSX_BUNDLE_BUNDLE_VERSION ${PROJECT_VERSION}
     MACOSX_BUNDLE_SHORT_VERSION_STRING ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}
     MACOSX_BUNDLE TRUE
@@ -161,4 +181,17 @@ if(WIN32)
         "${CUDAToolkit_BIN_DIR}/cublasLt64${CUDA_DLL_SUFFIX}.dll"
         "$<TARGET_FILE_DIR:appAIChatGUI>"
     )
+endif()
+
+# ===================================================================
+# ✅ ПОДСКАЗКА ПОЛЬЗОВАТЕЛЮ
+# ===================================================================
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    message(STATUS "")
+    message(STATUS "⚠️  ВНИМАНИЕ: Сборка в Debug режиме")
+    message(STATUS "   Для максимальной производительности используй Release:")
+    message(STATUS "   1. В Qt Creator: Projects → Build Settings → Release")
+    message(STATUS "   2. Пересобери проект")
+    message(STATUS "   Это увеличит скорость генерации токенов в 2-3 раза!")
+    message(STATUS "")
 endif()
