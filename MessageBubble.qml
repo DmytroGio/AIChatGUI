@@ -12,16 +12,20 @@ Rectangle {
     property color primaryColor: "#4facfe"
     property color textColor: "#ffffff"
 
-
-
     width: parent.width
     height: messageContent.height + 30
     color: "transparent"
 
-    // ЗАМЕНИТЬ ВЕСЬ Rectangle messageBubble в MessageBubble.qml на это:
-
     Rectangle {
         id: messageBubble
+
+        // ✅ ГЛОБАЛЬНЫЙ ФИКС для emoji во всём приложении
+        FontLoader {
+            id: emojiFont
+            source: Qt.platform.os === "windows" ?
+                    "file:///C:/Windows/Fonts/seguiemj.ttf" : ""
+        }
+
         anchors.right: isUserMessage ? parent.right : undefined
         anchors.left: isUserMessage ? undefined : parent.left
         anchors.rightMargin: isUserMessage ? 0 : parent.width * 0.15
@@ -35,226 +39,362 @@ Rectangle {
         opacity: 0.9
 
         Column {
-         id: messageContent
-         anchors.centerIn: parent
-         width: parent.width - 30
-         spacing: 12
+            id: messageContent
+            anchors.centerIn: parent
+            width: parent.width - 30
+            spacing: 12
 
-         // Обычный текст
-         Text {
-             id: messageLabel
-             width: parent.width
-             text: getFormattedText()
-             color: messageContainer.textColor
-             font.pixelSize: 14
-             wrapMode: Text.Wrap
-             visible: getFormattedText().length > 0
-             textFormat: Text.RichText  // Добавить эту строку для поддержки HTML
-             horizontalAlignment: isUserMessage ? Text.AlignRight : Text.AlignLeft
-         }
+            Repeater {
+                model: {
+                    var parsed = parseMessage(messageText)
+                    var items = []
+                    var thinkIdx = 0
+                    var codeIdx = 0
 
-            // Код блоки с подсветкой
-             Repeater {
-                 model: getCodeBlocks()
+                    for (var i = 0; i < parsed.textParts.length; i++) {
+                        var part = parsed.textParts[i]
 
-                 Rectangle {
-                     width: messageContent.width
-                     height: Math.max(codeEdit.contentHeight + 60, 100)
-                     color: "#0d1117"
-                     radius: 8
-                     border.color: "#21262d"
-                     border.width: 1
+                        if (part === null) {
+                            // Определяем, что это - think или code
+                            if (thinkIdx < parsed.thinkBlocks.length) {
+                                var thinkBlock = parsed.thinkBlocks[thinkIdx]
+                                // Проверяем, что think блок должен быть здесь
+                                if (i === 0 || parsed.textParts[i-1] !== null) {
+                                    items.push({type: 'think', data: thinkBlock})
+                                    thinkIdx++
+                                    continue
+                                }
+                            }
+                            if (codeIdx < parsed.codeBlocks.length) {
+                                items.push({type: 'code', data: parsed.codeBlocks[codeIdx]})
+                                codeIdx++
+                            }
+                        } else {
+                            items.push({type: 'text', data: part})
+                        }
+                    }
+                    return items
+                }
 
-                     Column {
-                         anchors.fill: parent
-                         anchors.margins: 10
-                         spacing: 5
+                Loader {
+                    width: messageContent.width
+                    sourceComponent: {
+                        if (modelData.type === 'text') {
+                            return textComponent
+                        } else if (modelData.type === 'think') {
+                            return thinkComponent
+                        } else if (modelData.type === 'code') {
+                            return codeComponent
+                        }
+                    }
 
-                         // Заголовок (оставляем как есть)
-                         Rectangle {
-                             width: parent.width
-                             height: 25
-                             color: "#161b22"
-                             radius: 4
+                    property var itemData: modelData.data
+                }
+            }
 
-                             Row {
-                                 anchors.left: parent.left
-                                 anchors.leftMargin: 10
-                                 anchors.verticalCenter: parent.verticalCenter
-                                 spacing: 10
+            // ===== TEXT COMPONENT =====
+            Component {
+                id: textComponent
 
-                                 Text {
-                                     text: modelData.language || "code"
-                                     color: "#58a6ff"
-                                     font.pixelSize: 12
-                                     font.family: "monospace"
-                                     font.bold: true
-                                 }
+                Text {
+                    width: messageContent.width
+                    text: {
+                        var formatted = itemData
+                        formatted = formatted.replace(/`([^`\n]+)`/g,
+                            '<span style="background-color: #2d3748; color: #ffd700; padding: 2px 6px; border-radius: 4px; font-family: \'Consolas\', \'Monaco\', monospace; font-size: 13px;">$1</span>')
+                        formatted = formatted.replace(/\n/g, '<br>')
+                        formatted = formatted.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>')
+                        formatted = formatted.replace(/\*(.*?)\*/g, '<i>$1</i>')
+                        return formatted
+                    }
+                    color: messageContainer.textColor
+                    font.pixelSize: 14
+                    font.family: "Segoe UI Symbol, Segoe UI Emoji, Segoe UI, Apple Color Emoji, Noto Color Emoji"
+                    wrapMode: Text.Wrap
+                    textFormat: Text.RichText
+                    horizontalAlignment: isUserMessage ? Text.AlignRight : Text.AlignLeft
+                    renderType: Text.NativeRendering
+                }
+            }
 
-                                 Text {
-                                     text: modelData.lineCount + " lines"
-                                     color: "#7d8590"
-                                     font.pixelSize: 11
-                                 }
-                             }
+            // ===== THINK COMPONENT =====
+            Component {
+                id: thinkComponent
 
-                             Rectangle {
-                                 anchors.right: parent.right
-                                 anchors.rightMargin: 10
-                                 anchors.verticalCenter: parent.verticalCenter
-                                 width: 50
-                                 height: 18
-                                 radius: 4
-                                 color: copyArea.containsMouse ? "#238636" : "#21262d"
+                Rectangle {
+                    width: messageContent.width
+                    height: thinkContent.height + 30
+                    color: "#1a1a2e"
+                    radius: 8
+                    border.color: "#9b59b6"
+                    border.width: 2
+                    opacity: 0.9
 
-                                 Text {
-                                     id: copyText
-                                     anchors.centerIn: parent
-                                     text: "Copy"
-                                     color: "#ffffff"
-                                     font.pixelSize: 10
-                                 }
+                    Column {
+                        id: thinkContent
+                        anchors.centerIn: parent
+                        width: parent.width - 20
+                        spacing: 8
 
-                                 MouseArea {
-                                     id: copyArea
-                                     anchors.fill: parent
-                                     hoverEnabled: true
-                                     onClicked: {
-                                         clipboardHelper.copyText(modelData.code)
-                                         copyText.text = "Copied!"
-                                         resetTimer.restart()
-                                     }
+                        Row {
+                            width: parent.width
+                            spacing: 8
 
-                                     Timer {
-                                         id: resetTimer
-                                         interval: 1500
-                                         onTriggered: copyText.text = "Copy"
-                                     }
-                                 }
-                             }
-                         }
+                            Text {
+                                text: "💭"
+                                font.pixelSize: 16
+                                font.family: "Segoe UI Symbol, Segoe UI Emoji, Apple Color Emoji, Noto Color Emoji"
+                                renderType: Text.NativeRendering
+                            }
 
-                         // Заменяем на TextEdit с SyntaxHighlighter
-                         ScrollView {
-                             width: parent.width
-                             height: parent.parent.height - 35
-                             clip: true
+                            Text {
+                                text: itemData.isClosed ? "Thinking..." : "Thinking... (generating)"
+                                color: "#bb86fc"
+                                font.pixelSize: 12
+                                font.italic: true
+                                font.bold: true
+                            }
+                        }
 
-                             TextEdit {
-                                 id: codeEdit
-                                 text: modelData.code
-                                 color: "#e6edf3"
-                                 font.family: "Consolas, Monaco, monospace"
-                                 font.pixelSize: 12
-                                 wrapMode: TextEdit.Wrap
-                                 selectByMouse: true
-                                 readOnly: true
+                        Text {
+                            width: parent.width
+                            text: itemData.content
+                            color: "#e0e0e0"
+                            font.pixelSize: 12
+                            font.family: "Segoe UI Symbol, Segoe UI Emoji, Segoe UI, Apple Color Emoji, Noto Color Emoji"
+                            wrapMode: Text.Wrap
+                            font.italic: true
+                            renderType: Text.NativeRendering
+                        }
+                    }
+                }
+            }
 
-                                 Component.onCompleted: {
-                                     if (modelData.language && modelData.language !== "text") {
-                                         var highlighter = Qt.createComponent("qrc:/SyntaxHighlighter/SyntaxHighlighter.qml")
-                                         if (highlighter.status === Component.Ready) {
-                                             var highlighterInstance = highlighter.createObject(codeEdit)
-                                             if (highlighterInstance) {
-                                                 highlighterInstance.language = modelData.language
-                                                 highlighterInstance.setDocument(codeEdit.textDocument)
-                                             }
-                                         } else {
-                                             // Fallback - создаем через C++
-                                             var cppHighlighter = Qt.createQmlObject(
-                                                 'import SyntaxHighlighter 1.0; SyntaxHighlighter { language: "' + modelData.language + '" }',
-                                                 codeEdit
-                                             )
-                                             if (cppHighlighter) {
-                                                 cppHighlighter.setDocument(codeEdit.textDocument)
-                                             }
-                                         }
-                                     }
-                                 }
-                             }
-                         }
-                     }
-                 }
-             }
+            // ===== CODE COMPONENT =====
+            Component {
+                id: codeComponent
+
+                Rectangle {
+                    width: messageContent.width
+                    height: Math.max(codeEditWrapper.height + 60, 100)
+                    color: "#0d1117"
+                    radius: 8
+                    border.color: itemData.isClosed ? "#21262d" : "#fbbf24"
+                    border.width: itemData.isClosed ? 1 : 2
+
+                    Column {
+                        anchors.fill: parent
+                        anchors.margins: 10
+                        spacing: 5
+
+                        Rectangle {
+                            width: parent.width
+                            height: 25
+                            color: "#161b22"
+                            radius: 4
+
+                            Row {
+                                anchors.left: parent.left
+                                anchors.leftMargin: 10
+                                anchors.verticalCenter: parent.verticalCenter
+                                spacing: 10
+
+                                Text {
+                                    text: itemData.language || "code"
+                                    color: "#58a6ff"
+                                    font.pixelSize: 12
+                                    font.family: "Consolas, Monaco, monospace"
+                                    font.bold: true
+                                }
+
+                                Text {
+                                    text: itemData.lineCount + " lines" + (itemData.isClosed ? "" : " (generating...)")
+                                    color: itemData.isClosed ? "#7d8590" : "#fbbf24"
+                                    font.pixelSize: 11
+                                }
+                            }
+
+                            Rectangle {
+                                anchors.right: parent.right
+                                anchors.rightMargin: 10
+                                anchors.verticalCenter: parent.verticalCenter
+                                width: 50
+                                height: 18
+                                radius: 4
+                                color: copyArea.containsMouse ? "#238636" : "#21262d"
+
+                                Text {
+                                    id: copyText
+                                    anchors.centerIn: parent
+                                    text: "Copy"
+                                    color: "#ffffff"
+                                    font.pixelSize: 10
+                                }
+
+                                MouseArea {
+                                    id: copyArea
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    onClicked: {
+                                        clipboardHelper.copyText(itemData.content)
+                                        copyText.text = "Copied!"
+                                        resetTimer.restart()
+                                    }
+
+                                    Timer {
+                                        id: resetTimer
+                                        interval: 1500
+                                        onTriggered: copyText.text = "Copy"
+                                    }
+                                }
+                            }
+                        }
+
+                        ScrollView {
+                            id: codeEditWrapper
+                            width: parent.width
+                            height: Math.min(codeEdit.contentHeight + 10, 400)
+                            clip: true
+
+                            TextEdit {
+                                id: codeEdit
+                                text: itemData.content
+                                color: "#e6edf3"
+                                font.family: "Consolas, Segoe UI Symbol, Segoe UI Emoji, monospace"
+                                font.pixelSize: 12
+                                wrapMode: TextEdit.Wrap
+                                selectByMouse: true
+                                readOnly: true
+                                renderType: Text.NativeRendering
+
+                                Component.onCompleted: {
+                                    if (itemData.language && itemData.language !== "text") {
+                                        var cppHighlighter = Qt.createQmlObject(
+                                            'import SyntaxHighlighter 1.0; SyntaxHighlighter { language: "' + itemData.language + '" }',
+                                            codeEdit
+                                        )
+                                        if (cppHighlighter) {
+                                            cppHighlighter.setDocument(codeEdit.textDocument)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 
     function parseMessage(text) {
-        var codeBlocks = []
-        var cleanText = ""
+        var result = {
+            textParts: [],
+            codeBlocks: [],
+            thinkBlocks: []
+        }
 
-        // Улучшенное регулярное выражение для блоков кода
-        var regex = /```(\w*)\n?([\s\S]*?)```/g
-        var match
-        var lastIndex = 0
+        var currentIndex = 0
+        var thinkRegex = /<think>([\s\S]*?)(?:<\/think>|$)/g
+        var codeRegex = /```(\w*)\n?([\s\S]*?)(?:```|$)/g
 
-        while ((match = regex.exec(text)) !== null) {
-            // Добавляем текст до блока кода
-            if (match.index > lastIndex) {
-                var textBefore = text.substring(lastIndex, match.index)
-                cleanText += textBefore
+        // Находим все <think> блоки
+        var thinkMatches = []
+        var thinkMatch
+        while ((thinkMatch = thinkRegex.exec(text)) !== null) {
+            thinkMatches.push({
+                start: thinkMatch.index,
+                end: thinkMatch.index + thinkMatch[0].length,
+                content: thinkMatch[1].trim(),
+                isClosed: thinkMatch[0].includes('</think>')
+            })
+        }
+
+        // Находим все code блоки
+        var codeMatches = []
+        var codeMatch
+        while ((codeMatch = codeRegex.exec(text)) !== null) {
+            codeMatches.push({
+                start: codeMatch.index,
+                end: codeMatch.index + codeMatch[0].length,
+                language: codeMatch[1] || "text",
+                content: codeMatch[2].replace(/^\n+/, '').replace(/\n+$/, ''),
+                isClosed: codeMatch[0].endsWith('```'),
+                lineCount: codeMatch[2].split('\n').length
+            })
+        }
+
+        // Объединяем и сортируем все блоки
+        var allBlocks = []
+        thinkMatches.forEach(function(m) {
+            allBlocks.push({type: 'think', data: m, start: m.start, end: m.end})
+        })
+        codeMatches.forEach(function(m) {
+            allBlocks.push({type: 'code', data: m, start: m.start, end: m.end})
+        })
+        allBlocks.sort(function(a, b) { return a.start - b.start })
+
+        // Разбиваем текст по блокам
+        for (var i = 0; i < allBlocks.length; i++) {
+            var block = allBlocks[i]
+
+            // Добавляем текст перед блоком
+            if (block.start > currentIndex) {
+                var textBefore = text.substring(currentIndex, block.start).trim()
+                if (textBefore) {
+                    result.textParts.push(textBefore)
+                }
             }
 
-            var language = match[1] || "text"
-            var code = match[2]
+            // Добавляем блок
+            if (block.type === 'think') {
+                result.thinkBlocks.push(block.data)
+                result.textParts.push(null) // Placeholder для think блока
+            } else if (block.type === 'code') {
+                result.codeBlocks.push(block.data)
+                result.textParts.push(null) // Placeholder для code блока
+            }
 
-            // Убираем лишние переводы строк в начале и конце
-            code = code.replace(/^\n+/, '').replace(/\n+$/, '')
-
-            codeBlocks.push({
-                language: language,
-                code: code,
-                lineCount: code.split('\n').length
-            })
-
-            lastIndex = regex.lastIndex
+            currentIndex = block.end
         }
 
-        // Добавляем оставшийся текст после последнего блока
-        if (lastIndex < text.length) {
-            cleanText += text.substring(lastIndex)
+        // Добавляем оставшийся текст
+        if (currentIndex < text.length) {
+            var remainingText = text.substring(currentIndex).trim()
+            if (remainingText) {
+                result.textParts.push(remainingText)
+            }
         }
 
-        // Очищаем текст от лишних пробелов и переводов строк
-        cleanText = cleanText.trim()
-
-        // Заменяем множественные переводы строк на двойные
-        cleanText = cleanText.replace(/\n{3,}/g, '\n\n')
-
-        return {
-            textParts: cleanText,
-            codeBlocks: codeBlocks
-        }
+        return result
     }
 
     function getFormattedText() {
         var parsed = parseMessage(messageText)
+        var parts = []
 
-        if (!parsed.textParts || parsed.textParts.length === 0) {
-            return ""
+        var thinkIndex = 0
+        var codeIndex = 0
+
+        for (var i = 0; i < parsed.textParts.length; i++) {
+            var part = parsed.textParts[i]
+
+            if (part === null) {
+                // Пропускаем placeholder - блоки отрисуются через Repeater
+                continue
+            }
+
+            // Форматируем обычный текст
+            var formatted = part
+            formatted = formatted.replace(/`([^`\n]+)`/g,
+                '<span style="background-color: #2d3748; color: #ffd700; padding: 2px 6px; border-radius: 4px; font-family: Consolas, Monaco, monospace; font-size: 13px;">$1</span>')
+            formatted = formatted.replace(/\n/g, '<br>')
+            formatted = formatted.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>')
+            formatted = formatted.replace(/\*(.*?)\*/g, '<i>$1</i>')
+
+            parts.push(formatted)
         }
 
-        var formattedText = parsed.textParts
-
-        // Добавляем inline код блоки (одинарные бэктики)
-        formattedText = formattedText.replace(/`([^`\n]+)`/g,
-            '<span style="background-color: #2d3748; color: #ffd700; padding: 2px 6px; border-radius: 4px; font-family: Consolas, Monaco, monospace; font-size: 13px;">$1</span>')
-
-        // Обрабатываем переводы строк для HTML
-        formattedText = formattedText.replace(/\n/g, '<br>')
-
-        // Обрабатываем жирный текст
-        formattedText = formattedText.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>')
-
-        // Обрабатываем курсив
-        formattedText = formattedText.replace(/\*(.*?)\*/g, '<i>$1</i>')
-
-        return formattedText
-    }
-
-    function getCodeBlocks() {
-        var parsed = parseMessage(messageText)
-        return parsed.codeBlocks || []
+        return parts.join('<br>')
     }
 
      // Tail for speech bubble effect
