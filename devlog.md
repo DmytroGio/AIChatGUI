@@ -46,3 +46,6 @@ Tech Stack: Qt6, QML, C++, HTTP API, LM Studio
 
 ## 2025-10-23
 -🟢 Solved Critical LLM Backend Configuration: I resolved the persistent CUDA error: device kernel image is invalid and related runtime crashes by definitively fixing the llama.cpp CMake build configuration. This involved a complete rebuild after enforcing the correct CUDA Toolkit version (12.6) and setting the GPU architecture strictly to "86" (RTX 3070 Ti) using FORCE flags in CMakeLists.txt before the project() command, which finally eliminated conflicts and allowed the model to successfully offload all layers to VRAM for GPU-accelerated inference.
+
+## 2025-10-26
+- Working on the program’s design and outlining future development plans.
