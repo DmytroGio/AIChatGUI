@@ -19,13 +19,6 @@ Rectangle {
     Rectangle {
         id: messageBubble
 
-        // ✅ ГЛОБАЛЬНЫЙ ФИКС для emoji во всём приложении
-        FontLoader {
-            id: emojiFont
-            source: Qt.platform.os === "windows" ?
-                    "file:///C:/Windows/Fonts/seguiemj.ttf" : ""
-        }
-
         anchors.right: isUserMessage ? parent.right : undefined
         anchors.left: isUserMessage ? undefined : parent.left
         anchors.rightMargin: isUserMessage ? 0 : parent.width * 0.15
@@ -113,7 +106,6 @@ Rectangle {
                     wrapMode: Text.Wrap
                     textFormat: Text.RichText
                     horizontalAlignment: isUserMessage ? Text.AlignRight : Text.AlignLeft
-                    renderType: Text.NativeRendering
                 }
             }
 
@@ -143,8 +135,7 @@ Rectangle {
                             Text {
                                 text: "💭"
                                 font.pixelSize: 16
-                                font.family: "Segoe UI Symbol, Segoe UI Emoji, Apple Color Emoji, Noto Color Emoji"
-                                renderType: Text.NativeRendering
+                                font.family: "Segoe UI"
                             }
 
                             Text {
@@ -161,10 +152,9 @@ Rectangle {
                             text: itemData.content
                             color: "#e0e0e0"
                             font.pixelSize: 12
-                            font.family: "Segoe UI Symbol, Segoe UI Emoji, Segoe UI, Apple Color Emoji, Noto Color Emoji"
+                            font.family: "Segoe UI"  // ← ПРОСТОЙ ШРИФТ
                             wrapMode: Text.Wrap
                             font.italic: true
-                            renderType: Text.NativeRendering
                         }
                     }
                 }
@@ -260,12 +250,11 @@ Rectangle {
                                 id: codeEdit
                                 text: itemData.content
                                 color: "#e6edf3"
-                                font.family: "Consolas, Segoe UI Symbol, Segoe UI Emoji, monospace"
+                                font.family: "Consolas"  // ← МОНОШИРИННЫЙ БЕЗ ДОБАВОК
                                 font.pixelSize: 12
                                 wrapMode: TextEdit.Wrap
                                 selectByMouse: true
                                 readOnly: true
-                                renderType: Text.NativeRendering
 
                                 Component.onCompleted: {
                                     if (itemData.language && itemData.language !== "text") {

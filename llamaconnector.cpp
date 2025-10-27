@@ -330,14 +330,31 @@ void LlamaWorker::processMessage(const QString &message)
                                            sizeof(piece), 0, true);
 
         if (n_chars > 0) {
-            // Добавляем в std::string (быстрее QString)
             responseStr.append(piece, n_chars);
 
-            // ✅ БАТЧИНГ: Накапливаем токены перед отправкой
-            tokenBuffer += QString::fromUtf8(piece, n_chars);
-            tokensInBuffer++;
+            // ✅ ИСПРАВЛЕНИЕ: Проверяем валидность UTF-8 перед добавлением
+            QByteArray byteArray(piece, n_chars);
+            QString decoded = QString::fromUtf8(byteArray);
 
-            // Отправляем пакет токенов
+            // Если декодирование успешно (нет замен на �)
+            if (!decoded.contains(QChar(0xFFFD))) {
+                tokenBuffer += decoded;
+                tokensInBuffer++;
+            } else {
+                // Emoji разбит на части - накапливаем байты
+                static QByteArray incompleteUtf8;
+                incompleteUtf8.append(byteArray);
+
+                // Пробуем декодировать накопленное
+                QString fullDecoded = QString::fromUtf8(incompleteUtf8);
+                if (!fullDecoded.contains(QChar(0xFFFD))) {
+                    tokenBuffer += fullDecoded;
+                    tokensInBuffer++;
+                    incompleteUtf8.clear();
+                }
+                // Иначе продолжаем накапливать
+            }
+
             if (tokensInBuffer >= EMIT_BATCH_SIZE) {
                 emit tokenGenerated(tokenBuffer);
                 tokenBuffer.clear();
