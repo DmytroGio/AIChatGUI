@@ -240,38 +240,174 @@ Rectangle {
                             }
                         }
 
-                        ScrollView {
+                        // Код с нумерацией строк
+                        Item {
                             id: codeEditWrapper
                             width: parent.width
                             height: Math.min(codeEdit.contentHeight + 10, 400)
                             clip: true
 
-                            TextEdit {
-                                id: codeEdit
-                                text: itemData.content
-                                color: "#e6edf3"
-                                font.family: "Consolas"  // ← МОНОШИРИННЫЙ БЕЗ ДОБАВОК
-                                font.pixelSize: 12
-                                wrapMode: TextEdit.Wrap
-                                selectByMouse: true
-                                readOnly: true
+                            Row {
+                                anchors.fill: parent
+                                spacing: 0
 
-                                Component.onCompleted: {
-                                    if (itemData.language && itemData.language !== "text") {
-                                        var cppHighlighter = Qt.createQmlObject(
-                                            'import SyntaxHighlighter 1.0; SyntaxHighlighter { language: "' + itemData.language + '" }',
-                                            codeEdit
-                                        )
-                                        if (cppHighlighter) {
-                                            cppHighlighter.setDocument(codeEdit.textDocument)
+                                // Колонка с номерами строк
+                                Rectangle {
+                                    width: 45
+                                    height: parent.height
+                                    color: "#0d1117"
+
+                                    Flickable {
+                                        anchors.fill: parent
+                                        contentY: codeFlickable.contentY
+                                        interactive: false
+
+                                        Column {
+                                            id: lineNumbers
+                                            width: parent.width
+                                            spacing: 0
+
+                                            Repeater {
+                                                model: itemData.content.split('\n').length
+
+                                                Text {
+                                                    text: index + 1
+                                                    color: "#484f58"
+                                                    font.family: "Consolas"
+                                                    font.pixelSize: 12
+                                                    lineHeight: 1.2  // Добавь это - коэффициент межстрочного интервала
+                                                    lineHeightMode: Text.ProportionalHeight  // И это
+                                                    width: lineNumbers.width
+                                                    height: {
+                                                        var lineText = itemData.content.split('\n')[index]
+                                                        var charWidth = 7.2
+                                                        var availableWidth = codeEdit.width - 10
+                                                        var wrappedLines = Math.max(1, Math.ceil((lineText.length * charWidth) / availableWidth))
+                                                        return Math.ceil(12 * 1.155) * wrappedLines  // Изменено: учитываем lineHeight
+                                                    }
+                                                    horizontalAlignment: Text.AlignRight
+                                                    rightPadding: 10
+                                                    verticalAlignment: Text.AlignTop
+                                                }
+                                            }
                                         }
                                     }
                                 }
+
+                                // Разделитель
+                                Rectangle {
+                                    width: 1
+                                    height: parent.height
+                                    color: "#21262d"
+                                }
+
+                                // Область с кодом и кастомным скроллбаром
+                                Item {
+                                    width: parent.width - 46
+                                    height: parent.height
+
+                                    Flickable {
+                                        id: codeFlickable
+                                        anchors.fill: parent
+                                        anchors.rightMargin: 10
+                                        contentHeight: codeEdit.contentHeight
+                                        boundsBehavior: Flickable.StopAtBounds
+                                        clip: true
+
+                                        TextEdit {
+                                            id: codeEdit
+                                            width: parent.width - 10
+                                            text: itemData.content
+                                            color: "#e6edf3"
+                                            font.family: "Consolas"
+                                            font.pixelSize: 12
+                                            wrapMode: TextEdit.Wrap
+                                            selectByMouse: true
+                                            readOnly: true
+                                            leftPadding: 10
+                                            topPadding: 1
+
+                                            Component.onCompleted: {
+                                                if (itemData.language && itemData.language !== "text") {
+                                                    var cppHighlighter = Qt.createQmlObject(
+                                                        'import SyntaxHighlighter 1.0; SyntaxHighlighter { language: "' + itemData.language + '" }',
+                                                        codeEdit
+                                                    )
+                                                    if (cppHighlighter) {
+                                                        cppHighlighter.setDocument(codeEdit.textDocument)
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    // Кастомный минималистичный скроллбар
+                                    Rectangle {
+                                        id: customScrollbar
+                                        anchors.right: parent.right
+                                        anchors.top: parent.top
+                                        anchors.bottom: parent.bottom
+                                        anchors.rightMargin: 2
+                                        anchors.topMargin: 5
+                                        anchors.bottomMargin: 5
+                                        width: 6
+                                        visible: codeFlickable.contentHeight > codeFlickable.height
+                                        color: "transparent"
+
+                                        Rectangle {
+                                            id: scrollThumb
+                                            width: parent.width
+                                            height: Math.max(20, parent.height * (codeFlickable.height / codeFlickable.contentHeight))
+                                            y: codeFlickable.contentY * (parent.height - height) / Math.max(1, codeFlickable.contentHeight - codeFlickable.height)
+                                            radius: 3
+                                            color: scrollThumbArea.pressed ? "#58a6ff" :
+                                                   scrollThumbArea.containsMouse ? "#484f58" : "#30363d"
+                                            opacity: 0.8
+
+                                            Behavior on color {
+                                                ColorAnimation { duration: 150 }
+                                            }
+
+                                            MouseArea {
+                                                id: scrollThumbArea
+                                                anchors.fill: parent
+                                                hoverEnabled: true
+                                                drag.target: scrollThumb
+                                                drag.axis: Drag.YAxis
+                                                drag.minimumY: 0
+                                                drag.maximumY: customScrollbar.height - scrollThumb.height
+
+                                                onPositionChanged: {
+                                                    if (drag.active) {
+                                                        var ratio = scrollThumb.y / (customScrollbar.height - scrollThumb.height)
+                                                        codeFlickable.contentY = ratio * (codeFlickable.contentHeight - codeFlickable.height)
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    // Mouse wheel handling
+                                    MouseArea {
+                                        anchors.fill: parent
+                                        acceptedButtons: Qt.NoButton
+                                        onWheel: {
+                                            var delta = wheel.angleDelta.y
+                                            var scrollAmount = delta > 0 ? -30 : 30
+                                            var newContentY = codeFlickable.contentY + scrollAmount
+                                            newContentY = Math.max(0, Math.min(newContentY, codeFlickable.contentHeight - codeFlickable.height))
+                                            codeFlickable.contentY = newContentY
+                                        }
+                                    }
+                                }
+
+
                             }
                         }
                     }
                 }
             }
+
         }
     }
 
