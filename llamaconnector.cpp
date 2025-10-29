@@ -271,7 +271,7 @@ void LlamaWorker::processMessage(const QString &message)
 
     QString response;
     int n_gen = 0;
-    const int max_gen_tokens = 512;
+    const int max_gen_tokens = 4096;
 
     // ✅ НОВОЕ: Буфер для накопления токенов
     QString tokenBuffer;
@@ -280,7 +280,7 @@ void LlamaWorker::processMessage(const QString &message)
 
     // ✅ НОВОЕ: Используем std::string вместо QString для скорости
     std::string responseStr;
-    responseStr.reserve(4096); // Предаллокация памяти
+    responseStr.reserve(16384); // Предаллокация памяти
 
     llama_batch gen_batch = llama_batch_init(1, 0, 1);
     gen_batch.n_seq_id[0] = 1;
