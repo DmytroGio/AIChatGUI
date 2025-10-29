@@ -24,7 +24,7 @@ Rectangle {
         anchors.rightMargin: isUserMessage ? 0 : parent.width * 0.15
         anchors.leftMargin: isUserMessage ? parent.width * 0.15 : 0
 
-        width: Math.min(messageContent.implicitWidth + 40, Math.min(600, parent.width * 0.75))
+        width: Math.min(messageContent.implicitWidth + 40, Math.min(800, parent.width * 0.85))
          height: messageContent.height + 25
 
         color: isUserMessage ? messageContainer.userColor : messageContainer.aiColor
@@ -91,8 +91,15 @@ Rectangle {
 
                 Text {
                     width: messageContent.width
+
                     text: {
                         var formatted = itemData
+                        // Обработка заголовков markdown (### ## #)
+                        formatted = formatted.replace(/^### (.*?)$/gm, '<span style="font-size: 16px; font-weight: bold; color: #60a5fa;">$1</span>')
+                        formatted = formatted.replace(/^## (.*?)$/gm, '<span style="font-size: 18px; font-weight: bold; color: #3b82f6;">$1</span>')
+                        formatted = formatted.replace(/^# (.*?)$/gm, '<span style="font-size: 20px; font-weight: bold; color: #2563eb;">$1</span>')
+
+                        // Остальное форматирование (inline code, bold, italic)
                         formatted = formatted.replace(/`([^`\n]+)`/g,
                             '<span style="background-color: #2d3748; color: #ffd700; padding: 2px 6px; border-radius: 4px; font-family: \'Consolas\', \'Monaco\', monospace; font-size: 13px;">$1</span>')
                         formatted = formatted.replace(/\n/g, '<br>')
@@ -142,7 +149,6 @@ Rectangle {
                                 text: itemData.isClosed ? "Thinking..." : "Thinking... (generating)"
                                 color: "#bb86fc"
                                 font.pixelSize: 12
-                                font.italic: true
                                 font.bold: true
                             }
                         }
@@ -152,9 +158,8 @@ Rectangle {
                             text: itemData.content
                             color: "#e0e0e0"
                             font.pixelSize: 12
-                            font.family: "Segoe UI"  // ← ПРОСТОЙ ШРИФТ
+                            font.family: "Segoe UI"
                             wrapMode: Text.Wrap
-                            font.italic: true
                         }
                     }
                 }
@@ -270,24 +275,37 @@ Rectangle {
                                             Repeater {
                                                 model: itemData.content.split('\n').length
 
-                                                Text {
-                                                    text: index + 1
-                                                    color: "#484f58"
-                                                    font.family: "Consolas"
-                                                    font.pixelSize: 12
-                                                    lineHeight: 1.2  // Добавь это - коэффициент межстрочного интервала
-                                                    lineHeightMode: Text.ProportionalHeight  // И это
+                                                Item {
                                                     width: lineNumbers.width
-                                                    height: {
-                                                        var lineText = itemData.content.split('\n')[index]
-                                                        var charWidth = 7.2
-                                                        var availableWidth = codeEdit.width - 10
-                                                        var wrappedLines = Math.max(1, Math.ceil((lineText.length * charWidth) / availableWidth))
-                                                        return Math.ceil(12 * 1.155) * wrappedLines  // Изменено: учитываем lineHeight
+                                                    height: correspondingLine.height
+
+                                                    TextEdit {
+                                                        id: lineNumberText
+                                                        text: (index + 1).toString()
+                                                        color: "#484f58"
+                                                        font.family: codeEdit.font.family
+                                                        font.pixelSize: codeEdit.font.pixelSize
+                                                        width: parent.width
+                                                        wrapMode: TextEdit.NoWrap
+                                                        readOnly: true
+                                                        selectByMouse: false
+                                                        selectByKeyboard: false
+                                                        horizontalAlignment: Text.AlignRight
+                                                        rightPadding: 10
+                                                        anchors.top: parent.top
                                                     }
-                                                    horizontalAlignment: Text.AlignRight
-                                                    rightPadding: 10
-                                                    verticalAlignment: Text.AlignTop
+
+                                                    // Невидимый TextEdit для измерения высоты соответствующей строки
+                                                    TextEdit {
+                                                        id: correspondingLine
+                                                        text: itemData.content.split('\n')[index]
+                                                        visible: false
+                                                        font.family: codeEdit.font.family
+                                                        font.pixelSize: codeEdit.font.pixelSize
+                                                        width: codeEdit.width - 10
+                                                        wrapMode: TextEdit.Wrap
+                                                        leftPadding: 10
+                                                    }
                                                 }
                                             }
                                         }
