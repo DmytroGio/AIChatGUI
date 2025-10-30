@@ -1244,33 +1244,107 @@ Rectangle {
                         visible: !parent.parent.rawOutputCollapsed
                     }
 
-                    // Raw text content
-                    ScrollView {
+                    // Raw text content с кастомным скроллбаром
+                    Item {
                         width: parent.width
                         height: parent.parent.height - 70
                         visible: !parent.parent.rawOutputCollapsed
                         clip: true
 
-                        TextArea {
-                            id: rawOutputText
-                            text: llamaConnector.getLastRawResponse()
-                            color: modelPanel.textPrimary
-                            font.pixelSize: 11
-                            font.family: "Consolas, Monaco, monospace"
-                            wrapMode: Text.Wrap
-                            readOnly: true
-                            selectByMouse: true
+                        // Фон
+                        Rectangle {
+                            anchors.fill: parent
+                            color: "#0a0a15"
+                            radius: 6
+                        }
 
-                            background: Rectangle {
-                                color: "#0a0a15"
-                                radius: 6
-                            }
+                        Flickable {
+                            id: rawOutputFlickable
+                            anchors.fill: parent
+                            anchors.rightMargin: 10
+                            contentHeight: rawOutputText.contentHeight
+                            boundsBehavior: Flickable.StopAtBounds
+                            clip: true
 
-                            Connections {
-                                target: llamaConnector
-                                function onMessageReceived(response) {
-                                    rawOutputText.text = response
+                            TextEdit {
+                                id: rawOutputText
+                                width: parent.width - 10
+                                text: llamaConnector.getLastRawResponse()
+                                color: modelPanel.textPrimary
+                                font.pixelSize: 11
+                                font.family: "Consolas, Monaco, monospace"
+                                wrapMode: Text.Wrap
+                                readOnly: true
+                                selectByMouse: true
+                                leftPadding: 10
+                                rightPadding: 10
+                                topPadding: 8
+
+                                Connections {
+                                    target: llamaConnector
+                                    function onMessageReceived(response) {
+                                        rawOutputText.text = response
+                                    }
                                 }
+                            }
+                        }
+
+                        // Кастомный скроллбар
+                        Rectangle {
+                            id: rawScrollbar
+                            anchors.right: parent.right
+                            anchors.top: parent.top
+                            anchors.bottom: parent.bottom
+                            anchors.rightMargin: 2
+                            anchors.topMargin: 5
+                            anchors.bottomMargin: 5
+                            width: 6
+                            visible: rawOutputFlickable.contentHeight > rawOutputFlickable.height
+                            color: "transparent"
+
+                            Rectangle {
+                                id: rawScrollThumb
+                                width: parent.width
+                                height: Math.max(20, parent.height * (rawOutputFlickable.height / rawOutputFlickable.contentHeight))
+                                y: rawOutputFlickable.contentY * (parent.height - height) / Math.max(1, rawOutputFlickable.contentHeight - rawOutputFlickable.height)
+                                radius: 3
+                                color: rawScrollThumbArea.pressed ? modelPanel.primaryColor :
+                                       rawScrollThumbArea.containsMouse ? modelPanel.accentColor : "#30363d"
+                                opacity: 0.8
+
+                                Behavior on color {
+                                    ColorAnimation { duration: 150 }
+                                }
+
+                                MouseArea {
+                                    id: rawScrollThumbArea
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    drag.target: rawScrollThumb
+                                    drag.axis: Drag.YAxis
+                                    drag.minimumY: 0
+                                    drag.maximumY: rawScrollbar.height - rawScrollThumb.height
+
+                                    onPositionChanged: {
+                                        if (drag.active) {
+                                            var ratio = rawScrollThumb.y / (rawScrollbar.height - rawScrollThumb.height)
+                                            rawOutputFlickable.contentY = ratio * (rawOutputFlickable.contentHeight - rawOutputFlickable.height)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // Mouse wheel handling
+                        MouseArea {
+                            anchors.fill: parent
+                            acceptedButtons: Qt.NoButton
+                            onWheel: function(wheel) {
+                                var delta = wheel.angleDelta.y
+                                var scrollAmount = delta > 0 ? -40 : 40
+                                var newContentY = rawOutputFlickable.contentY + scrollAmount
+                                newContentY = Math.max(0, Math.min(newContentY, rawOutputFlickable.contentHeight - rawOutputFlickable.height))
+                                rawOutputFlickable.contentY = newContentY
                             }
                         }
                     }
