@@ -324,6 +324,35 @@ void LlamaWorker::processMessage(const QString &message)
 
         response_tokens.push_back(new_token);
 
+        // Отслеживание think блоков
+        std::string_view currentResponse(responseStr);
+        size_t thinkStart = currentResponse.find("<think>");
+        size_t thinkEnd = currentResponse.find("</think>");
+
+        // Начало think блока
+        if (!m_inThinkBlock && thinkStart != std::string::npos && thinkEnd == std::string::npos) {
+            m_inThinkBlock = true;
+            m_thinkStartTime = std::chrono::high_resolution_clock::now();
+            qDebug() << "Think block started";
+        }
+
+        // Конец think блока
+        if (m_inThinkBlock && thinkEnd != std::string::npos) {
+            auto thinkEndTime = std::chrono::high_resolution_clock::now();
+            auto thinkDuration = std::chrono::duration_cast<std::chrono::milliseconds>(
+                thinkEndTime - m_thinkStartTime);
+
+            double durationSec = thinkDuration.count() / 1000.0;
+            qDebug() << "Think block finished in" << durationSec << "seconds";
+
+            // Вставляем duration в think блок
+            size_t insertPos = thinkEnd;
+            std::string durationTag = " duration=\"" + std::to_string(durationSec) + "s\"";
+            responseStr.insert(insertPos, durationTag);
+
+            m_inThinkBlock = false;
+        }
+
         // ✅ ОПТИМИЗАЦИЯ: Работаем с буфером напрямую
         char piece[128];
         int n_chars = llama_token_to_piece(vocab, new_token, piece,

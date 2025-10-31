@@ -122,44 +122,137 @@ Rectangle {
 
                 Rectangle {
                     width: messageContent.width
-                    height: thinkContent.height + 30
+                    height: {
+                        var headerHeight = thinkHeader.height + 20
+                        if (thinkExpanded) {
+                            return headerHeight + thinkContent.height + 10
+                        } else if (!itemData.isClosed && previewText.visible) {
+                            // Фиксированная высота для 2 строк preview (высота строки ~13px * 2 + отступы)
+                            return headerHeight + Math.min(previewText.implicitHeight, 30)
+                        }
+                        return headerHeight
+                    }
                     color: "#1a1a2e"
                     radius: 8
                     border.color: "#9b59b6"
                     border.width: 2
                     opacity: 0.9
 
+                    property bool thinkExpanded: false
+
+                    Behavior on height {
+                        NumberAnimation { duration: 200; easing.type: Easing.OutCubic }
+                    }
+
                     Column {
-                        id: thinkContent
-                        anchors.centerIn: parent
-                        width: parent.width - 20
-                        spacing: 8
+                        anchors.fill: parent
+                        anchors.margins: 10
+                        spacing: 10
 
-                        Row {
+                        // Заголовок с кнопкой сворачивания
+                        Rectangle {
+                            id: thinkHeader
                             width: parent.width
-                            spacing: 8
+                            height: 25
+                            color: "#161b22"
+                            radius: 4
 
-                            Text {
-                                text: "💭"
-                                font.pixelSize: 16
-                                font.family: "Segoe UI"
+                            Row {
+                                anchors.left: parent.left
+                                anchors.leftMargin: 10
+                                anchors.verticalCenter: parent.verticalCenter
+                                spacing: 8
+
+                                Text {
+                                    text: "💭"
+                                    font.pixelSize: 16
+                                    font.family: "Segoe UI"
+                                    anchors.verticalCenter: parent.verticalCenter
+                                }
+
+                                Text {
+                                    text: itemData.isClosed
+                                        ? "Thinking completed" + (itemData.duration ? " (" + itemData.duration + ")" : "")
+                                        : "Thinking..."
+                                    color: itemData.isClosed ? "#7d8590" : "#bb86fc"
+                                    font.pixelSize: 12
+                                    font.bold: !itemData.isClosed
+                                    anchors.verticalCenter: parent.verticalCenter
+                                }
                             }
 
-                            Text {
-                                text: itemData.isClosed ? "Thinking..." : "Thinking... (generating)"
-                                color: "#bb86fc"
-                                font.pixelSize: 12
-                                font.bold: true
+                            // Кнопка сворачивания/разворачивания справа
+                            Rectangle {
+                                anchors.right: parent.right
+                                anchors.rightMargin: 10
+                                anchors.verticalCenter: parent.verticalCenter
+                                width: 50
+                                height: 18
+                                radius: 4
+                                color: toggleArea.containsMouse ? "#9b59b6" : "#21262d"
+
+                                Text {
+                                    anchors.centerIn: parent
+                                    text: thinkExpanded ? "Hide" : "Show"
+                                    color: "#ffffff"
+                                    font.pixelSize: 10
+                                }
+
+                                MouseArea {
+                                    id: toggleArea
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
+                                    preventStealing: true
+                                    onClicked: {
+                                        thinkExpanded = !thinkExpanded
+                                        mouse.accepted = true
+                                    }
+                                }
                             }
                         }
 
+                        // Превью последних 2 строк во время генерации (когда свёрнуто)
                         Text {
+                            id: previewText
+                            width: parent.width
+                            height: visible ? Math.min(implicitHeight, 30) : 0
+                            clip: true
+                            text: {
+                                if (!itemData.isClosed && !thinkExpanded && itemData.content) {
+                                    var lines = itemData.content.trim().split('\n').filter(function(line) {
+                                        return line.trim().length > 0
+                                    })
+                                    if (lines.length === 0) return "..."
+                                    if (lines.length === 1) return lines[0]
+                                    return lines[lines.length - 2] + '\n' + lines[lines.length - 1]
+                                }
+                                return ""
+                            }
+                            color: "#a0a0a0"
+                            font.pixelSize: 11
+                            font.family: "Segoe UI"
+                            font.italic: true
+                            wrapMode: Text.Wrap
+                            visible: !itemData.isClosed && !thinkExpanded && text.length > 0
+                            maximumLineCount: 2
+                        }
+
+                        // Полное содержимое (показывается только когда развёрнуто)
+                        Text {
+                            id: thinkContent
                             width: parent.width
                             text: itemData.content
                             color: "#e0e0e0"
                             font.pixelSize: 12
                             font.family: "Segoe UI"
                             wrapMode: Text.Wrap
+                            visible: thinkExpanded
+                            opacity: thinkExpanded ? 1 : 0
+
+                            Behavior on opacity {
+                                NumberAnimation { duration: 150 }
+                            }
                         }
                     }
                 }
@@ -358,11 +451,21 @@ Rectangle {
         var thinkMatches = []
         var thinkMatch
         while ((thinkMatch = thinkRegex.exec(text)) !== null) {
+            var duration = null
+            var fullMatch = thinkMatch[0]
+
+            // Извлекаем duration если есть
+            var durationMatch = fullMatch.match(/duration="([^"]+)"/)
+            if (durationMatch) {
+                duration = durationMatch[1]
+            }
+
             thinkMatches.push({
                 start: thinkMatch.index,
                 end: thinkMatch.index + thinkMatch[0].length,
                 content: thinkMatch[1].trim(),
-                isClosed: thinkMatch[0].includes('</think>')
+                isClosed: thinkMatch[0].includes('</think>'),
+                duration: duration
             })
         }
 

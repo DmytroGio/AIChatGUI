@@ -40,6 +40,10 @@ private:
 
     int m_n_past = 0;  // количество токенов в контексте
     std::vector<llama_token> m_session_tokens;  // история токенов
+
+    // Для отслеживания think блоков
+    std::chrono::high_resolution_clock::time_point m_thinkStartTime;
+    bool m_inThinkBlock = false;
 };
 
 class LlamaConnector : public QObject
