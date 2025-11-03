@@ -227,7 +227,23 @@ ApplicationWindow {
             clip: true
             interactive: false
 
-            onContentHeightChanged: scrollToBottom()
+            property bool shouldAutoScroll: true  // ✅ НОВОЕ
+            property bool isFirstLoad: true  // ✅ НОВОЕ
+
+            onContentHeightChanged: {
+                // При первой загрузке - всегда вниз
+                if (isFirstLoad && contentHeight > 0) {
+                    scrollToBottom()
+                    isFirstLoad = false
+                    return
+                }
+
+                // Для Think блоков - проверяем позицию
+                var isNearBottom = contentY >= (contentHeight - height - 100)
+                if (shouldAutoScroll && isNearBottom) {
+                    scrollToBottom()
+                }
+            }
 
             Column {
                 id: chatContent
@@ -435,9 +451,11 @@ ApplicationWindow {
     }
 
     function scrollToBottom() {
+        flickable.shouldAutoScroll = false  // Временно отключаем
         if (flickable.contentHeight > flickable.height) {
             flickable.contentY = flickable.contentHeight - flickable.height
         }
+        flickable.shouldAutoScroll = true  // Включаем обратно
     }
 
     function sendMessage() {
@@ -539,6 +557,8 @@ ApplicationWindow {
         target: chatManager
 
         function onCurrentChatChanged() {
+            flickable.isFirstLoad = true  // ✅ Сбрасываем флаг при смене чата
+
             if (llamaConnector.currentBubble) {
                 llamaConnector.currentBubble.destroy()
                 llamaConnector.currentBubble = null

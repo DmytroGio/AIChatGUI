@@ -122,16 +122,7 @@ Rectangle {
 
                 Rectangle {
                     width: messageContent.width
-                    height: {
-                        var headerHeight = thinkHeader.height + 20
-                        if (thinkExpanded) {
-                            return headerHeight + thinkContent.height + 10
-                        } else if (!itemData.isClosed && previewText.visible) {
-                            // Фиксированная высота для 2 строк preview (высота строки ~13px * 2 + отступы)
-                            return headerHeight + Math.min(previewText.implicitHeight, 30)
-                        }
-                        return headerHeight
-                    }
+                    height: thinkHeader.height + (thinkExpanded ? thinkContent.height + 20 : 0) + 20
                     color: "#1a1a2e"
                     radius: 8
                     border.color: "#9b59b6"
@@ -171,13 +162,28 @@ Rectangle {
                                 }
 
                                 Text {
-                                    text: itemData.isClosed
-                                        ? "Thinking completed" + (itemData.duration ? " (" + itemData.duration + ")" : "")
-                                        : "Thinking..."
-                                    color: itemData.isClosed ? "#7d8590" : "#bb86fc"
+                                    text: itemData.isClosed ? "Thinking..." : "Thinking... (generating)"
+                                    color: "#bb86fc"
                                     font.pixelSize: 12
-                                    font.bold: !itemData.isClosed
+                                    font.bold: true
                                     anchors.verticalCenter: parent.verticalCenter
+                                }
+
+                                // Индикатор генерации когда свёрнуто
+                                Rectangle {
+                                    width: 8
+                                    height: 8
+                                    radius: 4
+                                    color: "#bb86fc"
+                                    visible: !thinkExpanded && !itemData.isClosed
+                                    anchors.verticalCenter: parent.verticalCenter
+
+                                    SequentialAnimation on opacity {
+                                        running: !thinkExpanded && !itemData.isClosed
+                                        loops: Animation.Infinite
+                                        NumberAnimation { from: 1.0; to: 0.3; duration: 600 }
+                                        NumberAnimation { from: 0.3; to: 1.0; duration: 600 }
+                                    }
                                 }
                             }
 
@@ -203,42 +209,12 @@ Rectangle {
                                     anchors.fill: parent
                                     hoverEnabled: true
                                     cursorShape: Qt.PointingHandCursor
-                                    preventStealing: true
-                                    onClicked: {
-                                        thinkExpanded = !thinkExpanded
-                                        mouse.accepted = true
-                                    }
+                                    onClicked: thinkExpanded = !thinkExpanded
                                 }
                             }
                         }
 
-                        // Превью последних 2 строк во время генерации (когда свёрнуто)
-                        Text {
-                            id: previewText
-                            width: parent.width
-                            height: visible ? Math.min(implicitHeight, 30) : 0
-                            clip: true
-                            text: {
-                                if (!itemData.isClosed && !thinkExpanded && itemData.content) {
-                                    var lines = itemData.content.trim().split('\n').filter(function(line) {
-                                        return line.trim().length > 0
-                                    })
-                                    if (lines.length === 0) return "..."
-                                    if (lines.length === 1) return lines[0]
-                                    return lines[lines.length - 2] + '\n' + lines[lines.length - 1]
-                                }
-                                return ""
-                            }
-                            color: "#a0a0a0"
-                            font.pixelSize: 11
-                            font.family: "Segoe UI"
-                            font.italic: true
-                            wrapMode: Text.Wrap
-                            visible: !itemData.isClosed && !thinkExpanded && text.length > 0
-                            maximumLineCount: 2
-                        }
-
-                        // Полное содержимое (показывается только когда развёрнуто)
+                        // Содержимое (показывается только когда развёрнуто)
                         Text {
                             id: thinkContent
                             width: parent.width
@@ -451,21 +427,11 @@ Rectangle {
         var thinkMatches = []
         var thinkMatch
         while ((thinkMatch = thinkRegex.exec(text)) !== null) {
-            var duration = null
-            var fullMatch = thinkMatch[0]
-
-            // Извлекаем duration если есть
-            var durationMatch = fullMatch.match(/duration="([^"]+)"/)
-            if (durationMatch) {
-                duration = durationMatch[1]
-            }
-
             thinkMatches.push({
                 start: thinkMatch.index,
                 end: thinkMatch.index + thinkMatch[0].length,
                 content: thinkMatch[1].trim(),
-                isClosed: thinkMatch[0].includes('</think>'),
-                duration: duration
+                isClosed: thinkMatch[0].includes('</think>')
             })
         }
 

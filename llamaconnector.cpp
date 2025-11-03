@@ -276,7 +276,7 @@ void LlamaWorker::processMessage(const QString &message)
     // ✅ НОВОЕ: Буфер для накопления токенов
     QString tokenBuffer;
     int tokensInBuffer = 0;
-    const int EMIT_BATCH_SIZE = 5; // Отправляем по 5 токенов за раз
+    const int EMIT_BATCH_SIZE = 50; // Отправляем по 5 токенов за раз
 
     // ✅ НОВОЕ: Используем std::string вместо QString для скорости
     std::string responseStr;
