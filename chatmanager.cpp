@@ -80,6 +80,12 @@ void ChatManager::addMessage(const QString &text, bool isUser)
             msg.isUser = isUser;
             msg.timestamp = QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss");
 
+            // ✅ ИСПРАВЛЕНО: Парсим ВСЕ сообщения от AI (не только первое)
+            if (!isUser) {
+                msg.parsed = parseMarkdown(text);
+                qDebug() << "Parsed" << msg.parsed.blocks.size() << "blocks for AI message";
+            }
+
             chat.messages.append(msg);
             chat.lastMessage = text.left(50) + (text.length() > 50 ? "..." : "");
             chat.lastTimestamp = msg.timestamp;
@@ -124,6 +130,22 @@ QVariantList ChatManager::getCurrentMessages()
                 msgMap["text"] = msg.text;
                 msgMap["isUser"] = msg.isUser;
                 msgMap["timestamp"] = msg.timestamp;
+
+                // ✅ НОВОЕ: добавляем распарсенные блоки
+                QVariantList blocks;
+                for (const auto &block : msg.parsed.blocks) {
+                    QVariantMap blockMap;
+                    blockMap["type"] = static_cast<int>(block.type);
+                    blockMap["content"] = block.content;
+                    blockMap["language"] = block.language;
+                    blockMap["isClosed"] = block.isClosed;
+                    blockMap["lineCount"] = block.lineCount;
+                    blocks.append(blockMap);
+                    qDebug() << "Block type:" << static_cast<int>(block.type)
+                             << "content:" << block.content.left(50);
+                }
+                msgMap["blocks"] = blocks;
+
                 messages.append(msgMap);
             }
             break;
@@ -319,4 +341,113 @@ int ChatManager::getMessageCount() const
         }
     }
     return 0;
+}
+
+
+ParsedContent ChatManager::parseMarkdown(const QString &text)
+{
+    ParsedContent result;
+
+    qDebug() << "=== parseMarkdown called ===";
+    qDebug() << "Text length:" << text.length();
+    qDebug() << "Text preview:" << text.left(100);
+
+    // Regex для поиска блоков
+    QRegularExpression thinkRegex("<think>([\\s\\S]*?)(?:</think>|$)");
+    QRegularExpression codeRegex("```(\\w*)\\n?([\\s\\S]*?)(?:```|$)");
+
+    struct Block {
+        int start;
+        int end;
+        ContentType type;
+        QString content;
+        QString language;
+        bool isClosed;
+    };
+
+    QList<Block> allBlocks;
+
+    // Находим все <think> блоки
+    QRegularExpressionMatchIterator thinkIt = thinkRegex.globalMatch(text);
+    while (thinkIt.hasNext()) {
+        QRegularExpressionMatch match = thinkIt.next();
+        Block block;
+        block.start = match.capturedStart();
+        block.end = match.capturedEnd();
+        block.type = ContentType::Think;
+        block.content = match.captured(1).trimmed();
+        block.isClosed = match.captured(0).contains("</think>");
+        allBlocks.append(block);
+    }
+
+    // Находим все code блоки
+    QRegularExpressionMatchIterator codeIt = codeRegex.globalMatch(text);
+    while (codeIt.hasNext()) {
+        QRegularExpressionMatch match = codeIt.next();
+        Block block;
+        block.start = match.capturedStart();
+        block.end = match.capturedEnd();
+        block.type = ContentType::Code;
+        block.language = match.captured(1).isEmpty() ? "text" : match.captured(1);
+        block.content = match.captured(2);
+        // Убираем лишние переносы в начале и конце
+        block.content.replace(QRegularExpression("^\\n+"), "");
+        block.content.replace(QRegularExpression("\\n+$"), "");
+        block.isClosed = match.captured(0).endsWith("```");
+        allBlocks.append(block);
+    }
+
+    // Сортируем блоки по позиции
+    std::sort(allBlocks.begin(), allBlocks.end(),
+              [](const Block &a, const Block &b) { return a.start < b.start; });
+
+    // Собираем результат
+    int currentIndex = 0;
+
+    for (const Block &block : allBlocks) {
+        // Добавляем текст перед блоком
+        if (block.start > currentIndex) {
+            QString textBefore = text.mid(currentIndex, block.start - currentIndex).trimmed();
+            if (!textBefore.isEmpty()) {
+                ContentBlock textBlock;
+                textBlock.type = ContentType::Text;
+                textBlock.content = textBefore;
+                result.blocks.append(textBlock);
+            }
+        }
+
+        // Добавляем сам блок
+        ContentBlock contentBlock;
+        contentBlock.type = block.type;
+        contentBlock.content = block.content;
+        contentBlock.isClosed = block.isClosed;
+
+        if (block.type == ContentType::Code) {
+            contentBlock.language = block.language;
+            contentBlock.lineCount = block.content.count('\n') + 1;
+        }
+
+        result.blocks.append(contentBlock);
+        currentIndex = block.end;
+    }
+
+    // Добавляем оставшийся текст
+    if (currentIndex < text.length()) {
+        QString remainingText = text.mid(currentIndex).trimmed();
+        if (!remainingText.isEmpty()) {
+            ContentBlock textBlock;
+            textBlock.type = ContentType::Text;
+            textBlock.content = remainingText;
+            result.blocks.append(textBlock);
+        }
+    }
+
+    qDebug() << "=== parseMarkdown finished ===";
+    qDebug() << "Total blocks parsed:" << result.blocks.size();
+    for (int i = 0; i < result.blocks.size(); i++) {
+        qDebug() << "Block" << i << "- Type:" << static_cast<int>(result.blocks[i].type)
+        << "Content length:" << result.blocks[i].content.length();
+    }
+
+    return result;
 }

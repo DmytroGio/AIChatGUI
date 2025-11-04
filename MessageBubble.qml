@@ -7,6 +7,7 @@ Rectangle {
     id: messageContainer
     property string messageText: ""
     property bool isUserMessage: false
+    property var parsedBlocks: []
     property color userColor: "#2d3748"
     property color aiColor: "#1a365d"
     property color primaryColor: "#4facfe"
@@ -39,49 +40,40 @@ Rectangle {
 
             Repeater {
                 model: {
-                    var parsed = parseMessage(messageText)
-                    var items = []
-                    var thinkIdx = 0
-                    var codeIdx = 0
+                    console.log("=== MessageBubble Debug ===")
+                    console.log("isUserMessage:", isUserMessage)
+                    console.log("parsedBlocks:", JSON.stringify(messageContainer.parsedBlocks))
+                    console.log("messageText:", messageText)
 
-                    for (var i = 0; i < parsed.textParts.length; i++) {
-                        var part = parsed.textParts[i]
-
-                        if (part === null) {
-                            // Определяем, что это - think или code
-                            if (thinkIdx < parsed.thinkBlocks.length) {
-                                var thinkBlock = parsed.thinkBlocks[thinkIdx]
-                                // Проверяем, что think блок должен быть здесь
-                                if (i === 0 || parsed.textParts[i-1] !== null) {
-                                    items.push({type: 'think', data: thinkBlock})
-                                    thinkIdx++
-                                    continue
-                                }
-                            }
-                            if (codeIdx < parsed.codeBlocks.length) {
-                                items.push({type: 'code', data: parsed.codeBlocks[codeIdx]})
-                                codeIdx++
-                            }
-                        } else {
-                            items.push({type: 'text', data: part})
-                        }
+                    // ✅ Если есть готовые блоки из C++ - используем их
+                    if (messageContainer.parsedBlocks && messageContainer.parsedBlocks.length > 0) {
+                        return messageContainer.parsedBlocks
                     }
-                    return items
+
+                    // Fallback для user messages (они не парсятся)
+                    if (isUserMessage) {
+                        return [{
+                            type: 0,           // 0 = Text
+                            content: messageText,
+                            language: "",
+                            isClosed: true,
+                            lineCount: 0
+                        }]
+                    }
+
+                    return []
                 }
 
                 Loader {
                     width: messageContent.width
                     sourceComponent: {
-                        if (modelData.type === 'text') {
-                            return textComponent
-                        } else if (modelData.type === 'think') {
-                            return thinkComponent
-                        } else if (modelData.type === 'code') {
-                            return codeComponent
-                        }
+                        var type = modelData.type
+                        if (type === 0) return textComponent      // Text
+                        else if (type === 2) return thinkComponent // Think
+                        else if (type === 1) return codeComponent  // Code
                     }
 
-                    property var itemData: modelData.data
+                    property var itemData: modelData
                 }
             }
 
@@ -93,7 +85,9 @@ Rectangle {
                     width: messageContent.width
 
                     text: {
-                        var formatted = itemData
+                        // ✅ itemData.content уже содержит текст из C++
+                        var formatted = itemData.content || ""
+
                         // Обработка заголовков markdown (### ## #)
                         formatted = formatted.replace(/^### (.*?)$/gm, '<span style="font-size: 16px; font-weight: bold; color: #60a5fa;">$1</span>')
                         formatted = formatted.replace(/^## (.*?)$/gm, '<span style="font-size: 18px; font-weight: bold; color: #3b82f6;">$1</span>')
@@ -410,117 +404,6 @@ Rectangle {
             }
 
         }
-    }
-
-    function parseMessage(text) {
-        var result = {
-            textParts: [],
-            codeBlocks: [],
-            thinkBlocks: []
-        }
-
-        var currentIndex = 0
-        var thinkRegex = /<think>([\s\S]*?)(?:<\/think>|$)/g
-        var codeRegex = /```(\w*)\n?([\s\S]*?)(?:```|$)/g
-
-        // Находим все <think> блоки
-        var thinkMatches = []
-        var thinkMatch
-        while ((thinkMatch = thinkRegex.exec(text)) !== null) {
-            thinkMatches.push({
-                start: thinkMatch.index,
-                end: thinkMatch.index + thinkMatch[0].length,
-                content: thinkMatch[1].trim(),
-                isClosed: thinkMatch[0].includes('</think>')
-            })
-        }
-
-        // Находим все code блоки
-        var codeMatches = []
-        var codeMatch
-        while ((codeMatch = codeRegex.exec(text)) !== null) {
-            codeMatches.push({
-                start: codeMatch.index,
-                end: codeMatch.index + codeMatch[0].length,
-                language: codeMatch[1] || "text",
-                content: codeMatch[2].replace(/^\n+/, '').replace(/\n+$/, ''),
-                isClosed: codeMatch[0].endsWith('```'),
-                lineCount: codeMatch[2].split('\n').length
-            })
-        }
-
-        // Объединяем и сортируем все блоки
-        var allBlocks = []
-        thinkMatches.forEach(function(m) {
-            allBlocks.push({type: 'think', data: m, start: m.start, end: m.end})
-        })
-        codeMatches.forEach(function(m) {
-            allBlocks.push({type: 'code', data: m, start: m.start, end: m.end})
-        })
-        allBlocks.sort(function(a, b) { return a.start - b.start })
-
-        // Разбиваем текст по блокам
-        for (var i = 0; i < allBlocks.length; i++) {
-            var block = allBlocks[i]
-
-            // Добавляем текст перед блоком
-            if (block.start > currentIndex) {
-                var textBefore = text.substring(currentIndex, block.start).trim()
-                if (textBefore) {
-                    result.textParts.push(textBefore)
-                }
-            }
-
-            // Добавляем блок
-            if (block.type === 'think') {
-                result.thinkBlocks.push(block.data)
-                result.textParts.push(null) // Placeholder для think блока
-            } else if (block.type === 'code') {
-                result.codeBlocks.push(block.data)
-                result.textParts.push(null) // Placeholder для code блока
-            }
-
-            currentIndex = block.end
-        }
-
-        // Добавляем оставшийся текст
-        if (currentIndex < text.length) {
-            var remainingText = text.substring(currentIndex).trim()
-            if (remainingText) {
-                result.textParts.push(remainingText)
-            }
-        }
-
-        return result
-    }
-
-    function getFormattedText() {
-        var parsed = parseMessage(messageText)
-        var parts = []
-
-        var thinkIndex = 0
-        var codeIndex = 0
-
-        for (var i = 0; i < parsed.textParts.length; i++) {
-            var part = parsed.textParts[i]
-
-            if (part === null) {
-                // Пропускаем placeholder - блоки отрисуются через Repeater
-                continue
-            }
-
-            // Форматируем обычный текст
-            var formatted = part
-            formatted = formatted.replace(/`([^`\n]+)`/g,
-                '<span style="background-color: #2d3748; color: #ffd700; padding: 2px 6px; border-radius: 4px; font-family: Consolas, Monaco, monospace; font-size: 13px;">$1</span>')
-            formatted = formatted.replace(/\n/g, '<br>')
-            formatted = formatted.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>')
-            formatted = formatted.replace(/\*(.*?)\*/g, '<i>$1</i>')
-
-            parts.push(formatted)
-        }
-
-        return parts.join('<br>')
     }
 
      // Tail for speech bubble effect

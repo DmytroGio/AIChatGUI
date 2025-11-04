@@ -9,10 +9,29 @@
 #include <QStandardPaths>
 #include <QSqlDatabase>
 
+enum class ContentType {
+    Text,
+    Code,
+    Think
+};
+
+struct ContentBlock {
+    ContentType type;
+    QString content;
+    QString language;  // Для code блоков
+    bool isClosed;     // Для code и think блоков
+    int lineCount;     // Для code блоков
+};
+
+struct ParsedContent {
+    QList<ContentBlock> blocks;
+};
+
 struct Message {
-    QString text;
+    QString text;           // Оригинальный текст (для истории)
     bool isUser;
     QString timestamp;
+    ParsedContent parsed;   // ✅ НОВОЕ: готовый распарсенный контент
 };
 
 struct Chat {
@@ -64,6 +83,8 @@ private:
     QList<Chat> m_chats;
     QString m_currentChatId;
     QSqlDatabase m_db;
+
+    ParsedContent parseMarkdown(const QString &text);
 };
 
 #endif // CHATMANAGER_H

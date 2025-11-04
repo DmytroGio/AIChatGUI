@@ -480,7 +480,7 @@ ApplicationWindow {
         var messages = chatManager.getCurrentMessages()
         for (var j = 0; j < messages.length; j++) {
             var msg = messages[j]
-            createMessageBubble(msg.text, msg.isUser)
+            createMessageBubble(msg.text, msg.isUser, msg.blocks)
         }
 
         scrollToBottom()
@@ -507,12 +507,13 @@ ApplicationWindow {
     }
 
     // Добавить новую функцию для создания сообщений
-    function createMessageBubble(text, isUser) {
+    function createMessageBubble(text, isUser, blocks) {
         var messageComponent = Qt.createComponent("MessageBubble.qml")
         if (messageComponent.status === Component.Ready) {
             var messageObject = messageComponent.createObject(chatContent, {
                 "messageText": text,
                 "isUserMessage": isUser,
+                "parsedBlocks": blocks || [],
                 "width": Qt.binding(function() { return chatContent.width })
             })
             return messageObject  // ДОБАВИТЬ
@@ -541,11 +542,28 @@ ApplicationWindow {
 
             function onGenerationFinished(tokens, duration) {
                 if (currentResponse !== "" && currentBubble) {
-                    // ВАЖНО: НЕ удаляем временный бабл!
-                    // Просто превращаем его в постоянный, сохраняя в БД
+                    console.log("=== Generation finished ===")
+                    console.log("Saving message to DB...")
+
+                    // Сохраняем в БД (это запустит парсинг в C++)
                     chatManager.addMessage(currentResponse, false)
 
-                    // Сбрасываем состояние для следующего сообщения
+                    // ✅ ВАЖНО: Получаем СВЕЖИЕ данные после парсинга
+                    console.log("Getting fresh messages...")
+                    var messages = chatManager.getCurrentMessages()
+                    var lastMsg = messages[messages.length - 1]
+
+                    console.log("Last message blocks:", JSON.stringify(lastMsg.blocks))
+
+                    // Обновляем текущий баббл с распарсенными блоками
+                    if (lastMsg && lastMsg.blocks && lastMsg.blocks.length > 0) {
+                        console.log("Updating bubble with", lastMsg.blocks.length, "blocks")
+                        currentBubble.parsedBlocks = lastMsg.blocks
+                    } else {
+                        console.log("ERROR: No blocks found in parsed message!")
+                    }
+
+                    // Сбрасываем состояние
                     currentBubble = null
                     currentResponse = ""
                 }
