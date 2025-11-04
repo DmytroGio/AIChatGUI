@@ -478,9 +478,17 @@ ApplicationWindow {
         }
 
         var messages = chatManager.getCurrentMessages()
+        console.log("Loading", messages.length, "messages from DB")  // ✅ Отладка
+
         for (var j = 0; j < messages.length; j++) {
             var msg = messages[j]
-            createMessageBubble(msg.text, msg.isUser, msg.blocks)
+            console.log("Message", j, "- isUser:", msg.isUser, "blocks:", msg.blocks ? msg.blocks.length : 0)
+
+            // ✅ Передаём blocks
+            var bubble = createMessageBubble(msg.text, msg.isUser, msg.blocks)
+            if (!bubble) {
+                console.log("ERROR: Failed to create bubble for message", j)
+            }
         }
 
         scrollToBottom()

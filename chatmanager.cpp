@@ -260,7 +260,12 @@ void ChatManager::loadChats()
             msg.text = msgQuery.value(0).toString();
             msg.isUser = msgQuery.value(1).toBool();
             msg.timestamp = msgQuery.value(2).toString();
-            chat.messages.append(msg);
+
+
+            if (!msg.isUser) {
+                msg.parsed = parseMarkdown(msg.text);
+                qDebug() << "Loaded AI message with" << msg.parsed.blocks.size() << "blocks";
+            }
         }
 
         m_chats.append(chat);
