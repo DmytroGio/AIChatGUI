@@ -261,11 +261,13 @@ void ChatManager::loadChats()
             msg.isUser = msgQuery.value(1).toBool();
             msg.timestamp = msgQuery.value(2).toString();
 
-
+            // ✅ Парсим AI-сообщения при загрузке
             if (!msg.isUser) {
                 msg.parsed = parseMarkdown(msg.text);
                 qDebug() << "Loaded AI message with" << msg.parsed.blocks.size() << "blocks";
             }
+
+            chat.messages.append(msg);  // ✅ ДОБАВИТЬ ЭТУ СТРОКУ!
         }
 
         m_chats.append(chat);
