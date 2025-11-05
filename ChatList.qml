@@ -210,12 +210,12 @@ Rectangle {
         }
     }
 
-    // Кастомный скроллбар (перемещаем на уровень с Column)
+    // Кастомный скроллбар (заменить весь Item с id: chatListScrollBar)
     Item {
         id: chatListScrollBar
         anchors.right: parent.right
         anchors.top: parent.top
-        anchors.topMargin: 75  // Учитываем отступ Column + высоту заголовка
+        anchors.topMargin: 75
         anchors.bottom: parent.bottom
         anchors.rightMargin: 5
         anchors.bottomMargin: 15
@@ -225,8 +225,7 @@ Rectangle {
         property real scrollBarHeight: chatListView.height
         property real contentHeight: chatListView.contentHeight
         property real thumbHeight: Math.max(20, (contentHeight > 0) ? scrollBarHeight * (scrollBarHeight / contentHeight) : 20)
-        property real thumbY: (contentHeight > scrollBarHeight && scrollBarHeight > thumbHeight) ?
-                              chatListView.contentY * (scrollBarHeight - thumbHeight) / (contentHeight - scrollBarHeight) : 0
+        property real maxThumbY: scrollBarHeight - thumbHeight
 
         Rectangle {
             id: chatScrollTrack
@@ -239,51 +238,84 @@ Rectangle {
         Rectangle {
             id: chatScrollThumb
             x: 0
-            y: parent.thumbY
+            y: {
+                if (chatListScrollBar.contentHeight <= chatListScrollBar.scrollBarHeight) return 0
+                return chatListView.contentY * chatListScrollBar.maxThumbY / Math.max(1, chatListScrollBar.contentHeight - chatListScrollBar.scrollBarHeight)
+            }
             width: parent.width
-            height: parent.thumbHeight
+            height: chatListScrollBar.thumbHeight
             radius: 4
             color: chatThumbMouseArea.pressed ? "#4facfe" :
                    chatThumbMouseArea.containsMouse ? "#00f2fe" :
                    "#6c5ce7"
             opacity: 0.8
 
-            MouseArea {
-                id: chatThumbMouseArea
-                anchors.fill: parent
-                hoverEnabled: true
-
-                property real startY: 0
-                property real startContentY: 0
-
-                onPressed: {
-                    startY = mouse.y
-                    startContentY = chatListView.contentY
-                }
-
-                onPositionChanged: {
-                    if (pressed) {
-                        var deltaY = mouse.y - startY
-                        var maxScroll = Math.max(0, chatListScrollBar.contentHeight - chatListScrollBar.scrollBarHeight)
-                        var scrollRatio = deltaY / Math.max(1, chatListScrollBar.scrollBarHeight - chatScrollThumb.height)
-                        var newContentY = startContentY + scrollRatio * maxScroll
-                        chatListView.contentY = Math.max(0, Math.min(newContentY, maxScroll))
-                    }
-                }
+            Behavior on color {
+                ColorAnimation { duration: 200 }
             }
         }
 
+        // ✅ ОДИН MouseArea на весь скроллбар
         MouseArea {
+            id: chatThumbMouseArea
             anchors.fill: parent
-            onWheel: {
+            hoverEnabled: true
+            cursorShape: {
+                var mouseY = mouseY
+                var isOverThumb = mouseY >= chatScrollThumb.y && mouseY <= (chatScrollThumb.y + chatScrollThumb.height)
+                return isOverThumb ? Qt.PointingHandCursor : Qt.ArrowCursor
+            }
+
+            property bool isDragging: false
+            property real dragStartY: 0
+            property real thumbStartY: 0
+
+            onPressed: function(mouse) {
+                var mouseY = mouse.y
+                var thumbY = chatScrollThumb.y
+                var thumbBottom = thumbY + chatScrollThumb.height
+
+                if (mouseY >= thumbY && mouseY <= thumbBottom) {
+                    // Начинаем драг thumb'а
+                    isDragging = true
+                    dragStartY = mouseY
+                    thumbStartY = thumbY
+                } else {
+                    // Клик по track - прыжок
+                    if (chatListScrollBar.contentHeight <= chatListScrollBar.scrollBarHeight) return
+
+                    var clickRatio = mouseY / height
+                    var targetContentY = clickRatio * (chatListScrollBar.contentHeight - chatListScrollBar.scrollBarHeight)
+                    chatListView.contentY = Math.max(0, Math.min(targetContentY, chatListScrollBar.contentHeight - chatListScrollBar.scrollBarHeight))
+                }
+            }
+
+            onPositionChanged: function(mouse) {
+                if (isDragging && chatListScrollBar.contentHeight > chatListScrollBar.scrollBarHeight) {
+                    var delta = mouse.y - dragStartY
+                    var newThumbY = thumbStartY + delta
+                    newThumbY = Math.max(0, Math.min(newThumbY, chatListScrollBar.maxThumbY))
+
+                    var ratio = newThumbY / chatListScrollBar.maxThumbY
+                    var newContentY = ratio * (chatListScrollBar.contentHeight - chatListScrollBar.scrollBarHeight)
+                    chatListView.contentY = Math.max(0, Math.min(newContentY, chatListScrollBar.contentHeight - chatListScrollBar.scrollBarHeight))
+                }
+            }
+
+            onReleased: {
+                isDragging = false
+            }
+
+            onWheel: function(wheel) {
                 var delta = wheel.angleDelta.y
                 var scrollAmount = delta > 0 ? -60 : 60
-                var maxContentY = Math.max(0, chatListView.contentHeight - chatListView.height)
                 var newContentY = chatListView.contentY + scrollAmount
-                chatListView.contentY = Math.max(0, Math.min(newContentY, maxContentY))
+                newContentY = Math.max(0, Math.min(newContentY, chatListView.contentHeight - chatListView.height))
+                chatListView.contentY = newContentY
             }
         }
     }
+
     // Диалог подтверждения удаления
     Rectangle {
         id: deleteDialog

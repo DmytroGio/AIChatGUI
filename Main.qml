@@ -286,6 +286,7 @@ ApplicationWindow {
                 flickable.contentY = newContentY
             }
         }
+
         // Добавляем кастомный скроллбар
         Item {
             id: customScrollBar
@@ -301,7 +302,7 @@ ApplicationWindow {
             property real scrollBarHeight: flickable.height
             property real contentHeight: flickable.contentHeight
             property real thumbHeight: Math.max(20, scrollBarHeight * (scrollBarHeight / contentHeight))
-            property real thumbY: flickable.contentY * (scrollBarHeight - thumbHeight) / Math.max(1, contentHeight - scrollBarHeight)
+            property real maxThumbY: scrollBarHeight - thumbHeight
 
             Rectangle {
                 id: scrollTrack
@@ -314,7 +315,10 @@ ApplicationWindow {
             Rectangle {
                 id: scrollThumb
                 x: 0
-                y: customScrollBar.thumbY
+                y: {
+                    if (customScrollBar.contentHeight <= customScrollBar.scrollBarHeight) return 0
+                    return flickable.contentY * customScrollBar.maxThumbY / Math.max(1, customScrollBar.contentHeight - customScrollBar.scrollBarHeight)
+                }
                 width: parent.width
                 height: customScrollBar.thumbHeight
                 radius: 4
@@ -326,34 +330,60 @@ ApplicationWindow {
                 Behavior on color {
                     ColorAnimation { duration: 200 }
                 }
-
-                MouseArea {
-                    id: thumbMouseArea
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    drag.target: scrollThumb
-                    drag.axis: Drag.YAxis
-                    drag.minimumY: 0
-                    drag.maximumY: customScrollBar.scrollBarHeight - scrollThumb.height
-
-                    onPositionChanged: {
-                        if (drag.active) {
-                            var newContentY = scrollThumb.y * (customScrollBar.contentHeight - customScrollBar.scrollBarHeight) / (customScrollBar.scrollBarHeight - scrollThumb.height)
-                            flickable.contentY = Math.max(0, Math.min(newContentY, customScrollBar.contentHeight - customScrollBar.scrollBarHeight))
-                        }
-                    }
-                }
             }
 
+            // ✅ ОДИН MouseArea на весь скроллбар
             MouseArea {
+                id: thumbMouseArea
                 anchors.fill: parent
-                onClicked: {
-                    var clickRatio = mouse.y / height
-                    var targetContentY = clickRatio * (customScrollBar.contentHeight - customScrollBar.scrollBarHeight)
-                    flickable.contentY = Math.max(0, Math.min(targetContentY, customScrollBar.contentHeight - customScrollBar.scrollBarHeight))
+                hoverEnabled: true
+                cursorShape: {
+                    var mouseY = mouseY
+                    var isOverThumb = mouseY >= scrollThumb.y && mouseY <= (scrollThumb.y + scrollThumb.height)
+                    return isOverThumb ? Qt.PointingHandCursor : Qt.ArrowCursor
                 }
 
-                onWheel: {
+                property bool isDragging: false
+                property real dragStartY: 0
+                property real thumbStartY: 0
+
+                onPressed: function(mouse) {
+                    var mouseY = mouse.y
+                    var thumbY = scrollThumb.y
+                    var thumbBottom = thumbY + scrollThumb.height
+
+                    if (mouseY >= thumbY && mouseY <= thumbBottom) {
+                        // Начинаем драг thumb'а
+                        isDragging = true
+                        dragStartY = mouseY
+                        thumbStartY = thumbY
+                    } else {
+                        // Клик по track - прыжок
+                        if (customScrollBar.contentHeight <= customScrollBar.scrollBarHeight) return
+
+                        var clickRatio = mouseY / height
+                        var targetContentY = clickRatio * (customScrollBar.contentHeight - customScrollBar.scrollBarHeight)
+                        flickable.contentY = Math.max(0, Math.min(targetContentY, customScrollBar.contentHeight - customScrollBar.scrollBarHeight))
+                    }
+                }
+
+                onPositionChanged: function(mouse) {
+                    if (isDragging && customScrollBar.contentHeight > customScrollBar.scrollBarHeight) {
+                        var delta = mouse.y - dragStartY
+                        var newThumbY = thumbStartY + delta
+                        newThumbY = Math.max(0, Math.min(newThumbY, customScrollBar.maxThumbY))
+
+                        var ratio = newThumbY / customScrollBar.maxThumbY
+                        var newContentY = ratio * (customScrollBar.contentHeight - customScrollBar.scrollBarHeight)
+                        flickable.contentY = Math.max(0, Math.min(newContentY, customScrollBar.contentHeight - customScrollBar.scrollBarHeight))
+                    }
+                }
+
+                onReleased: {
+                    isDragging = false
+                }
+
+                onWheel: function(wheel) {
                     var delta = wheel.angleDelta.y
                     var scrollAmount = delta > 0 ? -60 : 60
                     var newContentY = flickable.contentY + scrollAmount
@@ -362,6 +392,7 @@ ApplicationWindow {
                 }
             }
         }
+
     }// Input area
     Rectangle {
         id: inputArea
