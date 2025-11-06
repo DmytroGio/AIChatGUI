@@ -216,78 +216,60 @@ ApplicationWindow {
         }
 
 
-        // делаем простую структуру с Flickable
-        Flickable {
-            id: flickable
+        // В Main.qml, заменить Flickable и его содержимое:
+
+        ListView {
+            id: messagesView
             anchors.fill: parent
             anchors.margins: 15
-            anchors.rightMargin: 25  // Место для скроллбара
-            contentHeight: chatContent.height
-            boundsBehavior: Flickable.StopAtBounds
+            anchors.rightMargin: 25
+
+            model: chatManager.getCurrentMessages()
+            spacing: 15
             clip: true
-            interactive: false
 
-            property bool shouldAutoScroll: true  // ✅ НОВОЕ
-            property bool isFirstLoad: true  // ✅ НОВОЕ
+            // ✅ ОПТИМИЗАЦИИ ПРОИЗВОДИТЕЛЬНОСТИ
+            cacheBuffer: height * 1.5  // Уменьшаем буфер для плавности
+            displayMarginBeginning: 200
+            displayMarginEnd: 200
 
-            onContentHeightChanged: {
-                // При первой загрузке - всегда вниз
-                if (isFirstLoad && contentHeight > 0) {
-                    scrollToBottom()
-                    isFirstLoad = false
-                    return
-                }
+            // ✅ Асинхронная загрузка делегатов (убирает лаги)
+            reuseItems: true
 
-                // Для Think блоков - проверяем позицию
-                var isNearBottom = contentY >= (contentHeight - height - 100)
-                if (shouldAutoScroll && isNearBottom) {
-                    scrollToBottom()
+            property bool shouldAutoScroll: true
+
+            onCountChanged: {
+                if (shouldAutoScroll && count > 0) {
+                    Qt.callLater(function() {
+                        positionViewAtEnd()
+                    })
                 }
             }
 
-            Column {
-                id: chatContent
-                width: Math.min(parent.width, 800)
-                anchors.horizontalCenter: parent.horizontalCenter
-                spacing: 15
+            delegate: MessageBubble {
+                width: messagesView.width
+                messageText: modelData.text
+                isUserMessage: modelData.isUser
+                parsedBlocks: modelData.blocks || []
+            }
 
-                // Welcome message
-                Rectangle {
-                    width: parent.width
-                    height: chatManager.messageCount === 0 ? 80 : 0
-                    color: "transparent"
+            header: Item {
+                width: messagesView.width
+                height: chatManager.messageCount === 0 ? 80 : 0
+
+                Text {
+                    anchors.centerIn: parent
+                    text: "Start typing to begin..."
+                    color: root.textSecondary
+                    font.pixelSize: 16
+                    font.weight: Font.Light
+                    opacity: 0.7
                     visible: chatManager.messageCount === 0
-
-                    Behavior on height {
-                        NumberAnimation { duration: 200; easing.type: Easing.OutQuad }
-                    }
-
-                    Text {
-                        anchors.centerIn: parent
-                        text: "Start typing to begin..."
-                        color: root.textSecondary
-                        font.pixelSize: 16
-                        font.weight: Font.Light
-                        opacity: 0.7
-                    }
                 }
             }
         }
 
-        MouseArea {
-            anchors.fill: flickable
-            acceptedButtons: Qt.NoButton  // Только колесико, не кнопки
-
-            onWheel: {
-                var delta = wheel.angleDelta.y
-                var scrollAmount = delta > 0 ? -60 : 60
-                var newContentY = flickable.contentY + scrollAmount
-                newContentY = Math.max(0, Math.min(newContentY, flickable.contentHeight - flickable.height))
-                flickable.contentY = newContentY
-            }
-        }
-
-        // Добавляем кастомный скроллбар
+        // ✅ КАСТОМНЫЙ СКРОЛЛБАР
         Item {
             id: customScrollBar
             anchors.right: parent.right
@@ -297,10 +279,10 @@ ApplicationWindow {
             anchors.topMargin: 15
             anchors.bottomMargin: 15
             width: 8
-            visible: flickable.contentHeight > flickable.height
+            visible: messagesView.contentHeight > messagesView.height
 
-            property real scrollBarHeight: flickable.height
-            property real contentHeight: flickable.contentHeight
+            property real scrollBarHeight: messagesView.height
+            property real contentHeight: messagesView.contentHeight
             property real thumbHeight: Math.max(20, scrollBarHeight * (scrollBarHeight / contentHeight))
             property real maxThumbY: scrollBarHeight - thumbHeight
 
@@ -317,7 +299,8 @@ ApplicationWindow {
                 x: 0
                 y: {
                     if (customScrollBar.contentHeight <= customScrollBar.scrollBarHeight) return 0
-                    return flickable.contentY * customScrollBar.maxThumbY / Math.max(1, customScrollBar.contentHeight - customScrollBar.scrollBarHeight)
+                    var ratio = messagesView.contentY / Math.max(1, customScrollBar.contentHeight - customScrollBar.scrollBarHeight)
+                    return ratio * customScrollBar.maxThumbY
                 }
                 width: parent.width
                 height: customScrollBar.thumbHeight
@@ -332,7 +315,6 @@ ApplicationWindow {
                 }
             }
 
-            // ✅ ОДИН MouseArea на весь скроллбар
             MouseArea {
                 id: thumbMouseArea
                 anchors.fill: parent
@@ -353,17 +335,15 @@ ApplicationWindow {
                     var thumbBottom = thumbY + scrollThumb.height
 
                     if (mouseY >= thumbY && mouseY <= thumbBottom) {
-                        // Начинаем драг thumb'а
                         isDragging = true
                         dragStartY = mouseY
                         thumbStartY = thumbY
                     } else {
-                        // Клик по track - прыжок
                         if (customScrollBar.contentHeight <= customScrollBar.scrollBarHeight) return
 
                         var clickRatio = mouseY / height
                         var targetContentY = clickRatio * (customScrollBar.contentHeight - customScrollBar.scrollBarHeight)
-                        flickable.contentY = Math.max(0, Math.min(targetContentY, customScrollBar.contentHeight - customScrollBar.scrollBarHeight))
+                        messagesView.contentY = Math.max(0, Math.min(targetContentY, customScrollBar.contentHeight - customScrollBar.scrollBarHeight))
                     }
                 }
 
@@ -375,7 +355,7 @@ ApplicationWindow {
 
                         var ratio = newThumbY / customScrollBar.maxThumbY
                         var newContentY = ratio * (customScrollBar.contentHeight - customScrollBar.scrollBarHeight)
-                        flickable.contentY = Math.max(0, Math.min(newContentY, customScrollBar.contentHeight - customScrollBar.scrollBarHeight))
+                        messagesView.contentY = Math.max(0, Math.min(newContentY, customScrollBar.contentHeight - customScrollBar.scrollBarHeight))
                     }
                 }
 
@@ -386,14 +366,16 @@ ApplicationWindow {
                 onWheel: function(wheel) {
                     var delta = wheel.angleDelta.y
                     var scrollAmount = delta > 0 ? -60 : 60
-                    var newContentY = flickable.contentY + scrollAmount
-                    newContentY = Math.max(0, Math.min(newContentY, flickable.contentHeight - flickable.height))
-                    flickable.contentY = newContentY
+                    var newContentY = messagesView.contentY + scrollAmount
+                    newContentY = Math.max(0, Math.min(newContentY, messagesView.contentHeight - messagesView.height))
+                    messagesView.contentY = newContentY
                 }
             }
         }
 
-    }// Input area
+    }
+
+    // Input area
     Rectangle {
         id: inputArea
         anchors.bottom: parent.bottom
@@ -482,17 +464,11 @@ ApplicationWindow {
     }
 
     function scrollToBottom() {
-        flickable.shouldAutoScroll = false  // Временно отключаем
-        if (flickable.contentHeight > flickable.height) {
-            flickable.contentY = flickable.contentHeight - flickable.height
-        }
-        flickable.shouldAutoScroll = true  // Включаем обратно
+        messagesView.positionViewAtEnd()
     }
 
     function sendMessage() {
-        if (llamaConnector.isGenerating) {
-            return  // Блокируем отправку во время генерации
-        }
+        if (llamaConnector.isGenerating) return
 
         var messageText = inputField.text.trim()
         if (messageText !== "") {
@@ -561,76 +537,53 @@ ApplicationWindow {
     }
 
     // Connections for LM Studio
-        Connections {
-            target: llamaConnector
+    Connections {
+        target: llamaConnector
 
-            property string currentResponse: ""
-            property var currentBubble: null
+        property string currentResponse: ""
+        property int currentMessageIndex: -1
 
-            function onTokenGenerated(token) {
-                currentResponse += token
+        function onTokenGenerated(token) {
+            currentResponse += token
 
-                if (!currentBubble) {
-                    currentBubble = createMessageBubble(currentResponse, false)
-                } else {
-                    currentBubble.messageText = currentResponse
-                }
-
-                scrollToBottom()
+            // Обновляем ТОЛЬКО последнее сообщение модели
+            if (currentMessageIndex === -1) {
+                // Создаём новое сообщение в модели
+                chatManager.addMessage(currentResponse, false)
+                currentMessageIndex = chatManager.messageCount - 1
+            } else {
+                // Обновляем существующее (тут нужен метод updateLastMessage в C++)
+                chatManager.updateLastMessage(currentResponse)
             }
 
-            function onGenerationFinished(tokens, duration) {
-                if (currentResponse !== "" && currentBubble) {
-                    console.log("=== Generation finished ===")
-                    console.log("Saving message to DB...")
-
-                    // Сохраняем в БД (это запустит парсинг в C++)
-                    chatManager.addMessage(currentResponse, false)
-
-                    // ✅ ВАЖНО: Получаем СВЕЖИЕ данные после парсинга
-                    console.log("Getting fresh messages...")
-                    var messages = chatManager.getCurrentMessages()
-                    var lastMsg = messages[messages.length - 1]
-
-                    console.log("Last message blocks:", JSON.stringify(lastMsg.blocks))
-
-                    // Обновляем текущий баббл с распарсенными блоками
-                    if (lastMsg && lastMsg.blocks && lastMsg.blocks.length > 0) {
-                        console.log("Updating bubble with", lastMsg.blocks.length, "blocks")
-                        currentBubble.parsedBlocks = lastMsg.blocks
-                    } else {
-                        console.log("ERROR: No blocks found in parsed message!")
-                    }
-
-                    // Сбрасываем состояние
-                    currentBubble = null
-                    currentResponse = ""
-                }
-            }
+            messagesView.positionViewAtEnd()
         }
+
+        function onGenerationFinished(tokens, duration) {
+            currentResponse = ""
+            currentMessageIndex = -1
+
+            // Финальное обновление с парсингом уже произошло в addMessage
+            messagesView.positionViewAtEnd()
+        }
+    }
 
     // Connections for ChatManager
     Connections {
         target: chatManager
 
         function onCurrentChatChanged() {
-            flickable.isFirstLoad = true  // ✅ Сбрасываем флаг при смене чата
-
-            if (llamaConnector.currentBubble) {
-                llamaConnector.currentBubble.destroy()
-                llamaConnector.currentBubble = null
-                llamaConnector.currentResponse = ""
-            }
-            loadMessages()
+            messagesView.shouldAutoScroll = false
+            // ListView автоматически перезагрузит модель
+            messagesView.model = chatManager.getCurrentMessages()
+            Qt.callLater(function() {
+                messagesView.positionViewAtEnd()
+                messagesView.shouldAutoScroll = true
+            })
         }
 
         function onMessageAdded(text, isUser) {
-
-            if (!isUser && llamaConnector.currentBubble !== null) {
-                return
-            }
-
-            createMessageBubble(text, isUser)
+            // ListView автоматически обновится через model
             scrollToBottom()
         }
     }
@@ -652,7 +605,7 @@ ApplicationWindow {
 
     Component.onCompleted: {
         inputField.forceActiveFocus()
-        loadMessages()  // Добавить эту строку
+        // loadMessages() больше не нужен!
     }
 
 }

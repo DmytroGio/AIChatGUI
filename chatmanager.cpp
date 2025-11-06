@@ -168,6 +168,21 @@ void ChatManager::renameChatTitle(const QString &chatId, const QString &newTitle
     emit chatListChanged();
 }
 
+void ChatManager::updateLastMessage(const QString &text)
+{
+    for (auto &chat : m_chats) {
+        if (chat.id == m_currentChatId && !chat.messages.isEmpty()) {
+            auto &lastMsg = chat.messages.last();
+            if (!lastMsg.isUser) {
+                lastMsg.text = text;
+                lastMsg.parsed = parseMarkdown(text);
+                emit messagesChanged();
+                return;
+            }
+        }
+    }
+}
+
 QVariantList ChatManager::getChatList() const
 {
     QVariantList chatList;

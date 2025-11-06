@@ -59,6 +59,7 @@ public:
     Q_INVOKABLE void addMessage(const QString &text, bool isUser);
     Q_INVOKABLE QVariantList getCurrentMessages();
     Q_INVOKABLE void renameChatTitle(const QString &chatId, const QString &newTitle);
+    Q_INVOKABLE void updateLastMessage(const QString &text);
 
     QVariantList getChatList() const;
     QString getCurrentChatId() const { return m_currentChatId; }

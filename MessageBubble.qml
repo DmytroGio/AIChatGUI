@@ -13,6 +13,13 @@ Rectangle {
     property color primaryColor: "#4facfe"
     property color textColor: "#ffffff"
 
+    // ✅ ОПТИМИЗАЦИЯ: Включаем кеширование слоя
+    layer.enabled: true
+    layer.smooth: true
+
+    // ✅ Отключаем antialiasing где не критично
+    antialiasing: false
+
     width: parent.width
     height: messageContent.height + 30
     color: "transparent"
@@ -384,15 +391,21 @@ Rectangle {
                                     leftPadding: 10
                                     topPadding: 1
 
+                                    // ✅ КРИТИЧНО: Рендерим только видимое
+                                    renderType: Text.NativeRendering  // Быстрее для больших блоков
+
                                     Component.onCompleted: {
+                                        // Подсветка синтаксиса только если блок видим
                                         if (itemData.language && itemData.language !== "text") {
-                                            var cppHighlighter = Qt.createQmlObject(
-                                                'import SyntaxHighlighter 1.0; SyntaxHighlighter { language: "' + itemData.language + '" }',
-                                                codeEdit
-                                            )
-                                            if (cppHighlighter) {
-                                                cppHighlighter.setDocument(codeEdit.textDocument)
-                                            }
+                                            Qt.callLater(function() {
+                                                var cppHighlighter = Qt.createQmlObject(
+                                                    'import SyntaxHighlighter 1.0; SyntaxHighlighter { language: "' + itemData.language + '" }',
+                                                    codeEdit
+                                                )
+                                                if (cppHighlighter) {
+                                                    cppHighlighter.setDocument(codeEdit.textDocument)
+                                                }
+                                            })
                                         }
                                     }
                                 }
