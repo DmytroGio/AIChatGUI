@@ -546,17 +546,19 @@ ApplicationWindow {
         function onTokenGenerated(token) {
             currentResponse += token
 
-            // Обновляем ТОЛЬКО последнее сообщение модели
             if (currentMessageIndex === -1) {
-                // Создаём новое сообщение в модели
                 chatManager.addMessage(currentResponse, false)
                 currentMessageIndex = chatManager.messageCount - 1
             } else {
-                // Обновляем существующее (тут нужен метод updateLastMessage в C++)
                 chatManager.updateLastMessage(currentResponse)
             }
 
-            messagesView.positionViewAtEnd()
+            // ✅ КРИТИЧНО: Обновляем модель при каждом токене
+            messagesView.model = chatManager.getCurrentMessages()
+
+            Qt.callLater(function() {
+                messagesView.positionViewAtEnd()
+            })
         }
 
         function onGenerationFinished(tokens, duration) {
@@ -583,8 +585,11 @@ ApplicationWindow {
         }
 
         function onMessageAdded(text, isUser) {
-            // ListView автоматически обновится через model
-            scrollToBottom()
+            // ✅ КРИТИЧНО: Принудительно обновляем модель
+            messagesView.model = chatManager.getCurrentMessages()
+            Qt.callLater(function() {
+                messagesView.positionViewAtEnd()
+            })
         }
     }
 

@@ -7,15 +7,26 @@
 #include <QSqlQuery>
 #include <QSqlError>
 #include <QStandardPaths>
+#include "messagelistmodel.h"
 
 ChatManager::ChatManager(QObject *parent)
     : QObject(parent)
 {
+    // Создаём модель сообщений
+    m_messageModel = new MessageListModel(this);
+
     initDatabase();
+
+    // Передаём указатель на БД в модель
+    m_messageModel->setDatabase(&m_db);
+
     loadChats();
 
     if (m_chats.isEmpty()) {
         createNewChat();
+    } else {
+        // Загружаем сообщения текущего чата
+        m_messageModel->loadMessages(m_currentChatId, 30);
     }
 }
 
@@ -40,6 +51,10 @@ void ChatManager::switchToChat(const QString &chatId)
 {
     if (m_currentChatId != chatId) {
         m_currentChatId = chatId;
+
+        // Загружаем сообщения нового чата
+        m_messageModel->loadMessages(chatId, 30);
+
         emit currentChatChanged();
         emit messagesChanged();
         emit chatListChanged();
@@ -80,7 +95,7 @@ void ChatManager::addMessage(const QString &text, bool isUser)
             msg.isUser = isUser;
             msg.timestamp = QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss");
 
-            // ✅ ИСПРАВЛЕНО: Парсим ВСЕ сообщения от AI (не только первое)
+            // Парсим ВСЕ сообщения от AI (не только первое)
             if (!isUser) {
                 msg.parsed = parseMarkdown(text);
                 qDebug() << "Parsed" << msg.parsed.blocks.size() << "blocks for AI message";
@@ -95,13 +110,21 @@ void ChatManager::addMessage(const QString &text, bool isUser)
                 chat.title = generateTitle(text);
             }
 
-            // Сохраняем сообщение в БД
+            // Сохраняем сообщение с blocks_json
             QSqlQuery query;
-            query.prepare("INSERT INTO messages (chat_id, text, isUser, timestamp) VALUES (?, ?, ?, ?)");
+            query.prepare("INSERT INTO messages (chat_id, text, isUser, timestamp, blocks_json) "
+                          "VALUES (?, ?, ?, ?, ?)");
             query.addBindValue(chat.id);
             query.addBindValue(msg.text);
             query.addBindValue(msg.isUser);
             query.addBindValue(msg.timestamp);
+
+            // Сериализуем блоки только для AI сообщений
+            if (!isUser && !msg.parsed.blocks.isEmpty()) {
+                query.addBindValue(serializeBlocks(msg.parsed));
+            } else {
+                query.addBindValue(QVariant());  // NULL для user messages
+            }
 
             if (!query.exec()) {
                 qDebug() << "Failed to save message:" << query.lastError().text();
@@ -110,6 +133,9 @@ void ChatManager::addMessage(const QString &text, bool isUser)
             // Обновляем чат в БД
             updateChatInDb(chat);
 
+            // Обновляем модель
+            m_messageModel->appendMessage(msg);
+
             break;
         }
     }
@@ -117,6 +143,59 @@ void ChatManager::addMessage(const QString &text, bool isUser)
     emit messageAdded(text, isUser);
     emit chatListChanged();
     emit messagesChanged();
+}
+
+QString ChatManager::serializeBlocks(const ParsedContent& parsed)
+{
+    QJsonArray blocksArray;
+
+    for (const auto& block : parsed.blocks) {
+        QJsonObject blockObj;
+        blockObj["type"] = static_cast<int>(block.type);
+        blockObj["content"] = block.content;
+        blockObj["language"] = block.language;
+        blockObj["isClosed"] = block.isClosed;
+        blockObj["lineCount"] = block.lineCount;
+
+        blocksArray.append(blockObj);
+    }
+
+    QJsonDocument doc(blocksArray);
+    return doc.toJson(QJsonDocument::Compact);
+}
+
+ParsedContent ChatManager::deserializeBlocks(const QString& json)
+{
+    ParsedContent result;
+
+    if (json.isEmpty()) {
+        return result;  // Пустой результат
+    }
+
+    QJsonDocument doc = QJsonDocument::fromJson(json.toUtf8());
+    if (!doc.isArray()) {
+        qDebug() << "ERROR: blocks_json is not an array";
+        return result;
+    }
+
+    QJsonArray blocksArray = doc.array();
+
+    for (const QJsonValue& value : blocksArray) {
+        if (!value.isObject()) continue;
+
+        QJsonObject blockObj = value.toObject();
+
+        ContentBlock block;
+        block.type = static_cast<ContentType>(blockObj["type"].toInt());
+        block.content = blockObj["content"].toString();
+        block.language = blockObj["language"].toString();
+        block.isClosed = blockObj["isClosed"].toBool();
+        block.lineCount = blockObj["lineCount"].toInt();
+
+        result.blocks.append(block);
+    }
+
+    return result;
 }
 
 QVariantList ChatManager::getCurrentMessages()
@@ -176,6 +255,23 @@ void ChatManager::updateLastMessage(const QString &text)
             if (!lastMsg.isUser) {
                 lastMsg.text = text;
                 lastMsg.parsed = parseMarkdown(text);
+
+                // Обновляем blocks_json в БД
+                QSqlQuery query;
+                query.prepare("UPDATE messages SET text = ?, blocks_json = ? "
+                              "WHERE chat_id = ? AND id = (SELECT MAX(id) FROM messages WHERE chat_id = ?)");
+                query.addBindValue(text);
+                query.addBindValue(serializeBlocks(lastMsg.parsed));
+                query.addBindValue(chat.id);
+                query.addBindValue(chat.id);
+
+                if (!query.exec()) {
+                    qDebug() << "Failed to update message blocks:" << query.lastError().text();
+                }
+
+                // Обновляем модель
+                m_messageModel->updateLastMessage(lastMsg);
+
                 emit messagesChanged();
                 return;
             }
@@ -229,6 +325,15 @@ void ChatManager::initDatabase()
         return;
     }
 
+    // ✅ НОВОЕ: Оптимизация SQLite
+    QSqlQuery pragmaQuery;
+    pragmaQuery.exec("PRAGMA journal_mode=WAL");
+    pragmaQuery.exec("PRAGMA synchronous=NORMAL");
+    pragmaQuery.exec("PRAGMA cache_size=-32000");
+    pragmaQuery.exec("PRAGMA temp_store=MEMORY");
+
+    qDebug() << "SQLite optimizations applied";
+
     QSqlQuery query;
 
     // Создаём таблицу чатов
@@ -239,16 +344,37 @@ void ChatManager::initDatabase()
                "lastTimestamp TEXT, "
                "created_at TEXT)");
 
-    // Создаём таблицу сообщений
+    // ✅ НОВОЕ: Создаём таблицу сообщений с blocks_json
     query.exec("CREATE TABLE IF NOT EXISTS messages ("
                "id INTEGER PRIMARY KEY AUTOINCREMENT, "
                "chat_id TEXT, "
                "text TEXT, "
                "isUser INTEGER, "
                "timestamp TEXT, "
+               "blocks_json TEXT, "  // ✅ Новая колонка
                "FOREIGN KEY(chat_id) REFERENCES chats(id) ON DELETE CASCADE)");
 
-    qDebug() << "Database initialized";
+    // ✅ НОВОЕ: Добавляем колонку в существующие таблицы (если её нет)
+    QSqlQuery checkColumn;
+    checkColumn.exec("PRAGMA table_info(messages)");
+    bool hasBlocksJson = false;
+    while (checkColumn.next()) {
+        if (checkColumn.value(1).toString() == "blocks_json") {
+            hasBlocksJson = true;
+            break;
+        }
+    }
+
+    if (!hasBlocksJson) {
+        qDebug() << "Adding blocks_json column to existing messages table";
+        query.exec("ALTER TABLE messages ADD COLUMN blocks_json TEXT");
+    }
+
+    // ✅ НОВОЕ: Создаём индекс для быстрой сортировки
+    query.exec("CREATE INDEX IF NOT EXISTS idx_chat_messages_desc "
+               "ON messages(chat_id, id DESC)");
+
+    qDebug() << "Database initialized with blocks_json support";
 }
 
 void ChatManager::loadChats()
@@ -264,9 +390,9 @@ void ChatManager::loadChats()
         chat.lastMessage = query.value(2).toString();
         chat.lastTimestamp = query.value(3).toString();
 
-        // Загружаем сообщения для этого чата
+        // Загружаем сообщения с blocks_json
         QSqlQuery msgQuery;
-        msgQuery.prepare("SELECT text, isUser, timestamp FROM messages WHERE chat_id = ? ORDER BY id ASC");
+        msgQuery.prepare("SELECT text, isUser, timestamp, blocks_json FROM messages WHERE chat_id = ? ORDER BY id ASC");
         msgQuery.addBindValue(chat.id);
         msgQuery.exec();
 
@@ -275,14 +401,30 @@ void ChatManager::loadChats()
             msg.text = msgQuery.value(0).toString();
             msg.isUser = msgQuery.value(1).toBool();
             msg.timestamp = msgQuery.value(2).toString();
+            QString blocksJson = msgQuery.value(3).toString();
 
-            // ✅ Парсим AI-сообщения при загрузке
+            // Десериализуем блоки или парсим если их нет
             if (!msg.isUser) {
-                msg.parsed = parseMarkdown(msg.text);
-                qDebug() << "Loaded AI message with" << msg.parsed.blocks.size() << "blocks";
+                if (!blocksJson.isEmpty()) {
+                    // Загружаем из кэша
+                    msg.parsed = deserializeBlocks(blocksJson);
+                    qDebug() << "Loaded cached blocks:" << msg.parsed.blocks.size();
+                } else {
+                    // Парсим и сохраняем в БД (миграция старых сообщений)
+                    msg.parsed = parseMarkdown(msg.text);
+                    qDebug() << "Parsed and caching blocks:" << msg.parsed.blocks.size();
+
+                    // Сохраняем в БД для следующего раза
+                    QSqlQuery updateQuery;
+                    updateQuery.prepare("UPDATE messages SET blocks_json = ? WHERE chat_id = ? AND text = ?");
+                    updateQuery.addBindValue(serializeBlocks(msg.parsed));
+                    updateQuery.addBindValue(chat.id);
+                    updateQuery.addBindValue(msg.text);
+                    updateQuery.exec();
+                }
             }
 
-            chat.messages.append(msg);  // ✅ ДОБАВИТЬ ЭТУ СТРОКУ!
+            chat.messages.append(msg);
         }
 
         m_chats.append(chat);
@@ -473,3 +615,4 @@ ParsedContent ChatManager::parseMarkdown(const QString &text)
 
     return result;
 }
+

@@ -9,6 +9,8 @@
 #include <QStandardPaths>
 #include <QSqlDatabase>
 
+class MessageListModel;
+
 enum class ContentType {
     Text,
     Code,
@@ -49,6 +51,7 @@ class ChatManager : public QObject
     Q_PROPERTY(QString currentChatId READ getCurrentChatId NOTIFY currentChatChanged)
     Q_PROPERTY(QString currentChatTitle READ getCurrentChatTitle NOTIFY currentChatChanged)
     Q_PROPERTY(int messageCount READ getMessageCount NOTIFY messagesChanged)
+    Q_PROPERTY(MessageListModel* messageModel READ messageModel CONSTANT)
 
 public:
     explicit ChatManager(QObject *parent = nullptr);
@@ -61,6 +64,7 @@ public:
     Q_INVOKABLE void renameChatTitle(const QString &chatId, const QString &newTitle);
     Q_INVOKABLE void updateLastMessage(const QString &text);
 
+    MessageListModel* messageModel() const { return m_messageModel; }
     QVariantList getChatList() const;
     QString getCurrentChatId() const { return m_currentChatId; }
     QString getCurrentChatTitle() const;
@@ -73,6 +77,9 @@ signals:
     void messageAdded(const QString& text, bool isUser);
 
 private:
+    QString serializeBlocks(const ParsedContent& parsed);
+    ParsedContent deserializeBlocks(const QString& json);
+
     void initDatabase();
     void loadChats();
     void saveChatToDb(const Chat &chat);
@@ -86,6 +93,8 @@ private:
     QSqlDatabase m_db;
 
     ParsedContent parseMarkdown(const QString &text);
+
+    MessageListModel* m_messageModel;
 };
 
 #endif // CHATMANAGER_H

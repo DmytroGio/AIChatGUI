@@ -76,6 +76,7 @@ qt_add_qml_module(appAIChatGUI
         syntaxhighlighter.h
         syntaxhighlighter.cpp
         SOURCES modelinfo.h modelinfo.cpp
+        SOURCES messagelistmodel.h messagelistmodel.cpp
 )
 
 # Заголовочные файлы llama.cpp
