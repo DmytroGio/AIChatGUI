@@ -2,6 +2,7 @@
 #include <QJsonDocument>
 #include <QJsonArray>
 #include <QJsonObject>
+#include <climits>  // Для INT_MAX
 
 MessageListModel::MessageListModel(QObject *parent)
     : QAbstractListModel(parent)

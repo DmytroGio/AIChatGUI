@@ -432,6 +432,13 @@ Rectangle {
         width: 15
         height: 10
 
+        // ✅ НОВОЕ: Перерисовываем при изменении размеров родителя
+        Connections {
+            target: messageBubble
+            function onWidthChanged() { tail.requestPaint() }
+            function onHeightChanged() { tail.requestPaint() }
+        }
+
         onPaint: {
             var ctx = getContext("2d")
             ctx.clearRect(0, 0, width, height)

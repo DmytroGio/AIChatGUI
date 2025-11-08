@@ -5,7 +5,8 @@
 #include <QSqlQuery>
 #include <QSqlError>
 #include <QDebug>
-#include "chatmanager.h"
+#include <QSqlDatabase>
+#include "message.h"
 
 class MessageListModel : public QAbstractListModel
 {

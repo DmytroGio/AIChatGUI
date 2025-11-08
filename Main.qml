@@ -224,16 +224,16 @@ ApplicationWindow {
             anchors.margins: 15
             anchors.rightMargin: 25
 
-            model: chatManager.getCurrentMessages()
+            model: chatManager.messageModel
             spacing: 15
             clip: true
 
-            // ✅ ОПТИМИЗАЦИИ ПРОИЗВОДИТЕЛЬНОСТИ
-            cacheBuffer: height * 1.5  // Уменьшаем буфер для плавности
-            displayMarginBeginning: 200
-            displayMarginEnd: 200
+            // ✅ НОВОЕ: Увеличиваем буфер для меньших перезагрузок
+            cacheBuffer: height * 3  // Было 1.5, стало 3
+            displayMarginBeginning: 500  // Было 200
+            displayMarginEnd: 500  // Было 200
 
-            // ✅ Асинхронная загрузка делегатов (убирает лаги)
+            // ✅ Асинхронная загрузка
             reuseItems: true
 
             property bool shouldAutoScroll: true
@@ -246,11 +246,51 @@ ApplicationWindow {
                 }
             }
 
+            onContentYChanged: {
+                // Если скроллим почти к началу и есть ещё сообщения
+                if (contentY < 300 && !atYBeginning && chatManager.messageModel.hasMoreMessages) {
+                    // Защита от частых вызовов
+                    if (!loadingOlderMessages) {
+                        loadingOlderMessages = true
+                        Qt.callLater(function() {
+                            var oldContentHeight = contentHeight
+                            chatManager.messageModel.loadOlderMessages(20)
+
+                            // Сохраняем позицию скролла после загрузки
+                            Qt.callLater(function() {
+                                var newContentHeight = contentHeight
+                                contentY += (newContentHeight - oldContentHeight)
+                                loadingOlderMessages = false
+                            })
+                        })
+                    }
+                }
+            }
+
+            // ✅ НОВОЕ: Отключаем анимации во время активного скролла
+            property bool isScrolling: false
+
+            onMovingChanged: {
+                if (moving) {
+                    isScrolling = true
+                } else {
+                    scrollStopTimer.restart()
+                }
+            }
+
+            Timer {
+                id: scrollStopTimer
+                interval: 200
+                onTriggered: messagesView.isScrolling = false
+            }
+
+            property bool loadingOlderMessages: false
+
             delegate: MessageBubble {
                 width: messagesView.width
-                messageText: modelData.text
-                isUserMessage: modelData.isUser
-                parsedBlocks: modelData.blocks || []
+                messageText: model.text
+                isUserMessage: model.isUser
+                parsedBlocks: model.blocks || []
             }
 
             header: Item {
@@ -269,7 +309,7 @@ ApplicationWindow {
             }
         }
 
-        // ✅ КАСТОМНЫЙ СКРОЛЛБАР
+        // ✅ ИСПРАВЛЕННЫЙ СКРОЛЛБАР
         Item {
             id: customScrollBar
             anchors.right: parent.right
@@ -280,11 +320,6 @@ ApplicationWindow {
             anchors.bottomMargin: 15
             width: 8
             visible: messagesView.contentHeight > messagesView.height
-
-            property real scrollBarHeight: messagesView.height
-            property real contentHeight: messagesView.contentHeight
-            property real thumbHeight: Math.max(20, scrollBarHeight * (scrollBarHeight / contentHeight))
-            property real maxThumbY: scrollBarHeight - thumbHeight
 
             Rectangle {
                 id: scrollTrack
@@ -297,21 +332,38 @@ ApplicationWindow {
             Rectangle {
                 id: scrollThumb
                 x: 0
-                y: {
-                    if (customScrollBar.contentHeight <= customScrollBar.scrollBarHeight) return 0
-                    var ratio = messagesView.contentY / Math.max(1, customScrollBar.contentHeight - customScrollBar.scrollBarHeight)
-                    return ratio * customScrollBar.maxThumbY
-                }
                 width: parent.width
-                height: customScrollBar.thumbHeight
                 radius: 4
                 color: thumbMouseArea.pressed ? root.primaryColor :
                        thumbMouseArea.containsMouse ? root.secondaryColor :
                        root.accentColor
                 opacity: 0.8
 
+                // ✅ ИСПРАВЛЕНО: Стабильные расчёты высоты и позиции
+                height: {
+                    if (messagesView.contentHeight <= messagesView.height) return parent.height
+                    var ratio = messagesView.height / messagesView.contentHeight
+                    return Math.max(30, parent.height * ratio)  // Минимум 30px
+                }
+
+                y: {
+                    if (messagesView.contentHeight <= messagesView.height) return 0
+
+                    var maxContentY = messagesView.contentHeight - messagesView.height
+                    var maxThumbY = parent.height - height
+
+                    if (maxContentY <= 0) return 0
+
+                    var ratio = messagesView.contentY / maxContentY
+                    return Math.max(0, Math.min(ratio * maxThumbY, maxThumbY))
+                }
+
                 Behavior on color {
                     ColorAnimation { duration: 200 }
+                }
+
+                Behavior on height {
+                    NumberAnimation { duration: 150; easing.type: Easing.OutQuad }
                 }
             }
 
@@ -319,44 +371,32 @@ ApplicationWindow {
                 id: thumbMouseArea
                 anchors.fill: parent
                 hoverEnabled: true
-                cursorShape: {
-                    var mouseY = mouseY
-                    var isOverThumb = mouseY >= scrollThumb.y && mouseY <= (scrollThumb.y + scrollThumb.height)
-                    return isOverThumb ? Qt.PointingHandCursor : Qt.ArrowCursor
-                }
+                cursorShape: Qt.PointingHandCursor
 
                 property bool isDragging: false
                 property real dragStartY: 0
-                property real thumbStartY: 0
+                property real contentYAtDragStart: 0
 
                 onPressed: function(mouse) {
-                    var mouseY = mouse.y
-                    var thumbY = scrollThumb.y
-                    var thumbBottom = thumbY + scrollThumb.height
-
-                    if (mouseY >= thumbY && mouseY <= thumbBottom) {
-                        isDragging = true
-                        dragStartY = mouseY
-                        thumbStartY = thumbY
-                    } else {
-                        if (customScrollBar.contentHeight <= customScrollBar.scrollBarHeight) return
-
-                        var clickRatio = mouseY / height
-                        var targetContentY = clickRatio * (customScrollBar.contentHeight - customScrollBar.scrollBarHeight)
-                        messagesView.contentY = Math.max(0, Math.min(targetContentY, customScrollBar.contentHeight - customScrollBar.scrollBarHeight))
-                    }
+                    isDragging = true
+                    dragStartY = mouse.y
+                    contentYAtDragStart = messagesView.contentY
                 }
 
                 onPositionChanged: function(mouse) {
-                    if (isDragging && customScrollBar.contentHeight > customScrollBar.scrollBarHeight) {
-                        var delta = mouse.y - dragStartY
-                        var newThumbY = thumbStartY + delta
-                        newThumbY = Math.max(0, Math.min(newThumbY, customScrollBar.maxThumbY))
+                    if (!isDragging) return
 
-                        var ratio = newThumbY / customScrollBar.maxThumbY
-                        var newContentY = ratio * (customScrollBar.contentHeight - customScrollBar.scrollBarHeight)
-                        messagesView.contentY = Math.max(0, Math.min(newContentY, customScrollBar.contentHeight - customScrollBar.scrollBarHeight))
-                    }
+                    var maxContentY = messagesView.contentHeight - messagesView.height
+                    if (maxContentY <= 0) return
+
+                    var maxThumbY = height - scrollThumb.height
+                    if (maxThumbY <= 0) return
+
+                    var deltaY = mouse.y - dragStartY
+                    var deltaRatio = deltaY / maxThumbY
+                    var newContentY = contentYAtDragStart + (deltaRatio * maxContentY)
+
+                    messagesView.contentY = Math.max(0, Math.min(newContentY, maxContentY))
                 }
 
                 onReleased: {
@@ -365,14 +405,13 @@ ApplicationWindow {
 
                 onWheel: function(wheel) {
                     var delta = wheel.angleDelta.y
-                    var scrollAmount = delta > 0 ? -60 : 60
+                    var scrollAmount = delta > 0 ? -80 : 80
+                    var maxContentY = messagesView.contentHeight - messagesView.height
                     var newContentY = messagesView.contentY + scrollAmount
-                    newContentY = Math.max(0, Math.min(newContentY, messagesView.contentHeight - messagesView.height))
-                    messagesView.contentY = newContentY
+                    messagesView.contentY = Math.max(0, Math.min(newContentY, maxContentY))
                 }
             }
         }
-
     }
 
     // Input area
@@ -478,64 +517,6 @@ ApplicationWindow {
         }
     }
 
-    function loadMessages() {
-        // Очищаем все сообщения кроме welcome message
-        for (var i = chatContent.children.length - 1; i >= 1; i--) {
-            chatContent.children[i].destroy()
-        }
-
-        var messages = chatManager.getCurrentMessages()
-        console.log("Loading", messages.length, "messages from DB")  // ✅ Отладка
-
-        for (var j = 0; j < messages.length; j++) {
-            var msg = messages[j]
-            console.log("Message", j, "- isUser:", msg.isUser, "blocks:", msg.blocks ? msg.blocks.length : 0)
-
-            // ✅ Передаём blocks
-            var bubble = createMessageBubble(msg.text, msg.isUser, msg.blocks)
-            if (!bubble) {
-                console.log("ERROR: Failed to create bubble for message", j)
-            }
-        }
-
-        scrollToBottom()
-    }
-
-    // НОВАЯ функция для добавления одного сообщения без перезагрузки всех
-    function addSingleMessage(text, isUser) {
-        createSimpleBubble(text, isUser)
-        scrollToBottom()
-    }
-
-
-
-    function createSimpleBubble(text, isUser) {
-        var bubble = messageBubbleComponent.createObject(chatContent, {
-            "messageText": text,
-            "isUserMessage": isUser,
-            "width": Qt.binding(function() { return chatContent.width })
-        })
-
-        if (!bubble) {
-            console.log("ERROR: Failed to create MessageBubble")
-        }
-    }
-
-    // Добавить новую функцию для создания сообщений
-    function createMessageBubble(text, isUser, blocks) {
-        var messageComponent = Qt.createComponent("MessageBubble.qml")
-        if (messageComponent.status === Component.Ready) {
-            var messageObject = messageComponent.createObject(chatContent, {
-                "messageText": text,
-                "isUserMessage": isUser,
-                "parsedBlocks": blocks || [],
-                "width": Qt.binding(function() { return chatContent.width })
-            })
-            return messageObject  // ДОБАВИТЬ
-        }
-        return null  // ДОБАВИТЬ
-    }
-
     // Connections for LM Studio
     Connections {
         target: llamaConnector
@@ -577,7 +558,7 @@ ApplicationWindow {
         function onCurrentChatChanged() {
             messagesView.shouldAutoScroll = false
             // ListView автоматически перезагрузит модель
-            messagesView.model = chatManager.getCurrentMessages()
+            messagesView.shouldAutoScroll = false
             Qt.callLater(function() {
                 messagesView.positionViewAtEnd()
                 messagesView.shouldAutoScroll = true
@@ -586,7 +567,7 @@ ApplicationWindow {
 
         function onMessageAdded(text, isUser) {
             // ✅ КРИТИЧНО: Принудительно обновляем модель
-            messagesView.model = chatManager.getCurrentMessages()
+            //messagesView.model = chatManager.getCurrentMessages()
             Qt.callLater(function() {
                 messagesView.positionViewAtEnd()
             })
@@ -610,7 +591,6 @@ ApplicationWindow {
 
     Component.onCompleted: {
         inputField.forceActiveFocus()
-        // loadMessages() больше не нужен!
     }
 
 }

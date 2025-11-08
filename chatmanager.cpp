@@ -7,7 +7,6 @@
 #include <QSqlQuery>
 #include <QSqlError>
 #include <QStandardPaths>
-#include "messagelistmodel.h"
 
 ChatManager::ChatManager(QObject *parent)
     : QObject(parent)
