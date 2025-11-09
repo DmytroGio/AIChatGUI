@@ -7,6 +7,7 @@
 #include <QDebug>
 #include <QSqlDatabase>
 #include "message.h"
+#include <QElapsedTimer>
 
 class MessageListModel : public QAbstractListModel
 {

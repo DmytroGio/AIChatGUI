@@ -100,25 +100,32 @@ ParsedContent MessageListModel::deserializeBlocks(const QString &json)
 
 void MessageListModel::loadMessages(const QString &chatId, int limit)
 {
+    Q_UNUSED(limit);
+
+    // ✅ ДИАГНОСТИКА: Засекаем время
+    QElapsedTimer timer;
+    timer.start();
+
     if (!m_db || !m_db->isOpen()) {
         qDebug() << "Database not available";
         return;
     }
 
+    qDebug() << "=== Loading messages for chat:" << chatId;
+
     beginResetModel();
     m_messages.clear();
     m_currentChatId = chatId;
     m_oldestLoadedId = INT_MAX;
-    m_hasMoreMessages = true;
+    m_hasMoreMessages = false;
     endResetModel();
 
-    // Загружаем последние N сообщений
+    // ✅ ИЗМЕНЕНО: Загружаем ВСЕ сообщения сразу (без LIMIT)
     QSqlQuery query(*m_db);
     query.prepare("SELECT id, text, isUser, timestamp, blocks_json "
                   "FROM messages WHERE chat_id = ? "
-                  "ORDER BY id DESC LIMIT ?");
+                  "ORDER BY id ASC");  // ✅ ASC вместо DESC — прямой порядок
     query.addBindValue(chatId);
-    query.addBindValue(limit);
 
     if (!query.exec()) {
         qDebug() << "Failed to load messages:" << query.lastError().text();
@@ -140,32 +147,28 @@ void MessageListModel::loadMessages(const QString &chatId, int limit)
             msg.parsed = deserializeBlocks(blocksJson);
         }
 
-        loadedMessages.prepend(msg);  // Добавляем в начало (т.к. ORDER BY DESC)
+        loadedMessages.append(msg);  // Добавляем в начало (т.к. ORDER BY DESC)
 
         if (msgId < m_oldestLoadedId) {
             m_oldestLoadedId = msgId;
         }
     }
 
+    qDebug() << "SQL query finished in:" << timer.elapsed() << "ms";
+
+
     if (!loadedMessages.isEmpty()) {
+        qDebug() << "Inserting" << loadedMessages.size() << "rows into model...";
+
         beginInsertRows(QModelIndex(), 0, loadedMessages.size() - 1);
         m_messages = loadedMessages;
         endInsertRows();
 
-        qDebug() << "Loaded" << m_messages.size() << "messages for chat" << chatId;
+        qDebug() << "Model update finished. Total time:" << timer.elapsed() << "ms";
         emit countChanged();
     }
 
-    // Проверяем, есть ли ещё сообщения
-    QSqlQuery countQuery(*m_db);
-    countQuery.prepare("SELECT COUNT(*) FROM messages WHERE chat_id = ? AND id < ?");
-    countQuery.addBindValue(chatId);
-    countQuery.addBindValue(m_oldestLoadedId);
-
-    if (countQuery.exec() && countQuery.next()) {
-        m_hasMoreMessages = countQuery.value(0).toInt() > 0;
-        emit hasMoreMessagesChanged();
-    }
+    emit hasMoreMessagesChanged();
 }
 
 void MessageListModel::loadOlderMessages(int count)

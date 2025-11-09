@@ -228,13 +228,13 @@ ApplicationWindow {
             spacing: 15
             clip: true
 
-            // ✅ НОВОЕ: Увеличиваем буфер для меньших перезагрузок
-            cacheBuffer: height * 3  // Было 1.5, стало 3
-            displayMarginBeginning: 500  // Было 200
-            displayMarginEnd: 500  // Было 200
+            // МАКСИМАЛЬНЫЙ буфер — все сообщения в памяти
+            cacheBuffer: 999999  // Фактически отключаем виртуализацию
+            displayMarginBeginning: 999999
+            displayMarginEnd: 999999
 
-            // ✅ Асинхронная загрузка
-            reuseItems: true
+            // ОТКЛЮЧАЕМ переиспользование — каждый элемент создаётся один раз
+            reuseItems: false
 
             property bool shouldAutoScroll: true
 
@@ -245,46 +245,6 @@ ApplicationWindow {
                     })
                 }
             }
-
-            onContentYChanged: {
-                // Если скроллим почти к началу и есть ещё сообщения
-                if (contentY < 300 && !atYBeginning && chatManager.messageModel.hasMoreMessages) {
-                    // Защита от частых вызовов
-                    if (!loadingOlderMessages) {
-                        loadingOlderMessages = true
-                        Qt.callLater(function() {
-                            var oldContentHeight = contentHeight
-                            chatManager.messageModel.loadOlderMessages(20)
-
-                            // Сохраняем позицию скролла после загрузки
-                            Qt.callLater(function() {
-                                var newContentHeight = contentHeight
-                                contentY += (newContentHeight - oldContentHeight)
-                                loadingOlderMessages = false
-                            })
-                        })
-                    }
-                }
-            }
-
-            // ✅ НОВОЕ: Отключаем анимации во время активного скролла
-            property bool isScrolling: false
-
-            onMovingChanged: {
-                if (moving) {
-                    isScrolling = true
-                } else {
-                    scrollStopTimer.restart()
-                }
-            }
-
-            Timer {
-                id: scrollStopTimer
-                interval: 200
-                onTriggered: messagesView.isScrolling = false
-            }
-
-            property bool loadingOlderMessages: false
 
             delegate: MessageBubble {
                 width: messagesView.width
@@ -534,9 +494,6 @@ ApplicationWindow {
                 chatManager.updateLastMessage(currentResponse)
             }
 
-            // ✅ КРИТИЧНО: Обновляем модель при каждом токене
-            messagesView.model = chatManager.getCurrentMessages()
-
             Qt.callLater(function() {
                 messagesView.positionViewAtEnd()
             })
@@ -556,17 +513,25 @@ ApplicationWindow {
         target: chatManager
 
         function onCurrentChatChanged() {
+            // КРИТИЧНО: Отключаем автоскролл перед загрузкой
             messagesView.shouldAutoScroll = false
-            // ListView автоматически перезагрузит модель
-            messagesView.shouldAutoScroll = false
+
+            // Даём время модели обновиться
             Qt.callLater(function() {
+                // Сначала прыгаем в конец БЕЗ анимации
                 messagesView.positionViewAtEnd()
-                messagesView.shouldAutoScroll = true
+                messagesView.currentIndex = messagesView.count - 1
+
+                // Потом включаем автоскролл
+                Qt.callLater(function() {
+                    messagesView.positionViewAtEnd()
+                    messagesView.shouldAutoScroll = true
+                })
             })
         }
 
         function onMessageAdded(text, isUser) {
-            // ✅ КРИТИЧНО: Принудительно обновляем модель
+            // КРИТИЧНО: Принудительно обновляем модель
             //messagesView.model = chatManager.getCurrentMessages()
             Qt.callLater(function() {
                 messagesView.positionViewAtEnd()
