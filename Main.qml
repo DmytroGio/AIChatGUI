@@ -223,18 +223,17 @@ ApplicationWindow {
             anchors.fill: parent
             anchors.margins: 15
             anchors.rightMargin: 25
-
             model: chatManager.messageModel
             spacing: 15
             clip: true
 
-            // МАКСИМАЛЬНЫЙ буфер — все сообщения в памяти
-            cacheBuffer: 999999  // Фактически отключаем виртуализацию
-            displayMarginBeginning: 999999
-            displayMarginEnd: 999999
+            // ✅ КРИТИЧНО: Виртуализация
+            cacheBuffer: 2000
+            displayMarginBeginning: 500
+            displayMarginEnd: 500
 
-            // ОТКЛЮЧАЕМ переиспользование — каждый элемент создаётся один раз
-            reuseItems: false
+            // ✅ ВАЖНО: Переиспользование делегатов (экономия памяти)
+            reuseItems: true
 
             property bool shouldAutoScroll: true
 
@@ -246,17 +245,40 @@ ApplicationWindow {
                 }
             }
 
-            delegate: MessageBubble {
+            // ✅ ДИАГНОСТИКА: Замеряем полный рендеринг
+            property var loadStartTime: 0
+
+            Connections {
+                target: chatManager.messageModel
+                function onRowsAboutToBeInserted() {
+                    messagesView.loadStartTime = Date.now()
+                }
+                function onRowsInserted() {
+                    Qt.callLater(function() {
+                        var totalTime = Date.now() - messagesView.loadStartTime
+                        console.log("🎨 UI render time:", totalTime + "ms for", chatManager.messageCount, "messages")
+                    })
+                }
+            }
+
+            // ✅ ОПТИМИЗИРОВАННЫЙ delegate
+            delegate: Loader {
+                id: messageLoader
                 width: messagesView.width
-                messageText: model.text
-                isUserMessage: model.isUser
-                parsedBlocks: model.blocks || []
+                asynchronous: true
+
+                sourceComponent: Component {
+                    MessageBubble {
+                        messageText: model.text || ""
+                        isUserMessage: model.isUser || false
+                        parsedBlocks: model.blocks || []
+                    }
+                }
             }
 
             header: Item {
                 width: messagesView.width
                 height: chatManager.messageCount === 0 ? 80 : 0
-
                 Text {
                     anchors.centerIn: parent
                     text: "Start typing to begin..."

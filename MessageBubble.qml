@@ -13,9 +13,18 @@ Rectangle {
     property color primaryColor: "#4facfe"
     property color textColor: "#ffffff"
 
-    // ✅ ОПТИМИЗАЦИЯ: Включаем кеширование слоя
-    //layer.enabled: true
-    //layer.smooth: true
+    // ✅ ДИАГНОСТИКА
+    Component.onCompleted: {
+        var startTime = Date.now()
+        Qt.callLater(function() {
+            var renderTime = Date.now() - startTime
+            if (renderTime > 50) {  // Логируем только медленные (>50ms)
+                console.log("⚠️ Slow bubble:", renderTime + "ms",
+                           "blocks:", parsedBlocks.length,
+                           "user:", isUserMessage)
+            }
+        })
+    }
 
     // ✅ Отключаем antialiasing где не критично
     antialiasing: false
@@ -384,11 +393,9 @@ Rectangle {
                                     wrapMode: TextEdit.Wrap
                                     selectByMouse: true
                                     readOnly: true
+                                    renderType: Text.NativeRendering
                                     leftPadding: 10
                                     topPadding: 1
-
-                                    // ✅ КРИТИЧНО: Рендерим только видимое
-                                    renderType: Text.NativeRendering  // Быстрее для больших блоков
 
                                     Component.onCompleted: {
                                         // ✅ ОПТИМИЗАЦИЯ: Подсветка синтаксиса ТОЛЬКО для коротких блоков (<50 строк)
@@ -419,8 +426,9 @@ Rectangle {
         }
     }
 
-     // Tail for speech bubble effect
-     Canvas {
+    /*
+    // ✅ Shape быстрее Canvas для простых фигур
+    Item {
         id: tail
         anchors.top: messageBubble.bottom
         anchors.topMargin: -5
@@ -432,32 +440,19 @@ Rectangle {
         width: 15
         height: 10
 
-        // ✅ НОВОЕ: Перерисовываем при изменении размеров родителя
-        Connections {
-            target: messageBubble
-            function onWidthChanged() { tail.requestPaint() }
-            function onHeightChanged() { tail.requestPaint() }
-        }
-
-        onPaint: {
-            var ctx = getContext("2d")
-            ctx.clearRect(0, 0, width, height)
-
-            ctx.fillStyle = isUserMessage ? messageContainer.userColor : messageContainer.aiColor
-            ctx.beginPath()
-
-            if (isUserMessage) {
-                ctx.moveTo(0, 0)
-                ctx.lineTo(15, 0)
-                ctx.lineTo(10, 10)
-            } else {
-                ctx.moveTo(15, 0)
-                ctx.lineTo(0, 0)
-                ctx.lineTo(5, 10)
-            }
-
-            ctx.closePath()
-            ctx.fill()
+        // Простой треугольник через Rectangle с rotation
+        Rectangle {
+            width: 10
+            height: 10
+            rotation: 45
+            color: isUserMessage ? messageContainer.userColor : messageContainer.aiColor
+            anchors.top: parent.top
+            anchors.topMargin: isUserMessage ? -3 : -3
+            anchors.right: isUserMessage ? parent.right : undefined
+            anchors.left: isUserMessage ? undefined : parent.left
+            anchors.rightMargin: isUserMessage ? 5 : 0
+            anchors.leftMargin: isUserMessage ? 0 : 5
         }
     }
+    */
 }
