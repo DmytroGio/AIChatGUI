@@ -14,8 +14,8 @@ Rectangle {
     property color textColor: "#ffffff"
 
     // ✅ ОПТИМИЗАЦИЯ: Включаем кеширование слоя
-    layer.enabled: true
-    layer.smooth: true
+    //layer.enabled: true
+    //layer.smooth: true
 
     // ✅ Отключаем antialiasing где не критично
     antialiasing: false
@@ -47,10 +47,6 @@ Rectangle {
 
             Repeater {
                 model: {
-                    console.log("=== MessageBubble Debug ===")
-                    console.log("isUserMessage:", isUserMessage)
-                    console.log("parsedBlocks:", JSON.stringify(messageContainer.parsedBlocks))
-                    console.log("messageText:", messageText)
 
                     // ✅ Если есть готовые блоки из C++ - используем их
                     if (messageContainer.parsedBlocks && messageContainer.parsedBlocks.length > 0) {
@@ -395,15 +391,19 @@ Rectangle {
                                     renderType: Text.NativeRendering  // Быстрее для больших блоков
 
                                     Component.onCompleted: {
-                                        // Подсветка синтаксиса только если блок видим
-                                        if (itemData.language && itemData.language !== "text") {
+                                        // ✅ ОПТИМИЗАЦИЯ: Подсветка синтаксиса ТОЛЬКО для коротких блоков (<50 строк)
+                                        if (itemData.language && itemData.language !== "text" && itemData.lineCount < 50) {
                                             Qt.callLater(function() {
-                                                var cppHighlighter = Qt.createQmlObject(
-                                                    'import SyntaxHighlighter 1.0; SyntaxHighlighter { language: "' + itemData.language + '" }',
-                                                    codeEdit
-                                                )
-                                                if (cppHighlighter) {
-                                                    cppHighlighter.setDocument(codeEdit.textDocument)
+                                                try {
+                                                    var cppHighlighter = Qt.createQmlObject(
+                                                        'import SyntaxHighlighter 1.0; SyntaxHighlighter { language: "' + itemData.language + '" }',
+                                                        codeEdit
+                                                    )
+                                                    if (cppHighlighter) {
+                                                        cppHighlighter.setDocument(codeEdit.textDocument)
+                                                    }
+                                                } catch (e) {
+                                                    // Игнорируем ошибки подсветки
                                                 }
                                             })
                                         }
