@@ -13,19 +13,6 @@ Rectangle {
     property color primaryColor: "#4facfe"
     property color textColor: "#ffffff"
 
-    // ✅ ДИАГНОСТИКА
-    Component.onCompleted: {
-        var startTime = Date.now()
-        Qt.callLater(function() {
-            var renderTime = Date.now() - startTime
-            if (renderTime > 50) {  // Логируем только медленные (>50ms)
-                console.log("⚠️ Slow bubble:", renderTime + "ms",
-                           "blocks:", parsedBlocks.length,
-                           "user:", isUserMessage)
-            }
-        })
-    }
-
     // ✅ Отключаем antialiasing где не критично
     antialiasing: false
 
@@ -398,8 +385,9 @@ Rectangle {
                                     topPadding: 1
 
                                     Component.onCompleted: {
-                                        // ✅ ОПТИМИЗАЦИЯ: Подсветка синтаксиса ТОЛЬКО для коротких блоков (<50 строк)
-                                        if (itemData.language && itemData.language !== "text" && itemData.lineCount < 50) {
+                                        // ✅ Подсветка синтаксиса ТОЛЬКО для маленьких блоков (<30 строк)
+                                        /*
+                                        if (itemData.language && itemData.language !== "text" && itemData.lineCount < 30) {
                                             Qt.callLater(function() {
                                                 try {
                                                     var cppHighlighter = Qt.createQmlObject(
@@ -414,7 +402,9 @@ Rectangle {
                                                 }
                                             })
                                         }
+                                        */
                                     }
+
                                 }
                             }
                         }

@@ -261,19 +261,11 @@ ApplicationWindow {
                 }
             }
 
-            // ✅ ОПТИМИЗИРОВАННЫЙ delegate
-            delegate: Loader {
-                id: messageLoader
+            delegate: MessageBubble {
                 width: messagesView.width
-                asynchronous: true
-
-                sourceComponent: Component {
-                    MessageBubble {
-                        messageText: model.text || ""
-                        isUserMessage: model.isUser || false
-                        parsedBlocks: model.blocks || []
-                    }
-                }
+                messageText: model.text || ""
+                isUserMessage: model.isUser || false
+                parsedBlocks: model.blocks || []
             }
 
             header: Item {
