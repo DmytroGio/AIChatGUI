@@ -84,22 +84,20 @@ Rectangle {
                     width: messageContent.width
 
                     text: {
-                        // ✅ itemData.content уже содержит текст из C++
                         var formatted = itemData.content || ""
 
-                        // Обработка заголовков markdown (### ## #)
+                        // Форматируем один раз
                         formatted = formatted.replace(/^### (.*?)$/gm, '<span style="font-size: 16px; font-weight: bold; color: #60a5fa;">$1</span>')
                         formatted = formatted.replace(/^## (.*?)$/gm, '<span style="font-size: 18px; font-weight: bold; color: #3b82f6;">$1</span>')
                         formatted = formatted.replace(/^# (.*?)$/gm, '<span style="font-size: 20px; font-weight: bold; color: #2563eb;">$1</span>')
-
-                        // Остальное форматирование (inline code, bold, italic)
-                        formatted = formatted.replace(/`([^`\n]+)`/g,
-                            '<span style="background-color: #2d3748; color: #ffd700; padding: 2px 6px; border-radius: 4px; font-family: \'Consolas\', \'Monaco\', monospace; font-size: 13px;">$1</span>')
+                        formatted = formatted.replace(/`([^`\n]+)`/g, '<span style="background-color: #2d3748; color: #ffd700; padding: 2px 6px; border-radius: 4px; font-family: \'Consolas\', \'Monaco\', monospace; font-size: 13px;">$1</span>')
                         formatted = formatted.replace(/\n/g, '<br>')
                         formatted = formatted.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>')
                         formatted = formatted.replace(/\*(.*?)\*/g, '<i>$1</i>')
+
                         return formatted
                     }
+
                     color: messageContainer.textColor
                     font.pixelSize: 14
                     font.family: "Segoe UI Symbol, Segoe UI Emoji, Segoe UI, Apple Color Emoji, Noto Color Emoji"
@@ -323,40 +321,24 @@ Rectangle {
                                     height: parent.height
                                     color: "#0d1117"
 
+                                    // ✅ ОПТИМИЗАЦИЯ: Простые номера строк без измерения высоты
                                     Column {
                                         id: lineNumbers
-                                        width: parent.width
+                                        width: 45
                                         spacing: 0
 
                                         Repeater {
                                             model: itemData.content.split('\n').length
 
-                                            Item {
+                                            Text {
+                                                text: (index + 1).toString()
+                                                color: "#484f58"
+                                                font.family: codeEdit.font.family
+                                                font.pixelSize: codeEdit.font.pixelSize
                                                 width: lineNumbers.width
-                                                height: correspondingLine.height
-
-                                                Text {
-                                                    text: (index + 1).toString()
-                                                    color: "#484f58"
-                                                    font.family: codeEdit.font.family
-                                                    font.pixelSize: codeEdit.font.pixelSize
-                                                    width: parent.width
-                                                    horizontalAlignment: Text.AlignRight
-                                                    rightPadding: 10
-                                                    anchors.top: parent.top
-                                                }
-
-                                                // Невидимый TextEdit для измерения высоты соответствующей строки
-                                                TextEdit {
-                                                    id: correspondingLine
-                                                    text: itemData.content.split('\n')[index]
-                                                    visible: false
-                                                    font.family: codeEdit.font.family
-                                                    font.pixelSize: codeEdit.font.pixelSize
-                                                    width: codeEdit.width - 10
-                                                    wrapMode: TextEdit.Wrap
-                                                    leftPadding: 10
-                                                }
+                                                height: codeEdit.font.pixelSize + 2  // ✅ Фиксированная высота
+                                                horizontalAlignment: Text.AlignRight
+                                                rightPadding: 10
                                             }
                                         }
                                     }
