@@ -78,6 +78,7 @@ qt_add_qml_module(appAIChatGUI
         SOURCES modelinfo.h modelinfo.cpp
         SOURCES messagelistmodel.h messagelistmodel.cpp
         SOURCES message.h
+        QML_FILES SimpleMessageBubble.qml
 )
 
 # Заголовочные файлы llama.cpp

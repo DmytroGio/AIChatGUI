@@ -305,23 +305,36 @@ Rectangle {
                             }
                         }
 
-                        // Код с нумерацией строк (без ограничения высоты)
+                        // ✅ ОПТИМИЗАЦИЯ: ScrollView для длинных блоков
                         Item {
                             id: codeEditWrapper
                             width: parent.width
-                            height: codeEdit.contentHeight + 10
 
-                            Row {
+                            // ✅ Ограничиваем высоту для длинных блоков
+                            height: {
+                                var lineCount = itemData.lineCount
+                                var lineHeight = 14  // font.pixelSize + 2
+                                var maxHeight = 500  // Максимум 500px
+
+                                if (lineCount > 50) {
+                                    return Math.min(lineCount * lineHeight, maxHeight)
+                                }
+                                return lineCount * lineHeight + 10
+                            }
+
+                            ScrollView {
                                 anchors.fill: parent
-                                spacing: 0
+                                clip: true
 
-                                // Колонка с номерами строк
-                                Rectangle {
-                                    width: 45
-                                    height: parent.height
-                                    color: "#0d1117"
+                                // ✅ Скрываем ScrollView для коротких блоков
+                                ScrollBar.vertical.visible: itemData.lineCount > 30
+                                ScrollBar.horizontal.visible: false
 
-                                    // ✅ ОПТИМИЗАЦИЯ: Простые номера строк без измерения высоты
+                                Row {
+                                    width: codeEditWrapper.width
+                                    spacing: 0
+
+                                    // ÐšÐ¾Ð»Ð¾Ð½ÐºÐ° Ñ Ð½Ð¾Ð¼ÐµÑ€Ð°Ð¼Ð¸ ÑÑ‚Ñ€Ð¾Ðº
                                     Column {
                                         id: lineNumbers
                                         width: 45
@@ -333,63 +346,42 @@ Rectangle {
                                             Text {
                                                 text: (index + 1).toString()
                                                 color: "#484f58"
-                                                font.family: codeEdit.font.family
-                                                font.pixelSize: codeEdit.font.pixelSize
+                                                font.family: "Consolas"
+                                                font.pixelSize: 12
                                                 width: lineNumbers.width
-                                                height: codeEdit.font.pixelSize + 2  // ✅ Фиксированная высота
+                                                height: 14
                                                 horizontalAlignment: Text.AlignRight
                                                 rightPadding: 10
                                             }
                                         }
                                     }
-                                }
 
-                                // Разделитель
-                                Rectangle {
-                                    width: 1
-                                    height: parent.height
-                                    color: "#21262d"
-                                }
-
-                                // Область с кодом
-                                TextEdit {
-                                    id: codeEdit
-                                    width: parent.width - 46
-                                    text: itemData.content
-                                    color: "#e6edf3"
-                                    font.family: "Consolas"
-                                    font.pixelSize: 12
-                                    wrapMode: TextEdit.Wrap
-                                    selectByMouse: true
-                                    readOnly: true
-                                    renderType: Text.NativeRendering
-                                    leftPadding: 10
-                                    topPadding: 1
-
-                                    Component.onCompleted: {
-                                        // ✅ Подсветка синтаксиса ТОЛЬКО для маленьких блоков (<30 строк)
-                                        /*
-                                        if (itemData.language && itemData.language !== "text" && itemData.lineCount < 30) {
-                                            Qt.callLater(function() {
-                                                try {
-                                                    var cppHighlighter = Qt.createQmlObject(
-                                                        'import SyntaxHighlighter 1.0; SyntaxHighlighter { language: "' + itemData.language + '" }',
-                                                        codeEdit
-                                                    )
-                                                    if (cppHighlighter) {
-                                                        cppHighlighter.setDocument(codeEdit.textDocument)
-                                                    }
-                                                } catch (e) {
-                                                    // Игнорируем ошибки подсветки
-                                                }
-                                            })
-                                        }
-                                        */
+                                    // Ð Ð°Ð·Ð´ÐµÐ»Ð¸Ñ‚ÐµÐ»ÑŒ
+                                    Rectangle {
+                                        width: 1
+                                        height: lineNumbers.height
+                                        color: "#21262d"
                                     }
 
+                                    // ÐžÐ±Ð»Ð°ÑÑ‚ÑŒ Ñ ÐºÐ¾Ð´Ð¾Ð¼
+                                    TextEdit {
+                                        id: codeEdit
+                                        width: codeEditWrapper.width - 46
+                                        text: itemData.content
+                                        color: "#e6edf3"
+                                        font.family: "Consolas"
+                                        font.pixelSize: 12
+                                        wrapMode: TextEdit.NoWrap  // ✅ ВАЖНО: Без переноса для кода
+                                        selectByMouse: true
+                                        readOnly: true
+                                        renderType: Text.NativeRendering
+                                        leftPadding: 10
+                                        topPadding: 1
+                                    }
                                 }
                             }
                         }
+
 
                     }
                 }

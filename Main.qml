@@ -222,18 +222,18 @@ ApplicationWindow {
             id: messagesView
             anchors.fill: parent
             anchors.margins: 15
-            anchors.rightMargin: 25
+            anchors.rightMargin: 25  // Место для скроллбара
             model: chatManager.messageModel
             spacing: 15
             clip: true
 
-            // ✅ КРИТИЧНО: Виртуализация
-            cacheBuffer: 2000
-            displayMarginBeginning: 500
-            displayMarginEnd: 500
+            cacheBuffer: 5000
+            reuseItems: false
 
-            // ✅ ВАЖНО: Переиспользование делегатов (экономия памяти)
-            reuseItems: true
+            // ✅ КРИТИЧНО: Отключаем стандартный скроллбар
+            ScrollBar.vertical: ScrollBar {
+                visible: false
+            }
 
             property bool shouldAutoScroll: true
 
@@ -245,27 +245,10 @@ ApplicationWindow {
                 }
             }
 
-            // ✅ ДИАГНОСТИКА: Замеряем полный рендеринг
-            property var loadStartTime: 0
-
-            Connections {
-                target: chatManager.messageModel
-                function onRowsAboutToBeInserted() {
-                    messagesView.loadStartTime = Date.now()
-                }
-                function onRowsInserted() {
-                    Qt.callLater(function() {
-                        var totalTime = Date.now() - messagesView.loadStartTime
-                        console.log("🎨 UI render time:", totalTime + "ms for", chatManager.messageCount, "messages")
-                    })
-                }
-            }
-
-            delegate: MessageBubble {
+            delegate: SimpleMessageBubble {
                 width: messagesView.width
                 messageText: model.text || ""
                 isUserMessage: model.isUser || false
-                parsedBlocks: model.blocks || []
             }
 
             header: Item {
@@ -283,6 +266,45 @@ ApplicationWindow {
             }
         }
 
+        // ✅ КАСТОМНЫЙ СКРОЛЛБАР (КАК В CHATLIST)
+        ScrollBar {
+            id: messagesScrollBar
+            anchors.right: messagesView.right
+            anchors.top: messagesView.top
+            anchors.bottom: messagesView.bottom
+            anchors.rightMargin: 5
+
+            policy: ScrollBar.AsNeeded
+            orientation: Qt.Vertical
+            size: messagesView.height / Math.max(messagesView.contentHeight, 1)
+            position: messagesView.contentY / Math.max(messagesView.contentHeight - messagesView.height, 1)
+
+            onPositionChanged: {
+                if (pressed) {
+                    messagesView.contentY = position * (messagesView.contentHeight - messagesView.height)
+                }
+            }
+
+            contentItem: Rectangle {
+                implicitWidth: 8
+                radius: 4
+                color: messagesScrollBar.pressed ? "#80ffffff" : "#40ffffff"
+                opacity: messagesScrollBar.active ? 1.0 : 0.5
+
+                Behavior on color {
+                    ColorAnimation { duration: 100 }
+                }
+
+                Behavior on opacity {
+                    NumberAnimation { duration: 200 }
+                }
+            }
+
+            background: Rectangle {
+                implicitWidth: 8
+                color: "transparent"
+            }
+        }
         // ✅ ИСПРАВЛЕННЫЙ СКРОЛЛБАР
         Item {
             id: customScrollBar
