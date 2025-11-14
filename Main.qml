@@ -222,18 +222,18 @@ ApplicationWindow {
             id: messagesView
             anchors.fill: parent
             anchors.margins: 15
-            anchors.rightMargin: 25  // Место для скроллбара
+            anchors.rightMargin: 30
             model: chatManager.messageModel
             spacing: 15
             clip: true
 
-            cacheBuffer: 5000
+            // ✅ КРИТИЧНО: Убираем виртуализацию — грузим ВСЁ сразу
+            cacheBuffer: 50000  // Бесконечный буфер = все элементы создаются
             reuseItems: false
 
-            // ✅ КРИТИЧНО: Отключаем стандартный скроллбар
-            ScrollBar.vertical: ScrollBar {
-                visible: false
-            }
+            // ✅ Отключаем стандартные скроллбары
+            ScrollBar.vertical: null
+            ScrollBar.horizontal: null
 
             property bool shouldAutoScroll: true
 
@@ -266,46 +266,7 @@ ApplicationWindow {
             }
         }
 
-        // ✅ КАСТОМНЫЙ СКРОЛЛБАР (КАК В CHATLIST)
-        ScrollBar {
-            id: messagesScrollBar
-            anchors.right: messagesView.right
-            anchors.top: messagesView.top
-            anchors.bottom: messagesView.bottom
-            anchors.rightMargin: 5
-
-            policy: ScrollBar.AsNeeded
-            orientation: Qt.Vertical
-            size: messagesView.height / Math.max(messagesView.contentHeight, 1)
-            position: messagesView.contentY / Math.max(messagesView.contentHeight - messagesView.height, 1)
-
-            onPositionChanged: {
-                if (pressed) {
-                    messagesView.contentY = position * (messagesView.contentHeight - messagesView.height)
-                }
-            }
-
-            contentItem: Rectangle {
-                implicitWidth: 8
-                radius: 4
-                color: messagesScrollBar.pressed ? "#80ffffff" : "#40ffffff"
-                opacity: messagesScrollBar.active ? 1.0 : 0.5
-
-                Behavior on color {
-                    ColorAnimation { duration: 100 }
-                }
-
-                Behavior on opacity {
-                    NumberAnimation { duration: 200 }
-                }
-            }
-
-            background: Rectangle {
-                implicitWidth: 8
-                color: "transparent"
-            }
-        }
-        // ✅ ИСПРАВЛЕННЫЙ СКРОЛЛБАР
+        // ✅ ЕДИНСТВЕННЫЙ КАСТОМНЫЙ СКРОЛЛБАР
         Item {
             id: customScrollBar
             anchors.right: parent.right
@@ -314,52 +275,61 @@ ApplicationWindow {
             anchors.rightMargin: 5
             anchors.topMargin: 15
             anchors.bottomMargin: 15
-            width: 8
+            width: 10
             visible: messagesView.contentHeight > messagesView.height
 
+            // Фон трека
             Rectangle {
                 id: scrollTrack
                 anchors.fill: parent
                 color: root.surfaceColor
                 opacity: 0.3
-                radius: 4
+                radius: 5
             }
 
+            // Ползунок
             Rectangle {
                 id: scrollThumb
                 x: 0
                 width: parent.width
-                radius: 4
+                radius: 5
                 color: thumbMouseArea.pressed ? root.primaryColor :
                        thumbMouseArea.containsMouse ? root.secondaryColor :
                        root.accentColor
                 opacity: 0.8
 
-                // ✅ ИСПРАВЛЕНО: Стабильные расчёты высоты и позиции
+                // ✅ ИСПРАВЛЕНО: Правильная высота
                 height: {
-                    if (messagesView.contentHeight <= messagesView.height) return parent.height
-                    var ratio = messagesView.height / messagesView.contentHeight
-                    return Math.max(30, parent.height * ratio)  // Минимум 30px
+                    if (messagesView.contentHeight <= 0) return 30
+                    var viewHeight = messagesView.height
+                    var contentHeight = messagesView.contentHeight
+
+                    if (contentHeight <= viewHeight) return parent.height
+
+                    var ratio = viewHeight / contentHeight
+                    return Math.max(30, parent.height * ratio)
                 }
 
+                // ✅ ИСПРАВЛЕНО: Правильная позиция
                 y: {
                     if (messagesView.contentHeight <= messagesView.height) return 0
 
-                    var maxContentY = messagesView.contentHeight - messagesView.height
-                    var maxThumbY = parent.height - height
+                    var viewHeight = messagesView.height
+                    var contentHeight = messagesView.contentHeight
+                    var contentY = messagesView.contentY
 
+                    var maxContentY = contentHeight - viewHeight
                     if (maxContentY <= 0) return 0
 
-                    var ratio = messagesView.contentY / maxContentY
+                    var maxThumbY = parent.height - height
+                    if (maxThumbY <= 0) return 0
+
+                    var ratio = contentY / maxContentY
                     return Math.max(0, Math.min(ratio * maxThumbY, maxThumbY))
                 }
 
                 Behavior on color {
                     ColorAnimation { duration: 200 }
-                }
-
-                Behavior on height {
-                    NumberAnimation { duration: 150; easing.type: Easing.OutQuad }
                 }
             }
 
@@ -377,12 +347,16 @@ ApplicationWindow {
                     isDragging = true
                     dragStartY = mouse.y
                     contentYAtDragStart = messagesView.contentY
+                    messagesView.shouldAutoScroll = false  // ✅ Отключаем автоскролл при drag
                 }
 
                 onPositionChanged: function(mouse) {
                     if (!isDragging) return
 
-                    var maxContentY = messagesView.contentHeight - messagesView.height
+                    var viewHeight = messagesView.height
+                    var contentHeight = messagesView.contentHeight
+                    var maxContentY = contentHeight - viewHeight
+
                     if (maxContentY <= 0) return
 
                     var maxThumbY = height - scrollThumb.height
@@ -397,6 +371,12 @@ ApplicationWindow {
 
                 onReleased: {
                     isDragging = false
+
+                    // ✅ Включаем автоскролл если мы внизу
+                    var maxContentY = messagesView.contentHeight - messagesView.height
+                    if (messagesView.contentY >= maxContentY - 10) {
+                        messagesView.shouldAutoScroll = true
+                    }
                 }
 
                 onWheel: function(wheel) {
@@ -405,6 +385,16 @@ ApplicationWindow {
                     var maxContentY = messagesView.contentHeight - messagesView.height
                     var newContentY = messagesView.contentY + scrollAmount
                     messagesView.contentY = Math.max(0, Math.min(newContentY, maxContentY))
+
+                    // ✅ Отключаем автоскролл при скролле вверх
+                    if (scrollAmount < 0) {
+                        messagesView.shouldAutoScroll = false
+                    }
+
+                    // ✅ Включаем если прокрутили вниз до конца
+                    if (messagesView.contentY >= maxContentY - 10) {
+                        messagesView.shouldAutoScroll = true
+                    }
                 }
             }
         }
