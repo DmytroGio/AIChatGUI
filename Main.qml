@@ -266,7 +266,7 @@ ApplicationWindow {
             }
         }
 
-        // ✅ ЕДИНСТВЕННЫЙ КАСТОМНЫЙ СКРОЛЛБАР
+        // ✅ КАСТОМНЫЙ СКРОЛЛБАР (простой, без дублирования)
         Item {
             id: customScrollBar
             anchors.right: parent.right
@@ -276,6 +276,7 @@ ApplicationWindow {
             anchors.topMargin: 15
             anchors.bottomMargin: 15
             width: 10
+
             visible: messagesView.contentHeight > messagesView.height
 
             // Фон трека
@@ -298,7 +299,6 @@ ApplicationWindow {
                        root.accentColor
                 opacity: 0.8
 
-                // ✅ ИСПРАВЛЕНО: Правильная высота
                 height: {
                     if (messagesView.contentHeight <= 0) return 30
                     var viewHeight = messagesView.height
@@ -310,7 +310,6 @@ ApplicationWindow {
                     return Math.max(30, parent.height * ratio)
                 }
 
-                // ✅ ИСПРАВЛЕНО: Правильная позиция
                 y: {
                     if (messagesView.contentHeight <= messagesView.height) return 0
 
@@ -347,7 +346,7 @@ ApplicationWindow {
                     isDragging = true
                     dragStartY = mouse.y
                     contentYAtDragStart = messagesView.contentY
-                    messagesView.shouldAutoScroll = false  // ✅ Отключаем автоскролл при drag
+                    messagesView.shouldAutoScroll = false
                 }
 
                 onPositionChanged: function(mouse) {
@@ -372,7 +371,6 @@ ApplicationWindow {
                 onReleased: {
                     isDragging = false
 
-                    // ✅ Включаем автоскролл если мы внизу
                     var maxContentY = messagesView.contentHeight - messagesView.height
                     if (messagesView.contentY >= maxContentY - 10) {
                         messagesView.shouldAutoScroll = true
@@ -386,18 +384,17 @@ ApplicationWindow {
                     var newContentY = messagesView.contentY + scrollAmount
                     messagesView.contentY = Math.max(0, Math.min(newContentY, maxContentY))
 
-                    // ✅ Отключаем автоскролл при скролле вверх
                     if (scrollAmount < 0) {
                         messagesView.shouldAutoScroll = false
                     }
 
-                    // ✅ Включаем если прокрутили вниз до конца
                     if (messagesView.contentY >= maxContentY - 10) {
                         messagesView.shouldAutoScroll = true
                     }
                 }
             }
         }
+
     }
 
     // Input area
@@ -539,16 +536,12 @@ ApplicationWindow {
         target: chatManager
 
         function onCurrentChatChanged() {
-            // КРИТИЧНО: Отключаем автоскролл перед загрузкой
             messagesView.shouldAutoScroll = false
 
-            // Даём время модели обновиться
             Qt.callLater(function() {
-                // Сначала прыгаем в конец БЕЗ анимации
                 messagesView.positionViewAtEnd()
                 messagesView.currentIndex = messagesView.count - 1
 
-                // Потом включаем автоскролл
                 Qt.callLater(function() {
                     messagesView.positionViewAtEnd()
                     messagesView.shouldAutoScroll = true
@@ -557,8 +550,6 @@ ApplicationWindow {
         }
 
         function onMessageAdded(text, isUser) {
-            // КРИТИЧНО: Принудительно обновляем модель
-            //messagesView.model = chatManager.getCurrentMessages()
             Qt.callLater(function() {
                 messagesView.positionViewAtEnd()
             })
@@ -582,6 +573,15 @@ ApplicationWindow {
 
     Component.onCompleted: {
         inputField.forceActiveFocus()
+
+        // ✅ КРИТИЧНО: Принудительно вызываем логику переключения чата
+        Qt.callLater(function() {
+            // Эмулируем переключение на текущий чат
+            var currentId = chatManager.currentChatId
+            if (currentId) {
+                chatManager.loadMessages(currentId)
+            }
+        })
     }
 
 }
