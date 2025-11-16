@@ -26,8 +26,6 @@ ApplicationWindow {
     property bool showModelPanel: true
     property bool showModelSelector: false
 
-
-
     // Gradient background
     Rectangle {
         anchors.fill: parent
@@ -149,7 +147,7 @@ ApplicationWindow {
             anchors.right: parent.right
             anchors.rightMargin: 20
             anchors.verticalCenter: parent.verticalCenter
-            visible: !root.showModelPanel  // Скрываем когда панель открыта
+            visible: !root.showModelPanel
 
             SequentialAnimation on opacity {
                 running: modelInfo.status === "Generating"
@@ -163,7 +161,7 @@ ApplicationWindow {
         Rectangle {
             id: modelPanelButton
             anchors.right: parent.right
-            anchors.rightMargin: root.showModelPanel ? 20 : 50  // Смещаем влево когда панель открыта
+            anchors.rightMargin: root.showModelPanel ? 20 : 50
             anchors.verticalCenter: parent.verticalCenter
             width: 40
             height: 40
@@ -189,7 +187,6 @@ ApplicationWindow {
                 ColorAnimation { duration: 200 }
             }
 
-            // Добавляем плавную анимацию смещения
             Behavior on anchors.rightMargin {
                 NumberAnimation { duration: 200; easing.type: Easing.OutQuad }
             }
@@ -215,9 +212,6 @@ ApplicationWindow {
             radius: parent.radius
         }
 
-
-        // В Main.qml, заменить Flickable и его содержимое:
-
         ListView {
             id: messagesView
             anchors.fill: parent
@@ -227,11 +221,9 @@ ApplicationWindow {
             spacing: 15
             clip: true
 
-            // ✅ КРИТИЧНО: Убираем виртуализацию — грузим ВСЁ сразу
-            cacheBuffer: 50000  // Бесконечный буфер = все элементы создаются
+            cacheBuffer: 50000
             reuseItems: false
 
-            // ✅ Отключаем стандартные скроллбары
             ScrollBar.vertical: null
             ScrollBar.horizontal: null
 
@@ -249,6 +241,7 @@ ApplicationWindow {
                 width: messagesView.width
                 messageText: model.text || ""
                 isUserMessage: model.isUser || false
+                parsedBlocks: model.blocks || []
             }
 
             header: Item {
@@ -266,7 +259,7 @@ ApplicationWindow {
             }
         }
 
-        // ✅ КАСТОМНЫЙ СКРОЛЛБАР (простой, без дублирования)
+        // Кастомный скроллбар
         Item {
             id: customScrollBar
             anchors.right: parent.right
@@ -279,7 +272,6 @@ ApplicationWindow {
 
             visible: messagesView.contentHeight > messagesView.height
 
-            // Фон трека
             Rectangle {
                 id: scrollTrack
                 anchors.fill: parent
@@ -288,7 +280,6 @@ ApplicationWindow {
                 radius: 5
             }
 
-            // Ползунок
             Rectangle {
                 id: scrollThumb
                 x: 0
@@ -394,7 +385,6 @@ ApplicationWindow {
                 }
             }
         }
-
     }
 
     // Input area
@@ -439,8 +429,8 @@ ApplicationWindow {
 
                 Keys.onReturnPressed: {
                     if (llamaConnector.isGenerating) {
-                            return  // Блокируем отправку во время генерации
-                        }
+                        return
+                    }
                     if (inputField.text.trim() !== "") {
                         chatManager.addMessage(inputField.text.trim(), true)
                         llamaConnector.sendMessage(inputField.text.trim())
@@ -525,8 +515,6 @@ ApplicationWindow {
         function onGenerationFinished(tokens, duration) {
             currentResponse = ""
             currentMessageIndex = -1
-
-            // Финальное обновление с парсингом уже произошло в addMessage
             messagesView.positionViewAtEnd()
         }
     }
@@ -573,15 +561,5 @@ ApplicationWindow {
 
     Component.onCompleted: {
         inputField.forceActiveFocus()
-
-        // ✅ КРИТИЧНО: Принудительно вызываем логику переключения чата
-        Qt.callLater(function() {
-            // Эмулируем переключение на текущий чат
-            var currentId = chatManager.currentChatId
-            if (currentId) {
-                chatManager.loadMessages(currentId)
-            }
-        })
     }
-
 }

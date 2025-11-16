@@ -5,10 +5,23 @@ Rectangle {
     id: messageContainer
     property string messageText: ""
     property bool isUserMessage: false
+    property var parsedBlocks: []  // ✅ Готовые блоки из C++
 
     width: parent.width
     height: messageContent.height + 30
     color: "transparent"
+
+    // ✅ ДИАГНОСТИКА: Замеряем рендеринг КАЖДОГО бабла
+    Component.onCompleted: {
+        var startTime = Date.now()
+        Qt.callLater(function() {
+            var renderTime = Date.now() - startTime
+            if (renderTime > 20) {  // Только медленные
+                console.log("⚠️ Slow bubble:", renderTime + "ms",
+                           "blocks:", parsedBlocks.length)
+            }
+        })
+    }
 
     Rectangle {
         id: messageBubble
@@ -30,69 +43,32 @@ Rectangle {
             spacing: 12
 
             Repeater {
-                model: parseMessage()
+                model: {
+                    // ✅ Используем готовые блоки из C++
+                    if (parsedBlocks && parsedBlocks.length > 0) {
+                        return parsedBlocks
+                    }
+
+                    // Fallback для user messages (простой текст)
+                    return [{
+                        type: 0,  // 0 = Text
+                        content: messageText,
+                        language: "",
+                        lineCount: 0
+                    }]
+                }
 
                 Loader {
                     width: messageContent.width
-                    sourceComponent: modelData.type === "code" ? codeBlockComponent : textBlockComponent
+                    sourceComponent: {
+                        var blockType = modelData.type
+                        if (blockType === 1) return codeBlockComponent  // Code
+                        return textBlockComponent  // Text (0) или Think (2)
+                    }
                     property var blockData: modelData
                 }
             }
         }
-    }
-
-    // ===== ФУНКЦИЯ ПАРСИНГА =====
-    function parseMessage() {
-        var blocks = []
-        var text = messageText
-
-        // Регулярка для код-блоков: ```язык\nкод\n```
-        var codeBlockRegex = /```(\w*)\n([\s\S]*?)```/g
-        var lastIndex = 0
-        var match
-
-        while ((match = codeBlockRegex.exec(text)) !== null) {
-            // Текст до код-блока
-            if (match.index > lastIndex) {
-                var textBefore = text.substring(lastIndex, match.index).trim()
-                if (textBefore) {
-                    blocks.push({
-                        type: "text",
-                        content: textBefore
-                    })
-                }
-            }
-
-            // Код-блок
-            blocks.push({
-                type: "code",
-                language: match[1] || "text",
-                content: match[2]
-            })
-
-            lastIndex = codeBlockRegex.lastIndex
-        }
-
-        // Оставшийся текст
-        if (lastIndex < text.length) {
-            var textAfter = text.substring(lastIndex).trim()
-            if (textAfter) {
-                blocks.push({
-                    type: "text",
-                    content: textAfter
-                })
-            }
-        }
-
-        // Если нет код-блоков, возвращаем весь текст
-        if (blocks.length === 0) {
-            blocks.push({
-                type: "text",
-                content: text
-            })
-        }
-
-        return blocks
     }
 
     // ===== TEXT COMPONENT =====
@@ -103,7 +79,7 @@ Rectangle {
             width: messageContent.width
 
             text: {
-                var formatted = blockData.content
+                var formatted = blockData.content || ""
 
                 // ✅ Заголовки
                 formatted = formatted.replace(/^### (.*?)$/gm,
@@ -142,7 +118,7 @@ Rectangle {
 
         Rectangle {
             width: messageContent.width
-            height: Math.min(codeScrollView.contentHeight + 60, 500)  // Максимум 500px
+            height: Math.min(codeEdit.contentHeight + 70, 500)  // Максимум 500px
             color: "#0d1117"
             radius: 8
             border.color: "#21262d"
@@ -153,7 +129,7 @@ Rectangle {
                 anchors.margins: 10
                 spacing: 5
 
-                // Заголовок с языком
+                // Заголовок
                 Rectangle {
                     width: parent.width
                     height: 25
@@ -170,18 +146,17 @@ Rectangle {
                             text: blockData.language || "code"
                             color: "#58a6ff"
                             font.pixelSize: 12
-                            font.family: "Consolas, Monaco, monospace"
+                            font.family: "Consolas"
                             font.bold: true
                         }
 
                         Text {
-                            text: blockData.content.split('\n').length + " lines"
+                            text: blockData.lineCount + " lines"
                             color: "#7d8590"
                             font.pixelSize: 11
                         }
                     }
 
-                    // Кнопка копирования
                     Rectangle {
                         anchors.right: parent.right
                         anchors.rightMargin: 10
@@ -218,9 +193,8 @@ Rectangle {
                     }
                 }
 
-                // Код с прокруткой
+                // Код
                 ScrollView {
-                    id: codeScrollView
                     width: parent.width
                     height: parent.height - 30
                     clip: true
