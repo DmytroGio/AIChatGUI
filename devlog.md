@@ -49,3 +49,6 @@ Tech Stack: Qt6, QML, C++, HTTP API, LM Studio
 
 ## 2025-10-26
 - Working on the program’s design and outlining future development plans.
+
+## 2025-11-17
+- worked on the app icon design, focusing on creating a cohesive, recognizable, and scalable set of icons that align with the application's overall aesthetic and user experience.
