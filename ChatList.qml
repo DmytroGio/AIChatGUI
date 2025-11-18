@@ -47,8 +47,12 @@ Rectangle {
                 width: 30
                 height: 30
                 radius: 15
-                color: "#4facfe"
+                color: newChatMouseArea.containsMouse ? "#00f2fe" : "#4facfe"
                 anchors.verticalCenter: parent.verticalCenter
+
+                Behavior on color {
+                    ColorAnimation { duration: 200 }
+                }
 
                 Text {
                     anchors.centerIn: parent
@@ -59,8 +63,13 @@ Rectangle {
                 }
 
                 MouseArea {
+                    id: newChatMouseArea
                     anchors.fill: parent
-                    onClicked: chatManager.createNewChat()
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: {
+                        chatManager.createNewWelcomeChat()
+                    }
                 }
             }
         }

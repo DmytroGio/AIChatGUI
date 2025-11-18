@@ -21,12 +21,7 @@ ChatManager::ChatManager(QObject *parent)
 
     loadChats();
 
-    if (m_chats.isEmpty()) {
-        createNewChat();
-    } else {
-        // Загружаем сообщения текущего чата
-        m_messageModel->loadMessages(m_currentChatId, 30);
-    }
+    createNewWelcomeChat();
 }
 
 void ChatManager::createNewChat()
@@ -44,6 +39,21 @@ void ChatManager::createNewChat()
     emit chatListChanged();
     emit currentChatChanged();
     emit messagesChanged();
+}
+
+void ChatManager::createNewWelcomeChat()
+{
+    // Устанавливаем специальный ID для приветственного чата
+    m_currentChatId = "welcome";
+
+    // Очищаем модель сообщений
+    m_messageModel->clear();
+
+    emit currentChatChanged();
+    emit messagesChanged();
+    emit chatListChanged();
+
+    qDebug() << "Welcome chat created";
 }
 
 void ChatManager::switchToChat(const QString &chatId)
@@ -87,6 +97,12 @@ void ChatManager::deleteChat(const QString &chatId)
 
 void ChatManager::addMessage(const QString &text, bool isUser)
 {
+    // ✅ Если это первое сообщение в приветственном чате - создаём реальный чат
+    if (m_currentChatId == "welcome" && isUser) {
+        qDebug() << "Creating new chat from welcome screen";
+        createNewChat();
+    }
+
     for (auto &chat : m_chats) {
         if (chat.id == m_currentChatId) {
             Message msg;

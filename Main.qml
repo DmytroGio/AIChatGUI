@@ -124,7 +124,7 @@ ApplicationWindow {
                 anchors.verticalCenter: parent.verticalCenter
 
                 Text {
-                    text: chatManager.currentChatTitle
+                    text: chatManager.isWelcomeChat ? "New Chat" : chatManager.currentChatTitle  // ✅ ВОТ ЭТУ СТРОКУ
                     color: root.textPrimary
                     font.pixelSize: 18
                     font.bold: true
@@ -196,68 +196,175 @@ ApplicationWindow {
     // Main content area
     Rectangle {
         id: contentArea
-        anchors.top: header.bottom
-        anchors.left: chatList.right
-        anchors.right: modelPanel.left
-        anchors.bottom: inputArea.top
-        anchors.margins: 20
-        anchors.topMargin: 10
-        color: "transparent"
-        radius: 15
+            anchors.top: header.bottom
+            anchors.left: chatList.right
+            anchors.right: modelPanel.left
+            anchors.bottom: inputArea.top
+            anchors.margins: 20
+            anchors.topMargin: 10
+            color: "transparent"
+            radius: 15
 
-        Rectangle {
-            anchors.fill: parent
-            color: root.surfaceColor
-            opacity: 0.6
-            radius: parent.radius
-        }
-
-        ListView {
-            id: messagesView
-            anchors.fill: parent
-            anchors.margins: 15
-            anchors.rightMargin: 30
-            model: chatManager.messageModel
-            spacing: 15
-            clip: true
-
-            cacheBuffer: 50000
-            reuseItems: false
-
-            ScrollBar.vertical: null
-            ScrollBar.horizontal: null
-
-            property bool shouldAutoScroll: true
-
-            onCountChanged: {
-                if (shouldAutoScroll && count > 0) {
-                    Qt.callLater(function() {
-                        positionViewAtEnd()
-                    })
-                }
+            Rectangle {
+                anchors.fill: parent
+                color: root.surfaceColor
+                opacity: 0.6
+                radius: parent.radius
             }
 
-            delegate: SimpleMessageBubble {
-                width: messagesView.width
-                messageText: model.text || ""
-                isUserMessage: model.isUser || false
-                parsedBlocks: model.blocks || []
-            }
+            // ✅ Приветственная страница
+            Item {
+                id: welcomePage
+                anchors.fill: parent
+                visible: chatManager.isWelcomeChat
 
-            header: Item {
-                width: messagesView.width
-                height: chatManager.messageCount === 0 ? 80 : 0
-                Text {
+                Column {
                     anchors.centerIn: parent
-                    text: "Start typing to begin..."
-                    color: root.textSecondary
-                    font.pixelSize: 16
-                    font.weight: Font.Light
-                    opacity: 0.7
-                    visible: chatManager.messageCount === 0
+                    spacing: 30
+
+                    // Иконка
+                    Rectangle {
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        width: 120
+                        height: 120
+                        radius: 60
+                        gradient: Gradient {
+                            orientation: Gradient.Horizontal
+                            GradientStop { position: 0.0; color: root.primaryColor }
+                            GradientStop { position: 1.0; color: root.secondaryColor }
+                        }
+
+                        Text {
+                            anchors.centerIn: parent
+                            text: "🤖"
+                            font.pixelSize: 64
+                        }
+
+                        // Пульсирующий эффект
+                        SequentialAnimation on scale {
+                            running: true
+                            loops: Animation.Infinite
+                            NumberAnimation { to: 1.05; duration: 1000; easing.type: Easing.InOutQuad }
+                            NumberAnimation { to: 1.0; duration: 1000; easing.type: Easing.InOutQuad }
+                        }
+                    }
+
+                    // Приветственный текст
+                    Text {
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        text: "Привет, Пользователь!"
+                        color: root.textPrimary
+                        font.pixelSize: 36
+                        font.bold: true
+                    }
+
+                    Text {
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        text: "Начни общение с AI ассистентом"
+                        color: root.textSecondary
+                        font.pixelSize: 16
+                        opacity: 0.8
+                    }
+
+                    // Примеры вопросов
+                    Column {
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        spacing: 10
+
+                        Repeater {
+                            model: [
+                                "💡 Объясни квантовую физику простыми словами",
+                                "📝 Помоги написать код на Python",
+                                "🎨 Дай советы по дизайну интерфейса"
+                            ]
+
+                            Rectangle {
+                                width: 450
+                                height: 50
+                                color: root.inputBackground
+                                radius: 12
+                                border.color: suggestionArea.containsMouse ? root.primaryColor : "transparent"
+                                border.width: 2
+
+                                Text {
+                                    anchors.left: parent.left
+                                    anchors.leftMargin: 15
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    text: modelData
+                                    color: root.textSecondary
+                                    font.pixelSize: 14
+                                }
+
+                                MouseArea {
+                                    id: suggestionArea
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: {
+                                        // Убираем emoji и пробел
+                                        var cleanText = modelData.replace(/^[\u{1F000}-\u{1F9FF}]\s*/u, "")
+                                        inputField.text = cleanText
+                                        inputField.forceActiveFocus()
+                                    }
+                                }
+
+                                Behavior on border.color {
+                                    ColorAnimation { duration: 200 }
+                                }
+                            }
+                        }
+                    }
                 }
             }
-        }
+
+            // ✅ Обычный список сообщений
+            ListView {
+                id: messagesView
+                anchors.fill: parent
+                anchors.margins: 15
+                anchors.rightMargin: 30
+                model: chatManager.messageModel
+                spacing: 15
+                clip: true
+                visible: !welcomePage.visible
+
+                cacheBuffer: 50000
+                reuseItems: false
+
+                ScrollBar.vertical: null
+                ScrollBar.horizontal: null
+
+                property bool shouldAutoScroll: true
+
+                onCountChanged: {
+                    if (shouldAutoScroll && count > 0) {
+                        Qt.callLater(function() {
+                            positionViewAtEnd()
+                        })
+                    }
+                }
+
+                delegate: SimpleMessageBubble {
+                    width: messagesView.width
+                    messageText: model.text || ""
+                    isUserMessage: model.isUser || false
+                    parsedBlocks: model.blocks || []
+                }
+
+                header: Item {
+                    width: messagesView.width
+                    height: chatManager.messageCount === 0 ? 80 : 0
+                    Text {
+                        anchors.centerIn: parent
+                        text: "Start typing to begin..."
+                        color: root.textSecondary
+                        font.pixelSize: 16
+                        font.weight: Font.Light
+                        opacity: 0.7
+                        visible: chatManager.messageCount === 0
+                    }
+                }
+            }
 
         // Кастомный скроллбар
         Item {
@@ -386,6 +493,8 @@ ApplicationWindow {
             }
         }
     }
+
+
 
     // Input area
     Rectangle {

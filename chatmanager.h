@@ -21,6 +21,7 @@ class ChatManager : public QObject
     Q_PROPERTY(QString currentChatTitle READ getCurrentChatTitle NOTIFY currentChatChanged)
     Q_PROPERTY(int messageCount READ getMessageCount NOTIFY messagesChanged)
     Q_PROPERTY(MessageListModel* messageModel READ messageModel CONSTANT)
+    Q_PROPERTY(bool isWelcomeChat READ isWelcomeChat NOTIFY currentChatChanged)
 
 public:
     explicit ChatManager(QObject *parent = nullptr);
@@ -32,7 +33,9 @@ public:
     Q_INVOKABLE QVariantList getCurrentMessages();
     Q_INVOKABLE void renameChatTitle(const QString &chatId, const QString &newTitle);
     Q_INVOKABLE void updateLastMessage(const QString &text);
+    Q_INVOKABLE void createNewWelcomeChat();
 
+    bool isWelcomeChat() const { return m_currentChatId == "welcome"; }
     MessageListModel* messageModel() const { return m_messageModel; }
     QVariantList getChatList() const;
     QString getCurrentChatId() const { return m_currentChatId; }
