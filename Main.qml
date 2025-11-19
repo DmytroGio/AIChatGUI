@@ -101,23 +101,12 @@ ApplicationWindow {
             anchors.verticalCenter: parent.verticalCenter
             spacing: 15
 
-            Rectangle {
+            Image {
                 width: 35
                 height: 35
-                radius: 18
-                gradient: Gradient {
-                    orientation: Gradient.Horizontal
-                    GradientStop { position: 0.0; color: root.primaryColor }
-                    GradientStop { position: 1.0; color: root.secondaryColor }
-                }
-
-                Text {
-                    anchors.centerIn: parent
-                    text: "AI"
-                    color: "white"
-                    font.bold: true
-                    font.pixelSize: 14
-                }
+                source: "/icons/AiGui_Logo_small.png"
+                fillMode: Image.PreserveAspectFit
+                smooth: true
             }
 
             Column {
@@ -223,59 +212,44 @@ ApplicationWindow {
                     spacing: 30
 
                     // Иконка
-                    Rectangle {
+                    Image {
                         anchors.horizontalCenter: parent.horizontalCenter
-                        width: 120
-                        height: 120
-                        radius: 60
-                        gradient: Gradient {
-                            orientation: Gradient.Horizontal
-                            GradientStop { position: 0.0; color: root.primaryColor }
-                            GradientStop { position: 1.0; color: root.secondaryColor }
-                        }
-
-                        Text {
-                            anchors.centerIn: parent
-                            text: "🤖"
-                            font.pixelSize: 64
-                        }
-
-                        // Пульсирующий эффект
-                        SequentialAnimation on scale {
-                            running: true
-                            loops: Animation.Infinite
-                            NumberAnimation { to: 1.05; duration: 1000; easing.type: Easing.InOutQuad }
-                            NumberAnimation { to: 1.0; duration: 1000; easing.type: Easing.InOutQuad }
-                        }
+                        width: 200
+                        height: 200
+                        source: "/icons/AiGui_Logo_med.png"
+                        fillMode: Image.PreserveAspectFit
+                        smooth: true
                     }
 
                     // Приветственный текст
                     Text {
                         anchors.horizontalCenter: parent.horizontalCenter
-                        text: "Привет, Пользователь!"
+                        text: "Hello, User!"
                         color: root.textPrimary
                         font.pixelSize: 36
                         font.bold: true
                     }
 
+
                     Text {
                         anchors.horizontalCenter: parent.horizontalCenter
-                        text: "Начни общение с AI ассистентом"
+                        text: "Start chatting with the AI assistant"
                         color: root.textSecondary
                         font.pixelSize: 16
                         opacity: 0.8
                     }
 
-                    // Примеры вопросов
+
+                    // Example questions
                     Column {
                         anchors.horizontalCenter: parent.horizontalCenter
                         spacing: 10
 
                         Repeater {
                             model: [
-                                "💡 Объясни квантовую физику простыми словами",
-                                "📝 Помоги написать код на Python",
-                                "🎨 Дай советы по дизайну интерфейса"
+                                "💡 Explain quantum physics in simple terms",
+                                "📝 Help me write Python code",
+                                "🎨 Give me interface design tips"
                             ]
 
                             Rectangle {

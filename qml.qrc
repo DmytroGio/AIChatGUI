@@ -2,5 +2,7 @@
     <qresource prefix="/">
         <file>Main.qml</file>
         <file>MessageBubble.qml</file>
+        <file>icons/AiGui_Logo_small.png</file>
+        <file>icons/AiGui_Logo_med.png</file>
     </qresource>
 </RCC>

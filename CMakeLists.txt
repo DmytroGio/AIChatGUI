@@ -63,6 +63,14 @@ qt_add_executable(appAIChatGUI
     modelinfo.cpp
 )
 
+# Добавляем ресурсы отдельно
+qt_add_resources(appAIChatGUI "icons"
+    PREFIX "/"
+    FILES
+        icons/AiGui_Logo_small.png
+        icons/AiGui_Logo_med.png
+)
+
 qt_add_qml_module(appAIChatGUI
     URI AIChatGUI
     VERSION 1.0
@@ -72,13 +80,15 @@ qt_add_qml_module(appAIChatGUI
         MessageBubble.qml
         ChatList.qml
         ModelPanel.qml
+        SimpleMessageBubble.qml
     SOURCES
         syntaxhighlighter.h
         syntaxhighlighter.cpp
-        SOURCES modelinfo.h modelinfo.cpp
-        SOURCES messagelistmodel.h messagelistmodel.cpp
-        SOURCES message.h
-        QML_FILES SimpleMessageBubble.qml
+        modelinfo.h
+        modelinfo.cpp
+        messagelistmodel.h
+        messagelistmodel.cpp
+        message.h
 )
 
 # Заголовочные файлы llama.cpp
