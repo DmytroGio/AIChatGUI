@@ -2,7 +2,6 @@ import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Dialogs
 
-
 Rectangle {
     id: modelPanel
     width: isOpen ? 700 : 0
@@ -44,204 +43,107 @@ Rectangle {
         Column {
             id: panelContent
             width: parent.width
-            spacing: 20
+            spacing: 15
 
-            // ========== PINNED METRICS BAR (Quick Overview) ==========
+            // ========== STATUS HEADER ==========
             Rectangle {
                 width: parent.width
-                height: 70
+                height: 80
                 color: modelPanel.surfaceColor
                 radius: 12
                 border.color: modelInfo.isLoaded ? "#4ade80" : modelPanel.textSecondary
                 border.width: 2
-                opacity: 0.95
 
                 Row {
                     anchors.fill: parent
-                    anchors.margins: 12
-                    spacing: 12
+                    anchors.margins: 15
+                    spacing: 15
 
-                    // Status Column
+                    // Status indicator
                     Column {
-                        width: 80
-                        spacing: 4
+                        width: 70
+                        spacing: 6
                         anchors.verticalCenter: parent.verticalCenter
-
-                        Row {
-                            spacing: 6
-                            Rectangle {
-                                width: 12
-                                height: 12
-                                radius: 6
-                                color: modelInfo.isLoaded ? "#4ade80" : "#808080"
-                                anchors.verticalCenter: parent.verticalCenter
-
-                                SequentialAnimation on opacity {
-                                    running: modelInfo.status === "Generating"
-                                    loops: Animation.Infinite
-                                    NumberAnimation { to: 0.3; duration: 500 }
-                                    NumberAnimation { to: 1.0; duration: 500 }
-                                }
-                            }
-
-                            Text {
-                                text: modelInfo.isLoaded ? "READY" : "IDLE"
-                                color: modelPanel.textPrimary
-                                font.pixelSize: 12
-                                font.bold: true
-                            }
-                        }
-
-                        Text {
-                            text: modelInfo.status
-                            color: modelPanel.textSecondary
-                            font.pixelSize: 10
-                        }
-                    }
-
-                    Rectangle {
-                        width: 1
-                        height: parent.height - 20
-                        color: modelPanel.textSecondary
-                        opacity: 0.3
-                        anchors.verticalCenter: parent.verticalCenter
-                    }
-
-                    // Speed Metric
-                    Column {
-                        width: 90
-                        spacing: 2
-                        anchors.verticalCenter: parent.verticalCenter
-
-                        Text {
-                            text: "⚡ SPEED"
-                            color: modelPanel.textSecondary
-                            font.pixelSize: 9
-                            font.bold: true
-                        }
-
-                        Text {
-                            text: modelInfo.speed.toFixed(1) + " tok/s"
-                            color: modelPanel.primaryColor
-                            font.pixelSize: 16
-                            font.bold: true
-                        }
-                    }
-
-                    Rectangle {
-                        width: 1
-                        height: parent.height - 20
-                        color: modelPanel.textSecondary
-                        opacity: 0.3
-                        anchors.verticalCenter: parent.verticalCenter
-                    }
-
-                    // Memory Metric
-                    Column {
-                        width: 110
-                        spacing: 2
-                        anchors.verticalCenter: parent.verticalCenter
-
-                        Text {
-                            text: "💾 MEMORY"
-                            color: modelPanel.textSecondary
-                            font.pixelSize: 9
-                            font.bold: true
-                        }
-
-                        Row {
-                            spacing: 4
-
-                            Text {
-                                text: modelInfo.memoryUsed.toFixed(1) + " GB"
-                                color: modelPanel.textPrimary
-                                font.pixelSize: 14
-                                font.bold: true
-                            }
-
-                            Text {
-                                text: "(" + modelInfo.memoryPercent + "%)"
-                                color: modelInfo.memoryPercent > 80 ? "#fbbf24" : modelPanel.textSecondary
-                                font.pixelSize: 11
-                                anchors.verticalCenter: parent.verticalCenter
-                            }
-                        }
-                    }
-
-                    Rectangle {
-                        width: 1
-                        height: parent.height - 20
-                        color: modelPanel.textSecondary
-                        opacity: 0.3
-                        anchors.verticalCenter: parent.verticalCenter
-                    }
-
-                    // Context Usage
-                    Column {
-                        width: parent.width - 350
-                        spacing: 2
-                        anchors.verticalCenter: parent.verticalCenter
-
-                        Row {
-                            spacing: 4
-
-                            Text {
-                                text: "📝 CONTEXT"
-                                color: modelPanel.textSecondary
-                                font.pixelSize: 9
-                                font.bold: true
-                            }
-
-                            Text {
-                                text: (modelInfo.tokensIn + modelInfo.tokensOut) + " / " + modelInfo.contextSize
-                                color: modelPanel.textPrimary
-                                font.pixelSize: 10
-                            }
-                        }
 
                         Rectangle {
-                            width: parent.width
-                            height: 6
-                            radius: 3
-                            color: "#0a0a15"
+                            width: 16
+                            height: 16
+                            radius: 8
+                            color: modelInfo.isLoaded ? "#4ade80" : "#808080"
+                            anchors.horizontalCenter: parent.horizontalCenter
 
-                            Rectangle {
-                                width: parent.width * Math.min((modelInfo.tokensIn + modelInfo.tokensOut) / modelInfo.contextSize, 1.0)
-                                height: parent.height
-                                radius: parent.radius
-                                color: {
-                                    var usage = (modelInfo.tokensIn + modelInfo.tokensOut) / modelInfo.contextSize
-                                    if (usage > 0.9) return "#ef4444"
-                                    if (usage > 0.7) return "#fbbf24"
-                                    return modelPanel.primaryColor
-                                }
-
-                                Behavior on width {
-                                    NumberAnimation { duration: 300 }
-                                }
+                            SequentialAnimation on opacity {
+                                running: modelInfo.status === "Generating"
+                                loops: Animation.Infinite
+                                NumberAnimation { to: 0.3; duration: 500 }
+                                NumberAnimation { to: 1.0; duration: 500 }
                             }
+                        }
+
+                        Text {
+                            text: modelInfo.isLoaded ? "READY" : "IDLE"
+                            color: modelPanel.textPrimary
+                            font.pixelSize: 11
+                            font.bold: true
+                            anchors.horizontalCenter: parent.horizontalCenter
+                        }
+                    }
+
+                    Rectangle {
+                        width: 1
+                        height: parent.height - 30
+                        color: modelPanel.textSecondary
+                        opacity: 0.2
+                        anchors.verticalCenter: parent.verticalCenter
+                    }
+
+                    // Key metrics
+                    Row {
+                        spacing: 20
+                        anchors.verticalCenter: parent.verticalCenter
+
+                        MetricItem {
+                            icon: "⚡"
+                            label: "SPEED"
+                            value: modelInfo.speed.toFixed(1)
+                            unit: "tok/s"
+                        }
+
+                        MetricItem {
+                            icon: "💾"
+                            label: "MEMORY"
+                            value: modelInfo.memoryUsed.toFixed(1)
+                            unit: "GB"
+                            warning: modelInfo.memoryPercent > 80
+                        }
+
+                        MetricItem {
+                            icon: "📝"
+                            label: "CONTEXT"
+                            value: ((modelInfo.tokensIn + modelInfo.tokensOut) / modelInfo.contextSize * 100).toFixed(0)
+                            unit: "%"
+                            warning: (modelInfo.tokensIn + modelInfo.tokensOut) / modelInfo.contextSize > 0.9
                         }
                     }
                 }
             }
 
-            // ========== MODEL SELECTOR & INFO ==========
+            // ========== MODEL INFO ==========
             Rectangle {
                 width: parent.width
-                height: modelSelectorColumn.height + 24
+                height: modelInfoColumn.height + 24
                 color: modelPanel.surfaceColor
                 radius: 12
                 border.color: modelPanel.primaryColor
                 border.width: 1
-                opacity: 0.9
 
                 Column {
-                    id: modelSelectorColumn
+                    id: modelInfoColumn
                     anchors.centerIn: parent
                     width: parent.width - 24
                     spacing: 12
 
-                    // Current Model Display (when loaded)
+                    // Current model
                     Row {
                         width: parent.width
                         spacing: 12
@@ -278,135 +180,57 @@ Rectangle {
                         width: parent.width
                         height: 1
                         color: modelPanel.textSecondary
-                        opacity: 0.3
+                        opacity: 0.2
                         visible: modelInfo.isLoaded
                     }
 
-                    // Folder Selection
+                    // Action buttons
                     Row {
                         width: parent.width
-                        spacing: 10
+                        spacing: 8
 
-                        Button {
-                            text: modelInfo.modelsFolder ? "📁 Change Folder" : "📁 Choose Folder"
-                            width: parent.width * 0.48
-                            height: 38
-
+                        ActionButton {
+                            text: modelInfo.modelsFolder ? "📁 Change" : "📁 Choose"
+                            width: parent.width * 0.35
+                            isPrimary: true
                             onClicked: folderDialog.open()
-
-                            background: Rectangle {
-                                color: parent.pressed ? Qt.darker(modelPanel.primaryColor, 1.2) :
-                                       parent.hovered ? Qt.lighter(modelPanel.primaryColor, 1.1) :
-                                       modelPanel.primaryColor
-                                radius: 8
-                            }
-
-                            contentItem: Text {
-                                text: parent.text
-                                color: "white"
-                                font.pixelSize: 13
-                                font.bold: true
-                                horizontalAlignment: Text.AlignHCenter
-                                verticalAlignment: Text.AlignVCenter
-                            }
                         }
 
-                        Button {
+                        ActionButton {
                             text: "🔄"
                             width: parent.width * 0.12
-                            height: 38
                             enabled: modelInfo.modelsFolder !== ""
-
                             onClicked: modelInfo.scanModelsFolder()
-
-                            ToolTip.visible: hovered
-                            ToolTip.text: "Rescan folder"
-
-                            background: Rectangle {
-                                color: parent.pressed ? Qt.darker(modelPanel.accentColor, 1.2) :
-                                       parent.hovered ? Qt.lighter(modelPanel.accentColor, 1.1) :
-                                       "transparent"
-                                radius: 8
-                                border.color: modelPanel.accentColor
-                                border.width: 1
-                                opacity: parent.enabled ? 1.0 : 0.4
-                            }
-
-                            contentItem: Text {
-                                text: parent.text
-                                font.pixelSize: 18
-                                horizontalAlignment: Text.AlignHCenter
-                                verticalAlignment: Text.AlignVCenter
-                            }
+                            tooltipText: "Rescan folder"
                         }
 
-                        Button {
-                            id: unloadButton
-                            text: "Unload"
-                            width: parent.width * 0.24
-                            height: 38
-                            enabled: modelInfo.isLoaded
-
-                            onClicked: llamaConnector.unloadModel()
-
-                            background: Rectangle {
-                                color: parent.pressed ? "#c0392b" :
-                                       parent.hovered ? "#e74c3c" :
-                                       "transparent"
-                                radius: 8
-                                border.color: "#e74c3c"
-                                border.width: 1
-                                opacity: parent.enabled ? 1.0 : 0.4
-                            }
-
-                            contentItem: Text {
-                                text: parent.text
-                                color: modelPanel.textPrimary
-                                horizontalAlignment: Text.AlignHCenter
-                                verticalAlignment: Text.AlignVCenter
-                                font.pixelSize: 13
-                            }
-                        }
-
-                        Button {
-                            id: settingsButton
+                        ActionButton {
                             text: "⚙️"
                             width: parent.width * 0.12
-                            height: 38
                             enabled: modelInfo.isLoaded
-
                             onClicked: settingsPopup.open()
+                        }
 
-                            background: Rectangle {
-                                color: parent.pressed ? Qt.darker(modelPanel.accentColor, 1.2) :
-                                       parent.hovered ? Qt.lighter(modelPanel.accentColor, 1.1) :
-                                       "transparent"
-                                radius: 8
-                                border.color: modelPanel.accentColor
-                                border.width: 1
-                                opacity: parent.enabled ? 1.0 : 0.4
-                            }
-
-                            contentItem: Text {
-                                text: parent.text
-                                font.pixelSize: 18
-                                horizontalAlignment: Text.AlignHCenter
-                                verticalAlignment: Text.AlignVCenter
-                            }
+                        ActionButton {
+                            text: "Unload"
+                            width: parent.width * 0.35
+                            enabled: modelInfo.isLoaded
+                            isDanger: true
+                            onClicked: llamaConnector.unloadModel()
                         }
                     }
 
-                    // Folder path display
+                    // Folder path
                     Text {
                         width: parent.width
-                        text: modelInfo.modelsFolder ? "📂 " + modelInfo.modelsFolder : "No folder selected"
+                        text: "📂 " + modelInfo.modelsFolder
                         color: modelPanel.textSecondary
                         font.pixelSize: 10
                         elide: Text.ElideMiddle
                         visible: modelInfo.modelsFolder !== ""
                     }
 
-                    // Models List (collapsible)
+                    // Models list (collapsible)
                     Rectangle {
                         width: parent.width
                         height: modelsListCollapsed ? 40 : Math.min(modelsListView.contentHeight + 50, 400)
@@ -615,373 +439,77 @@ Rectangle {
                 }
             }
 
-            // ========== RUNTIME STATS ==========
+            // ========== HARDWARE METRICS ==========
             Rectangle {
                 width: parent.width
-                height: runtimeColumn.height + 30
+                height: hardwareColumn.height + 24
                 color: modelPanel.surfaceColor
                 radius: 12
-                opacity: 0.9
                 border.color: modelPanel.primaryColor
                 border.width: 1
 
                 Column {
-                    id: runtimeColumn
+                    id: hardwareColumn
                     anchors.centerIn: parent
-                    width: parent.width - 30
-                    spacing: 16
+                    width: parent.width - 24
+                    spacing: 15
 
-                    // Header
-                    Row {
-                        width: parent.width
-                        spacing: 8
-
-                        Text {
-                            text: "⚡ RUNTIME METRICS"
-                            color: modelPanel.textPrimary
-                            font.pixelSize: 16
-                            font.bold: true
-                        }
-
-                        Rectangle {
-                            width: 12
-                            height: 12
-                            radius: 6
-                            color: modelInfo.status === "Generating" ? "#4ade80" : "#808080"
-                            anchors.verticalCenter: parent.verticalCenter
-
-                            SequentialAnimation on opacity {
-                                running: modelInfo.status === "Generating"
-                                loops: Animation.Infinite
-                                NumberAnimation { to: 0.3; duration: 500 }
-                                NumberAnimation { to: 1.0; duration: 500 }
-                            }
-                        }
-
-                        Text {
-                            text: modelInfo.status
-                            color: modelPanel.textSecondary
-                            font.pixelSize: 13
-                            anchors.verticalCenter: parent.verticalCenter
-                        }
+                    Text {
+                        text: "⚡ HARDWARE"
+                        color: modelPanel.textPrimary
+                        font.pixelSize: 16
+                        font.bold: true
                     }
 
-                    Rectangle {
-                        width: parent.width
-                        height: 1
-                        color: modelPanel.textSecondary
-                        opacity: 0.3
-                    }
-
-                    // GPU & CPU Section
                     Row {
                         width: parent.width
-                        spacing: 20
-                        visible: modelInfo.gpuName !== "N/A" || modelInfo.cpuName !== "N/A"
+                        spacing: 15
 
-                        // GPU Column
-                        Column {
-                            width: (parent.width - 20) / 2
-                            spacing: 12
+                        // GPU
+                        HardwareCard {
+                            width: (parent.width - 15) / 2
+                            icon: "🎮"
+                            name: modelInfo.gpuName
                             visible: modelInfo.gpuName !== "N/A"
 
-                            Row {
-                                width: parent.width
-                                spacing: 8
-
-                                Text {
-                                    text: "🎮"
-                                    font.pixelSize: 16
-                                }
-
-                                Text {
-                                    text: "GPU: " + modelInfo.gpuName
-                                    color: modelPanel.textPrimary
-                                    font.pixelSize: 13
-                                    font.bold: true
-                                    elide: Text.ElideRight
-                                    width: parent.width - 30
-                                }
-                            }
-
-                            // GPU Metrics Grid
-                            Grid {
-                                width: parent.width
-                                columns: 2
-                                columnSpacing: 10
-                                rowSpacing: 10
-
-                                // Temperature
-                                Column {
-                                    width: (parent.width - 10) / 2
-                                    spacing: 4
-
-                                    Text {
-                                        text: "🌡️ Temp"
-                                        color: modelPanel.textSecondary
-                                        font.pixelSize: 10
-                                    }
-
-                                    Rectangle {
-                                        width: parent.width
-                                        height: 32
-                                        radius: 6
-                                        color: "#0a0a15"
-
-                                        Text {
-                                            anchors.centerIn: parent
-                                            text: modelInfo.gpuTemp + "°C"
-                                            color: modelInfo.gpuTemp > 80 ? "#ef4444" :
-                                                   modelInfo.gpuTemp > 70 ? "#fbbf24" : "#4ade80"
-                                            font.pixelSize: 16
-                                            font.bold: true
-                                        }
-                                    }
-                                }
-
-                                // Utilization
-                                Column {
-                                    width: (parent.width - 10) / 2
-                                    spacing: 4
-
-                                    Text {
-                                        text: "⚙️ Util"
-                                        color: modelPanel.textSecondary
-                                        font.pixelSize: 10
-                                    }
-
-                                    Rectangle {
-                                        width: parent.width
-                                        height: 32
-                                        radius: 6
-                                        color: "#0a0a15"
-
-                                        Rectangle {
-                                            width: parent.width * (modelInfo.gpuUtil / 100.0)
-                                            height: parent.height
-                                            radius: parent.radius
-                                            color: modelPanel.primaryColor
-                                            opacity: 0.3
-
-                                            Behavior on width {
-                                                NumberAnimation { duration: 300 }
-                                            }
-                                        }
-
-                                        Text {
-                                            anchors.centerIn: parent
-                                            text: modelInfo.gpuUtil + "%"
-                                            color: modelPanel.textPrimary
-                                            font.pixelSize: 16
-                                            font.bold: true
-                                        }
-                                    }
-                                }
-                            }
-
-                            // GPU Memory
-                            Column {
-                                width: parent.width
-                                spacing: 4
-
-                                Text {
-                                    text: "💾 Memory: " + modelInfo.gpuMemUsed + " / " + modelInfo.gpuMemTotal + " MB"
-                                    color: modelPanel.textSecondary
-                                    font.pixelSize: 10
-                                }
-
-                                Rectangle {
-                                    width: parent.width
-                                    height: 8
-                                    radius: 4
-                                    color: "#0a0a15"
-
-                                    Rectangle {
-                                        width: parent.width * (modelInfo.gpuMemUsed / Math.max(modelInfo.gpuMemTotal, 1))
-                                        height: parent.height
-                                        radius: parent.radius
-                                        color: {
-                                            var usage = modelInfo.gpuMemUsed / modelInfo.gpuMemTotal
-                                            if (usage > 0.9) return "#ef4444"
-                                            if (usage > 0.7) return "#fbbf24"
-                                            return "#4ade80"
-                                        }
-
-                                        Behavior on width {
-                                            NumberAnimation { duration: 300 }
-                                        }
-                                    }
-                                }
-                            }
+                            metrics: [
+                                { label: "Temp", value: modelInfo.gpuTemp + "°C", color: modelInfo.gpuTemp > 80 ? "#ef4444" : "#4ade80" },
+                                { label: "Usage", value: modelInfo.gpuUtil + "%", progress: modelInfo.gpuUtil / 100.0 },
+                                { label: "Memory", value: modelInfo.gpuMemUsed + "/" + modelInfo.gpuMemTotal + " MB", progress: modelInfo.gpuMemUsed / Math.max(modelInfo.gpuMemTotal, 1) }
+                            ]
                         }
 
-                        // CPU Column
-                        Column {
-                            width: (parent.width - 20) / 2
-                            spacing: 12
+                        // CPU
+                        HardwareCard {
+                            width: (parent.width - 15) / 2
+                            icon: "🖥️"
+                            name: modelInfo.cpuName
                             visible: modelInfo.cpuName !== "N/A"
 
-                            Row {
-                                width: parent.width
-                                spacing: 8
-
-                                Text {
-                                    text: "🖥️"
-                                    font.pixelSize: 16
-                                }
-
-                                Text {
-                                    text: "CPU: " + modelInfo.cpuName
-                                    color: modelPanel.textPrimary
-                                    font.pixelSize: 13
-                                    font.bold: true
-                                    elide: Text.ElideRight
-                                    width: parent.width - 30
-                                }
-                            }
-
-                            // CPU Metrics Grid
-                            Grid {
-                                width: parent.width
-                                columns: 2
-                                columnSpacing: 10
-                                rowSpacing: 10
-
-                                // Usage
-                                Column {
-                                    width: (parent.width - 10) / 2
-                                    spacing: 4
-
-                                    Text {
-                                        text: "⚙️ Usage"
-                                        color: modelPanel.textSecondary
-                                        font.pixelSize: 10
-                                    }
-
-                                    Rectangle {
-                                        width: parent.width
-                                        height: 32
-                                        radius: 6
-                                        color: "#0a0a15"
-
-                                        Rectangle {
-                                            width: parent.width * (modelInfo.cpuUsage / 100.0)
-                                            height: parent.height
-                                            radius: parent.radius
-                                            color: modelPanel.primaryColor
-                                            opacity: 0.3
-
-                                            Behavior on width {
-                                                NumberAnimation { duration: 300 }
-                                            }
-                                        }
-
-                                        Text {
-                                            anchors.centerIn: parent
-                                            text: modelInfo.cpuUsage + "%"
-                                            color: modelPanel.textPrimary
-                                            font.pixelSize: 16
-                                            font.bold: true
-                                        }
-                                    }
-                                }
-
-                                // CPU Base/Current Frequency
-                                Column {
-                                    width: (parent.width - 10) / 2
-                                    spacing: 4
-
-                                    Text {
-                                        text: "📊 Frequency"
-                                        color: modelPanel.textSecondary
-                                        font.pixelSize: 10
-                                    }
-
-                                    Rectangle {
-                                        width: parent.width
-                                        height: 32
-                                        radius: 6
-                                        color: "#0a0a15"
-
-                                        Column {
-                                            anchors.centerIn: parent
-                                            spacing: 2
-
-                                            Text {
-                                                text: modelInfo.cpuClock > 0 ?
-                                                      (modelInfo.cpuClock / 1000.0).toFixed(2) + " GHz" :
-                                                      "N/A"
-                                                color: "#4ade80"
-                                                font.pixelSize: 11
-                                                font.bold: true
-                                                anchors.horizontalCenter: parent.horizontalCenter
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-
-                            // RAM Usage (перенесено сюда)
-                            Column {
-                                width: parent.width
-                                spacing: 4
-
-                                Text {
-                                    text: "💾 RAM: " + modelInfo.memoryUsed.toFixed(1) + " / " + modelInfo.memoryTotal.toFixed(1) + " GB"
-                                    color: modelPanel.textSecondary
-                                    font.pixelSize: 10
-                                }
-
-                                Rectangle {
-                                    width: parent.width
-                                    height: 8
-                                    radius: 4
-                                    color: "#0a0a15"
-
-                                    Rectangle {
-                                        width: parent.width * (modelInfo.memoryPercent / 100.0)
-                                        height: parent.height
-                                        radius: parent.radius
-                                        color: modelInfo.memoryPercent > 80 ? "#fbbf24" : "#4ade80"
-
-                                        Behavior on width {
-                                            NumberAnimation { duration: 300 }
-                                        }
-                                    }
-                                }
-                            }
+                            metrics: [
+                                { label: "Usage", value: modelInfo.cpuUsage + "%", progress: modelInfo.cpuUsage / 100.0 },
+                                { label: "Clock", value: (modelInfo.cpuClock / 1000.0).toFixed(2) + " GHz", color: "#4ade80" },
+                                { label: "RAM", value: modelInfo.memoryUsed.toFixed(1) + "/" + modelInfo.memoryTotal.toFixed(1) + " GB", progress: modelInfo.memoryPercent / 100.0 }
+                            ]
                         }
                     }
 
-                    Rectangle {
-                        width: parent.width
-                        height: 1
-                        color: modelPanel.textSecondary
-                        opacity: 0.2
-                    }
-
-                    // Speed with enhanced sparkline
+                    // Speed chart
                     Column {
                         width: parent.width
                         spacing: 8
 
                         Row {
-                            width: parent.width
-                            spacing: 6
+                            spacing: 8
 
                             Text {
-                                text: "⚡"
-                                font.pixelSize: 16
-                            }
-
-                            Text {
-                                text: "Generation Speed"
+                                text: "⚡ Speed"
                                 color: modelPanel.textPrimary
                                 font.pixelSize: 13
                                 font.bold: true
                             }
 
-                            Item { width: parent.width - 300 }
+                            Item { width: parent.parent.width - 180 }
 
                             Text {
                                 text: modelInfo.speed.toFixed(2) + " tok/s"
@@ -996,9 +524,6 @@ Rectangle {
                             height: 60
                             color: "#0a0a15"
                             radius: 8
-                            border.color: modelPanel.primaryColor
-                            border.width: 1
-                            opacity: 0.8
 
                             Canvas {
                                 id: speedCanvas
@@ -1016,9 +541,9 @@ Rectangle {
                                     var maxY = Math.max(...dataPoints, 1)
                                     var stepX = width / (dataPoints.length - 1)
 
-                                    // Gradient fill
+                                    // Gradient
                                     var gradient = ctx.createLinearGradient(0, 0, 0, height)
-                                    gradient.addColorStop(0, modelPanel.primaryColor + "80")
+                                    gradient.addColorStop(0, modelPanel.primaryColor + "60")
                                     gradient.addColorStop(1, modelPanel.primaryColor + "10")
 
                                     ctx.fillStyle = gradient
@@ -1043,7 +568,6 @@ Rectangle {
                                     for (var i = 0; i < dataPoints.length; i++) {
                                         var x = i * stepX
                                         var y = height - (dataPoints[i] / maxY) * height
-
                                         if (i === 0) ctx.moveTo(x, y)
                                         else ctx.lineTo(x, y)
                                     }
@@ -1061,82 +585,6 @@ Rectangle {
                                         speedCanvas.requestPaint()
                                     }
                                 }
-                            }
-                        }
-                    }
-
-                    // System Memory & Threads
-                    Grid {
-                        width: parent.width
-                        columns: 2
-                        columnSpacing: 15
-                        rowSpacing: 10
-
-                        // RAM Usage
-                        Column {
-                            width: (parent.width - 15) / 2
-                            spacing: 6
-
-                            Row {
-                                spacing: 4
-
-                                Text {
-                                    text: "🖥️ RAM"
-                                    color: modelPanel.textSecondary
-                                    font.pixelSize: 11
-                                    font.bold: true
-                                }
-                            }
-
-                            Rectangle {
-                                width: parent.width
-                                height: 8
-                                radius: 4
-                                color: "#0a0a15"
-
-                                Rectangle {
-                                    width: parent.width * (modelInfo.memoryPercent / 100.0)
-                                    height: parent.height
-                                    radius: parent.radius
-                                    color: modelInfo.memoryPercent > 80 ? "#fbbf24" : modelPanel.primaryColor
-
-                                    Behavior on width {
-                                        NumberAnimation { duration: 300 }
-                                    }
-                                }
-                            }
-
-                            Text {
-                                text: modelInfo.memoryUsed.toFixed(1) + " / " +
-                                      modelInfo.memoryTotal.toFixed(1) + " GB (" +
-                                      modelInfo.memoryPercent + "%)"
-                                color: modelPanel.textPrimary
-                                font.pixelSize: 11
-                            }
-                        }
-
-                        // Threads
-                        Column {
-                            width: (parent.width - 15) / 2
-                            spacing: 6
-
-                            Text {
-                                text: "🔧 Threads: " + modelInfo.threads
-                                color: modelPanel.textSecondary
-                                font.pixelSize: 11
-                                font.bold: true
-                            }
-
-                            Text {
-                                text: "Context: " + modelInfo.contextSize
-                                color: modelPanel.textPrimary
-                                font.pixelSize: 11
-                            }
-
-                            Text {
-                                text: "In: " + modelInfo.tokensIn + " • Out: " + modelInfo.tokensOut
-                                color: modelPanel.textPrimary
-                                font.pixelSize: 11
                             }
                         }
                     }
@@ -1168,7 +616,7 @@ Rectangle {
                         spacing: 8
 
                         Text {
-                            text: "🔍 RAW OUTPUT"
+                            text: "📄 RAW OUTPUT"
                             color: modelPanel.textPrimary
                             font.pixelSize: 14
                             font.bold: true
@@ -1358,178 +806,311 @@ Rectangle {
                     }
                 }
             }
+        }
+    }
 
-            // ========== REQUEST LOG ==========
-            Rectangle {
+    // ========== REUSABLE COMPONENTS ==========
+
+    component MetricItem: Column {
+        property string icon: ""
+        property string label: ""
+        property string value: ""
+        property string unit: ""
+        property bool warning: false
+
+        width: 80
+        spacing: 4
+
+        Text {
+            text: icon + " " + label
+            color: modelPanel.textSecondary
+            font.pixelSize: 9
+            font.bold: true
+        }
+
+        Row {
+            spacing: 4
+
+            Text {
+                text: value
+                color: warning ? "#fbbf24" : modelPanel.primaryColor
+                font.pixelSize: 16
+                font.bold: true
+            }
+
+            Text {
+                text: unit
+                color: modelPanel.textSecondary
+                font.pixelSize: 11
+                anchors.verticalCenter: parent.verticalCenter
+            }
+        }
+    }
+
+    component ActionButton: Button {
+        property bool isPrimary: false
+        property bool isDanger: false
+        property string tooltipText: ""
+
+        height: 38
+
+        ToolTip.visible: tooltipText !== "" && hovered
+        ToolTip.text: tooltipText
+
+        background: Rectangle {
+            color: {
+                if (parent.pressed) {
+                    return isDanger ? "#c0392b" : Qt.darker(isPrimary ? modelPanel.primaryColor : modelPanel.accentColor, 1.2)
+                }
+                if (parent.hovered) {
+                    return isDanger ? "#e74c3c" : Qt.lighter(isPrimary ? modelPanel.primaryColor : modelPanel.accentColor, 1.1)
+                }
+                if (isPrimary) return modelPanel.primaryColor
+                if (isDanger) return "transparent"
+                return "transparent"
+            }
+            radius: 8
+            border.color: isDanger ? "#e74c3c" : (isPrimary ? "transparent" : modelPanel.accentColor)
+            border.width: isPrimary ? 0 : 1
+            opacity: parent.enabled ? 1.0 : 0.4
+        }
+
+        contentItem: Text {
+            text: parent.text
+            color: isPrimary ? "white" : modelPanel.textPrimary
+            font.pixelSize: 13
+            font.bold: isPrimary
+            horizontalAlignment: Text.AlignHCenter
+            verticalAlignment: Text.AlignVCenter
+        }
+    }
+
+    component CollapsibleSection: Rectangle {
+        property string title: ""
+        property real contentHeight: 200
+        property bool collapsed: true
+        property alias content: contentLoader.sourceComponent
+
+        height: collapsed ? 50 : contentHeight + 60
+        color: modelPanel.surfaceColor
+        radius: 12
+
+        Behavior on height {
+            NumberAnimation { duration: 200; easing.type: Easing.OutCubic }
+        }
+
+        Column {
+            anchors.fill: parent
+            anchors.margins: 12
+            spacing: 10
+
+            Row {
                 width: parent.width
-                height: 300
-                color: modelPanel.surfaceColor
-                radius: 12
-                opacity: 0.8
+                spacing: 8
 
-                Column {
+                Text {
+                    text: title
+                    color: modelPanel.textPrimary
+                    font.pixelSize: 13
+                    font.bold: true
+                    width: parent.width - 40
+                }
+
+                Button {
+                    text: parent.parent.parent.collapsed ? "▼" : "▲"
+                    width: 30
+                    height: 24
+                    onClicked: parent.parent.parent.collapsed = !parent.parent.parent.collapsed
+
+                    background: Rectangle {
+                        color: parent.hovered ? Qt.lighter(modelPanel.surfaceColor, 1.2) : "transparent"
+                        radius: 6
+                        border.color: modelPanel.textSecondary
+                        border.width: 1
+                    }
+
+                    contentItem: Text {
+                        text: parent.text
+                        color: modelPanel.textPrimary
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                        font.pixelSize: 12
+                    }
+                }
+            }
+
+            Loader {
+                id: contentLoader
+                width: parent.width
+                height: parent.parent.contentHeight
+                visible: !parent.parent.collapsed
+            }
+
+            children: [contentLoader]
+        }
+    }
+
+    component ModelItem: Rectangle {
+        property var modelData
+
+        height: 60
+        color: modelArea.containsMouse ? Qt.lighter(modelPanel.surfaceColor, 1.1) : "transparent"
+        radius: 6
+
+        MouseArea {
+            //id: modelArea
+            anchors.fill: parent
+            hoverEnabled: true
+            onClicked: {
+                if (modelData.fullPath !== modelInfo.modelPath) {
+                    loadingPopup.open()
+                    llamaConnector.loadModel(modelData.fullPath)
+                }
+            }
+        }
+
+        Row {
+            anchors.fill: parent
+            anchors.margins: 8
+            spacing: 10
+
+            Rectangle {
+                width: 20
+                height: 20
+                radius: 4
+                color: "transparent"
+                border.color: modelData.isAutoLoad ? "#4ade80" : modelPanel.textSecondary
+                border.width: 2
+                anchors.verticalCenter: parent.verticalCenter
+
+                Text {
+                    anchors.centerIn: parent
+                    text: modelData.isAutoLoad ? "✓" : ""
+                    color: "#4ade80"
+                    font.pixelSize: 14
+                    font.bold: true
+                }
+
+                MouseArea {
                     anchors.fill: parent
-                    anchors.margins: 10
-                    spacing: 10
-
-                    Row {
-                        width: parent.width
-
-                        Text {
-                            text: "📊 REQUEST LOG"
-                            color: modelPanel.textPrimary
-                            font.pixelSize: 14
-                            font.bold: true
-                            width: parent.width - 60
-                        }
-
-                        Button {
-                            text: "CSV⬇"
-                            width: 50
-                            height: 24
-
-                            background: Rectangle {
-                                color: parent.pressed ? modelPanel.accentColor :
-                                       parent.hovered ? Qt.lighter(modelPanel.accentColor, 1.2) :
-                                       "transparent"
-                                radius: 6
-                                border.color: modelPanel.accentColor
-                                border.width: 1
-
-                                Behavior on color {
-                                    ColorAnimation { duration: 150 }
-                                }
-                            }
-
-                            contentItem: Text {
-                                text: parent.text
-                                color: modelPanel.textPrimary
-                                horizontalAlignment: Text.AlignHCenter
-                                verticalAlignment: Text.AlignVCenter
-                                font.pixelSize: 10
-                            }
-                        }
+                    onClicked: {
+                        modelInfo.autoLoadModelPath = modelData.isAutoLoad ? "" : modelData.fullPath
+                        modelInfo.scanModelsFolder()
                     }
+                }
+            }
 
-                    Rectangle {
-                        width: parent.width
-                        height: 1
+            Column {
+                width: parent.width - 35
+                spacing: 4
+                anchors.verticalCenter: parent.verticalCenter
+
+                Text {
+                    text: modelData.fileName
+                    color: modelData.fullPath === modelInfo.modelPath ? modelPanel.primaryColor : modelPanel.textPrimary
+                    font.pixelSize: 13
+                    font.bold: modelData.fullPath === modelInfo.modelPath
+                    elide: Text.ElideRight
+                    width: parent.width
+                }
+
+                Row {
+                    spacing: 12
+
+                    Text {
+                        text: "📦 " + modelData.size
                         color: modelPanel.textSecondary
-                        opacity: 0.3
+                        font.pixelSize: 10
                     }
 
-                    ListView {
-                        width: parent.width
-                        height: parent.height - 80
-                        clip: true
-
-                        model: modelInfo.requestLog
-
-                        delegate: Rectangle {
-                            width: parent ? parent.width : 0
-                            height: 30
-                            color: "transparent"
-
-                            Row {
-                                anchors.fill: parent
-                                spacing: 8
-
-                                Text {
-                                    text: model.time
-                                    color: modelPanel.textSecondary
-                                    font.pixelSize: 11
-                                    width: 60
-                                }
-
-                                Text {
-                                    text: model.tokensIn + "→" + model.tokensOut
-                                    color: modelPanel.textPrimary
-                                    font.pixelSize: 11
-                                    width: 60
-                                }
-
-                                Text {
-                                    text: model.speed.toFixed(1) + "tk/s"
-                                    color: modelPanel.primaryColor
-                                    font.pixelSize: 11
-                                    width: 70
-                                }
-
-                                Text {
-                                    text: (model.duration / 1000).toFixed(1) + "s"
-                                    color: modelPanel.textSecondary
-                                    font.pixelSize: 11
-                                }
-                            }
-                        }
-
-                        Text {
-                            anchors.centerIn: parent
-                            text: "No requests yet"
-                            color: modelPanel.textSecondary
-                            font.pixelSize: 12
-                            opacity: 0.6
-                            visible: parent.count === 0
-                        }
+                    Text {
+                        text: "🔢 " + modelData.parameters
+                        color: modelPanel.textSecondary
+                        font.pixelSize: 10
                     }
 
-                    Button {
-                        text: "Clear Log"
-                        width: parent.width
-                        height: 28
-                        enabled: modelInfo.requestLog.rowCount() > 0
-
-                        onClicked: modelInfo.requestLog.clear()
-
-                        background: Rectangle {
-                            color: parent.pressed ? "#c0392b" :
-                                   parent.hovered ? "#e74c3c" :
-                                   "transparent"
-                            radius: 8
-                            border.color: "#e74c3c"
-                            border.width: 1
-                            opacity: parent.enabled ? 1.0 : 0.5
-
-                            Behavior on color {
-                                ColorAnimation { duration: 150 }
-                            }
-                        }
-
-                        contentItem: Text {
-                            text: parent.text
-                            color: modelPanel.textPrimary
-                            horizontalAlignment: Text.AlignHCenter
-                            verticalAlignment: Text.AlignVCenter
-                            font.pixelSize: 12
-                        }
+                    Text {
+                        text: modelData.isAutoLoad ? "⚡ Auto" : ""
+                        color: "#4ade80"
+                        font.pixelSize: 10
+                        font.bold: true
                     }
                 }
             }
         }
     }
 
-    // Helper component for info rows
-    component InfoRow: Row {
-        property string label: ""
-        property string value: ""
-        spacing: 4
+    component HardwareCard: Column {
+        property string icon: ""
+        property string name: ""
+        property var metrics: []
 
-        Text {
-            text: label
-            color: modelPanel.textSecondary
-            font.pixelSize: 11
-            width: 55
+        spacing: 10
+
+        Row {
+            spacing: 8
+
+            Text {
+                text: icon
+                font.pixelSize: 16
+            }
+
+            Text {
+                text: name
+                color: modelPanel.textPrimary
+                font.pixelSize: 12
+                font.bold: true
+                elide: Text.ElideRight
+                width: parent.parent.width - 30
+            }
         }
 
-        Text {
-            text: value
-            color: modelPanel.textPrimary
-            font.pixelSize: 11
-            font.bold: true
+        Repeater {
+            model: metrics
+
+            Column {
+                width: parent.width
+                spacing: 4
+
+                Text {
+                    text: modelData.label
+                    color: modelPanel.textSecondary
+                    font.pixelSize: 10
+                }
+
+                Rectangle {
+                    width: parent.width
+                    height: 28
+                    radius: 6
+                    color: "#0a0a15"
+
+                    Rectangle {
+                        width: parent.width * (modelData.progress || 0)
+                        height: parent.height
+                        radius: parent.radius
+                        color: modelPanel.primaryColor
+                        opacity: 0.3
+                        visible: modelData.progress !== undefined
+
+                        Behavior on width {
+                            NumberAnimation { duration: 300 }
+                        }
+                    }
+
+                    Text {
+                        anchors.centerIn: parent
+                        text: modelData.value
+                        color: modelData.color || modelPanel.textPrimary
+                        font.pixelSize: 13
+                        font.bold: true
+                    }
+                }
+            }
         }
     }
 
-    // Folder Dialog для выбора папки с моделями
+    // ========== DIALOGS ==========
+
     FolderDialog {
         id: folderDialog
         title: "Select Models Folder"
@@ -1541,17 +1122,15 @@ Rectangle {
             if (Qt.platform.os === "windows") {
                 path = path.replace(/^\//, "")
             }
-
             modelInfo.modelsFolder = path
         }
     }
 
-    // ========== MODEL SETTINGS POPUP (PLACEHOLDER) ==========
     Popup {
         id: settingsPopup
         anchors.centerIn: Overlay.overlay
-        width: 450
-        height: 550
+        width: 400
+        height: 450
         modal: true
         focus: true
 
@@ -1567,23 +1146,11 @@ Rectangle {
             anchors.margins: 20
             spacing: 20
 
-            Row {
-                width: parent.width
-                spacing: 12
-
-                Text {
-                    text: "⚙️"
-                    font.pixelSize: 28
-                    anchors.verticalCenter: parent.verticalCenter
-                }
-
-                Text {
-                    text: "Model Settings"
-                    color: modelPanel.textPrimary
-                    font.pixelSize: 20
-                    font.bold: true
-                    anchors.verticalCenter: parent.verticalCenter
-                }
+            Text {
+                text: "⚙️ Model Settings"
+                color: modelPanel.textPrimary
+                font.pixelSize: 20
+                font.bold: true
             }
 
             Rectangle {
@@ -1593,74 +1160,37 @@ Rectangle {
                 opacity: 0.3
             }
 
-            // Placeholder content
+            Text {
+                text: "⚠️ Coming Soon"
+                color: modelPanel.primaryColor
+                font.pixelSize: 16
+                font.bold: true
+                anchors.horizontalCenter: parent.horizontalCenter
+            }
+
             Column {
                 width: parent.width
-                spacing: 15
+                spacing: 8
 
-                Text {
-                    text: "⚠️ Coming Soon"
-                    color: modelPanel.primaryColor
-                    font.pixelSize: 16
-                    font.bold: true
-                    anchors.horizontalCenter: parent.horizontalCenter
-                }
-
-                Text {
-                    text: "Advanced model configuration options will be available here:"
-                    color: modelPanel.textSecondary
-                    font.pixelSize: 13
-                    width: parent.width
-                    wrapMode: Text.WordWrap
-                }
-
-                Column {
-                    width: parent.width
-                    spacing: 8
-
-                    Text { text: "• Temperature control"; color: modelPanel.textSecondary; font.pixelSize: 12 }
-                    Text { text: "• Top-P / Top-K sampling"; color: modelPanel.textSecondary; font.pixelSize: 12 }
-                    Text { text: "• Max tokens"; color: modelPanel.textSecondary; font.pixelSize: 12 }
-                    Text { text: "• Context size adjustment"; color: modelPanel.textSecondary; font.pixelSize: 12 }
-                    Text { text: "• GPU layers configuration"; color: modelPanel.textSecondary; font.pixelSize: 12 }
-                    Text { text: "• Thread count"; color: modelPanel.textSecondary; font.pixelSize: 12 }
-                }
+                Text { text: "• Temperature control"; color: modelPanel.textSecondary; font.pixelSize: 12 }
+                Text { text: "• Top-P / Top-K sampling"; color: modelPanel.textSecondary; font.pixelSize: 12 }
+                Text { text: "• Max tokens"; color: modelPanel.textSecondary; font.pixelSize: 12 }
+                Text { text: "• Context size"; color: modelPanel.textSecondary; font.pixelSize: 12 }
+                Text { text: "• GPU layers"; color: modelPanel.textSecondary; font.pixelSize: 12 }
             }
 
             Item { height: 20 }
 
-            Button {
+            ActionButton {
                 text: "Close"
                 width: 120
-                height: 40
                 anchors.horizontalCenter: parent.horizontalCenter
-
+                isPrimary: true
                 onClicked: settingsPopup.close()
-
-                background: Rectangle {
-                    color: parent.pressed ? Qt.darker(modelPanel.accentColor, 1.2) :
-                           parent.hovered ? Qt.lighter(modelPanel.accentColor, 1.1) :
-                           modelPanel.accentColor
-                    radius: 8
-
-                    Behavior on color {
-                        ColorAnimation { duration: 150 }
-                    }
-                }
-
-                contentItem: Text {
-                    text: parent.text
-                    color: "white"
-                    horizontalAlignment: Text.AlignHCenter
-                    verticalAlignment: Text.AlignVCenter
-                    font.pixelSize: 14
-                    font.bold: true
-                }
             }
         }
     }
 
-    // Loading Popup
     Popup {
         id: loadingPopup
         anchors.centerIn: Overlay.overlay
@@ -1684,59 +1214,6 @@ Rectangle {
             BusyIndicator {
                 anchors.horizontalCenter: parent.horizontalCenter
                 running: loadingPopup.visible
-
-                contentItem: Item {
-                    implicitWidth: 64
-                    implicitHeight: 64
-
-                    Item {
-                        id: item
-                        x: parent.width / 2 - 32
-                        y: parent.height / 2 - 32
-                        width: 64
-                        height: 64
-                        opacity: loadingPopup.visible ? 1 : 0
-
-                        Behavior on opacity {
-                            OpacityAnimator {
-                                duration: 250
-                            }
-                        }
-
-                        RotationAnimator {
-                            target: item
-                            running: loadingPopup.visible
-                            from: 0
-                            to: 360
-                            loops: Animation.Infinite
-                            duration: 1250
-                        }
-
-                        Repeater {
-                            id: repeater
-                            model: 6
-
-                            Rectangle {
-                                x: item.width / 2 - width / 2
-                                y: item.height / 2 - height / 2
-                                implicitWidth: 10
-                                implicitHeight: 10
-                                radius: 5
-                                color: modelPanel.primaryColor
-                                transform: [
-                                    Translate {
-                                        y: -Math.min(item.width, item.height) * 0.5 + 5
-                                    },
-                                    Rotation {
-                                        angle: index / repeater.count * 360
-                                        origin.x: 5
-                                        origin.y: 5
-                                    }
-                                ]
-                            }
-                        }
-                    }
-                }
             }
 
             Text {
@@ -1745,18 +1222,10 @@ Rectangle {
                 font.pixelSize: 14
                 anchors.horizontalCenter: parent.horizontalCenter
             }
-
-            Text {
-                text: "Please wait"
-                color: modelPanel.textSecondary
-                font.pixelSize: 12
-                anchors.horizontalCenter: parent.horizontalCenter
-            }
         }
 
         Connections {
             target: llamaConnector
-
             function onModelLoadingFinished(success) {
                 loadingPopup.close()
                 if (!success) {
@@ -1764,7 +1233,6 @@ Rectangle {
                     errorPopup.open()
                 }
             }
-
             function onErrorOccurred(error) {
                 loadingPopup.close()
                 errorPopup.errorText = error
@@ -1773,7 +1241,6 @@ Rectangle {
         }
     }
 
-    // Error Popup
     Popup {
         id: errorPopup
         anchors.centerIn: Overlay.overlay
@@ -1796,22 +1263,12 @@ Rectangle {
             anchors.margins: 20
             spacing: 15
 
-            Row {
-                spacing: 10
+            Text {
+                text: "⚠️ Error Loading Model"
+                color: modelPanel.textPrimary
+                font.pixelSize: 16
+                font.bold: true
                 anchors.horizontalCenter: parent.horizontalCenter
-
-                Text {
-                    text: "⚠️"
-                    font.pixelSize: 32
-                }
-
-                Text {
-                    text: "Error Loading Model"
-                    color: modelPanel.textPrimary
-                    font.pixelSize: 16
-                    font.bold: true
-                    anchors.verticalCenter: parent.verticalCenter
-                }
             }
 
             Rectangle {
@@ -1830,33 +1287,12 @@ Rectangle {
                 horizontalAlignment: Text.AlignHCenter
             }
 
-            Button {
+            ActionButton {
                 text: "OK"
                 width: 100
-                height: 35
                 anchors.horizontalCenter: parent.horizontalCenter
-
+                isDanger: true
                 onClicked: errorPopup.close()
-
-                background: Rectangle {
-                    color: parent.pressed ? "#c0392b" :
-                           parent.hovered ? "#e74c3c" :
-                           "#e74c3c"
-                    radius: 8
-
-                    Behavior on color {
-                        ColorAnimation { duration: 150 }
-                    }
-                }
-
-                contentItem: Text {
-                    text: parent.text
-                    color: "white"
-                    horizontalAlignment: Text.AlignHCenter
-                    verticalAlignment: Text.AlignVCenter
-                    font.pixelSize: 13
-                    font.bold: true
-                }
             }
         }
     }
