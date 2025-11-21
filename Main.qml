@@ -533,9 +533,10 @@ ApplicationWindow {
                         border.width: 0
                     }
 
-                    Keys.onReturnPressed: {
+                    Keys.onReturnPressed: function(event) {
                         if (event.modifiers & Qt.ShiftModifier) {
-                            // Shift+Enter = новая строка (по умолчанию)
+                            // Shift+Enter = новая строка
+                            event.accepted = false
                             return
                         }
 
