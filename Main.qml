@@ -473,11 +473,17 @@ ApplicationWindow {
     // Input area
     Rectangle {
         id: inputArea
+        height: Math.min(Math.max(70, inputField.contentHeight + 30), 300)
         anchors.bottom: parent.bottom
         anchors.left: chatList.right
         anchors.right: modelPanel.left
-        height: 70
+        anchors.leftMargin: 20
+        anchors.rightMargin: 20
         color: root.surfaceColor
+
+        Behavior on height {
+            NumberAnimation { duration: 150; easing.type: Easing.OutQuad }
+        }
 
         Rectangle {
             id: inputContainer
@@ -486,38 +492,54 @@ ApplicationWindow {
             anchors.verticalCenter: parent.verticalCenter
             anchors.margins: 15
             anchors.rightMargin: 10
-            height: 40
+            height: Math.min(Math.max(40, inputField.contentHeight + 16), 270) // Высота контейнера
             color: root.inputBackground
             radius: 20
             border.color: inputField.activeFocus ? root.primaryColor : "transparent"
             border.width: 2
 
-            TextField {
-                id: inputField
+            Behavior on height {
+                NumberAnimation { duration: 150; easing.type: Easing.OutQuad }
+            }
+
+            ScrollView {
                 anchors.fill: parent
                 anchors.margins: 10
-                anchors.topMargin: 8
-                anchors.bottomMargin: 8
-                placeholderText: "Type your message..."
-                placeholderTextColor: root.textSecondary
-                color: root.textPrimary
-                font.pixelSize: 16
-                verticalAlignment: Text.AlignVCenter
-                selectByMouse: true
+                clip: true
+                ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+                ScrollBar.vertical.policy: inputField.contentHeight > 200 ? ScrollBar.AsNeeded : ScrollBar.AlwaysOff
 
-                background: Rectangle {
-                    color: "transparent"
-                    border.width: 0
-                }
+                TextArea {
+                    id: inputField
+                    width: parent.width
+                    placeholderText: "Type your message..."
+                    placeholderTextColor: root.textSecondary
+                    color: root.textPrimary
+                    font.pixelSize: 16
+                    wrapMode: TextArea.Wrap
+                    selectByMouse: true
 
-                Keys.onReturnPressed: {
-                    if (llamaConnector.isGenerating) {
-                        return
+                    background: Rectangle {
+                        color: "transparent"
+                        border.width: 0
                     }
-                    if (inputField.text.trim() !== "") {
-                        chatManager.addMessage(inputField.text.trim(), true)
-                        llamaConnector.sendMessage(inputField.text.trim())
-                        inputField.text = ""
+
+                    Keys.onReturnPressed: {
+                        if (event.modifiers & Qt.ShiftModifier) {
+                            // Shift+Enter = новая строка (по умолчанию)
+                            return
+                        }
+
+                        // Enter = отправка
+                        event.accepted = true
+                        if (llamaConnector.isGenerating) {
+                            return
+                        }
+                        if (inputField.text.trim() !== "") {
+                            chatManager.addMessage(inputField.text.trim(), true)
+                            llamaConnector.sendMessage(inputField.text.trim())
+                            inputField.text = ""
+                        }
                     }
                 }
             }
