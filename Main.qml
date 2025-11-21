@@ -479,6 +479,7 @@ ApplicationWindow {
         anchors.right: modelPanel.left
         anchors.leftMargin: 20
         anchors.rightMargin: 20
+        anchors.bottomMargin: 20
         color: root.surfaceColor
 
         Behavior on height {
@@ -504,7 +505,7 @@ ApplicationWindow {
 
             ScrollView {
                 anchors.fill: parent
-                anchors.margins: 10
+                anchors.margins: 8
                 clip: true
                 ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
                 ScrollBar.vertical.policy: inputField.contentHeight > 200 ? ScrollBar.AsNeeded : ScrollBar.AlwaysOff
@@ -518,6 +519,14 @@ ApplicationWindow {
                     font.pixelSize: 16
                     wrapMode: TextArea.Wrap
                     selectByMouse: true
+                    topPadding: 0
+                    bottomPadding: 0
+                    leftPadding: 4
+                    rightPadding: 4
+                    verticalAlignment: TextArea.AlignVCenter
+
+                    // Межстрочный интервал для Qt 6
+                    textFormat: TextEdit.PlainText
 
                     background: Rectangle {
                         color: "transparent"
