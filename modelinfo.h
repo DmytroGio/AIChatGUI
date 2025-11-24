@@ -99,6 +99,7 @@ class ModelInfo : public QObject
 
 public:
     explicit ModelInfo(QObject *parent = nullptr);
+    ~ModelInfo();
 
     void setModel(llama_model *model, llama_context *ctx, const QString &path);
     void clearModel();

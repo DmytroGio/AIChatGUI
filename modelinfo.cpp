@@ -160,6 +160,21 @@ ModelInfo::ModelInfo(QObject *parent)
     updateGPUMetrics();
 }
 
+ModelInfo::~ModelInfo()
+{
+#ifdef _WIN32
+    if (m_nvmlLib) {
+        auto nvmlShutdown = (nvmlShutdown_t)GetProcAddress((HMODULE)m_nvmlLib, "nvmlShutdown");
+        if (nvmlShutdown) {
+            nvmlShutdown();
+        }
+        FreeLibrary((HMODULE)m_nvmlLib);
+        m_nvmlLib = nullptr;
+        m_nvmlDevice = nullptr;
+    }
+#endif
+}
+
 void ModelInfo::setModel(llama_model *model, llama_context *ctx, const QString &path)
 {
     if (!model || !ctx) return;
@@ -213,10 +228,9 @@ void ModelInfo::setModel(llama_model *model, llama_context *ctx, const QString &
 
     m_threads = llama_n_threads(ctx);
 
+    // Запускаем таймеры
     m_statsTimer->start();
-
-    m_statsTimer->start();
-    if (m_gpuTimer) {
+    if (m_gpuTimer && !m_gpuTimer->isActive()) {
         m_gpuTimer->start();
     }
 
@@ -250,24 +264,11 @@ void ModelInfo::clearModel()
     m_tokensOut = 0;
 
     emit modelChanged();
-
-    if (m_gpuTimer) {
-        m_gpuTimer->stop();
-    }
-
-#ifdef _WIN32
-    if (m_nvmlLib) {
-        auto nvmlShutdown = (nvmlShutdown_t)GetProcAddress((HMODULE)m_nvmlLib, "nvmlShutdown");
-        if (nvmlShutdown) {
-            nvmlShutdown();
-        }
-        FreeLibrary((HMODULE)m_nvmlLib);
-        m_nvmlLib = nullptr;
-        m_nvmlDevice = nullptr;
-    }
-#endif
-
     emit statsChanged();
+
+    // ⚠️ НЕ останавливаем GPU таймер при выгрузке модели!
+    // Он должен продолжать работать для мониторинга GPU
+    // m_gpuTimer продолжает работать
 }
 
 void ModelInfo::updateStats(llama_context *ctx)
