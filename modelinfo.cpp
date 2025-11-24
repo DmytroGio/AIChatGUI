@@ -110,6 +110,7 @@ ModelInfo::ModelInfo(QObject *parent)
     m_statsTimer = new QTimer(this);
     connect(m_statsTimer, &QTimer::timeout, this, &ModelInfo::updateCurrentStats);
     m_statsTimer->setInterval(1000);  // Обновление каждую секунду
+    m_statsTimer->start();
 
     // GPU monitoring setup (добавить в конец конструктора после m_statsTimer->setInterval(1000);)
     m_gpuTimer = new QTimer(this);
@@ -180,6 +181,20 @@ void ModelInfo::setModel(llama_model *model, llama_context *ctx, const QString &
     if (!model || !ctx) return;
 
     m_ctx = ctx;
+
+    // Пытаемся получить точный размер через llama.cpp API
+    size_t model_size = llama_model_size(model);
+    if (model_size > 0) {
+        m_modelMemoryUsed = model_size / (1024.0f * 1024.0f * 1024.0f);
+        qDebug() << "Model memory from llama API:" << m_modelMemoryUsed << "GB";
+    } else {
+        // Fallback на размер файла
+        QFileInfo modelFileInfo(path);
+        qint64 fileSizeBytes = modelFileInfo.size();
+        m_modelMemoryUsed = (fileSizeBytes / (1024.0f * 1024.0f * 1024.0f)) * 1.1f;
+        qDebug() << "Model memory estimated from file:" << m_modelMemoryUsed << "GB";
+    }
+
     m_isLoaded = true;
     m_modelPath = path;
 
@@ -239,7 +254,6 @@ void ModelInfo::setModel(llama_model *model, llama_context *ctx, const QString &
 
 void ModelInfo::clearModel()
 {
-    m_statsTimer->stop();
     m_ctx = nullptr;
 
     m_isLoaded = false;
@@ -256,19 +270,13 @@ void ModelInfo::clearModel()
     m_layers = 0;
 
     m_speed = 0.0f;
-    m_memoryUsed = 0.0f;
-    m_memoryTotal = 0.0f;
-    m_memoryPercent = 0;
+    m_modelMemoryUsed = 0.0f;
     m_status = "Idle";
     m_tokensIn = 0;
     m_tokensOut = 0;
 
     emit modelChanged();
     emit statsChanged();
-
-    // ⚠️ НЕ останавливаем GPU таймер при выгрузке модели!
-    // Он должен продолжать работать для мониторинга GPU
-    // m_gpuTimer продолжает работать
 }
 
 void ModelInfo::updateStats(llama_context *ctx)
@@ -286,10 +294,21 @@ void ModelInfo::updateStats(llama_context *ctx)
     m_tokensIn = perf.n_p_eval;
     m_tokensOut = perf.n_eval;
 
-    // Примерная оценка памяти (можно улучшить)
-    m_memoryTotal = 8.0f; // Примерное значение, нужно получать от системы
-    m_memoryUsed = m_memoryTotal * 0.0f; // Требует доступа к внутренним данным llama.cpp
+// Получаем реальную информацию о RAM
+#ifdef _WIN32
+    MEMORYSTATUSEX memInfo;
+    memInfo.dwLength = sizeof(MEMORYSTATUSEX);
+    if (GlobalMemoryStatusEx(&memInfo)) {
+        m_memoryTotal = memInfo.ullTotalPhys / (1024.0f * 1024.0f * 1024.0f); // GB
+        m_memoryUsed = (memInfo.ullTotalPhys - memInfo.ullAvailPhys) / (1024.0f * 1024.0f * 1024.0f); // GB
+        m_memoryPercent = memInfo.dwMemoryLoad; // Уже в процентах
+    }
+#else
+    // Linux/Mac implementation if needed
+    m_memoryTotal = 8.0f;
+    m_memoryUsed = 2.5f;
     m_memoryPercent = static_cast<int>((m_memoryUsed / m_memoryTotal) * 100);
+#endif
 
     m_status = (perf.n_eval > 0) ? "Generating" : "Idle";
 
@@ -331,7 +350,30 @@ void ModelInfo::setGenerating(bool generating)
 
 void ModelInfo::updateCurrentStats()
 {
-    if (!m_ctx || !m_isLoaded) return;
+    // Получаем реальную информацию о RAM (работает всегда, независимо от модели)
+#ifdef _WIN32
+    MEMORYSTATUSEX memInfo;
+    memInfo.dwLength = sizeof(MEMORYSTATUSEX);
+    if (GlobalMemoryStatusEx(&memInfo)) {
+        m_memoryTotal = memInfo.ullTotalPhys / (1024.0f * 1024.0f * 1024.0f);
+        m_memoryUsed = (memInfo.ullTotalPhys - memInfo.ullAvailPhys) / (1024.0f * 1024.0f * 1024.0f);
+        m_memoryPercent = memInfo.dwMemoryLoad;
+    }
+#else
+    m_memoryTotal = 8.0f;
+    m_memoryUsed = 2.5f;
+    m_memoryPercent = static_cast<int>((m_memoryUsed / m_memoryTotal) * 100);
+#endif
+
+    // Проверяем модель только для её специфичных метрик
+    if (!m_ctx || !m_isLoaded) {
+        m_status = "Idle";
+        m_speed = 0.0f;
+        m_tokensIn = 0;
+        m_tokensOut = 0;
+        emit statsChanged();
+        return;
+    }
 
     // Получаем данные производительности
     struct llama_perf_context_data perf = llama_perf_context(m_ctx);
@@ -353,12 +395,6 @@ void ModelInfo::updateCurrentStats()
     // Обновляем счетчики токенов
     m_tokensIn = perf.n_p_eval;
     m_tokensOut = perf.n_eval;
-
-    // Примерная оценка памяти (TODO: получить реальные данные)
-    // Можно использовать системные вызовы или оставить как есть
-    m_memoryTotal = 8.0f;
-    m_memoryUsed = 2.5f; // Временное значение
-    m_memoryPercent = static_cast<int>((m_memoryUsed / m_memoryTotal) * 100);
 
     emit statsChanged();
 }

@@ -91,6 +91,8 @@ class ModelInfo : public QObject
     Q_PROPERTY(int cpuTemp READ cpuTemp NOTIFY cpuMetricsChanged)
     Q_PROPERTY(int cpuUsage READ cpuUsage NOTIFY cpuMetricsChanged)
     Q_PROPERTY(int cpuClock READ cpuClock NOTIFY cpuMetricsChanged)
+    // RAM
+    Q_PROPERTY(float modelMemoryUsed READ modelMemoryUsed NOTIFY statsChanged)
 
     // Model list properties
     Q_PROPERTY(QString modelsFolder READ modelsFolder WRITE setModelsFolder NOTIFY modelsFolderChanged)
@@ -147,6 +149,9 @@ public:
     int cpuTemp() const { return m_cpuTemp; }
     int cpuUsage() const { return m_cpuUsage; }
     int cpuClock() const { return m_cpuClock; }
+
+    // RAM getters
+    float modelMemoryUsed() const { return m_modelMemoryUsed; }
 
     // Model list
     QString modelsFolder() const { return m_modelsFolder; }
@@ -229,6 +234,8 @@ private:
     void updateCPUMetrics();
     int m_cpuBaseFreq = 0;  // MHz
     int m_cpuCurrentFreq = 0;  // MHz
+
+    float m_modelMemoryUsed = 0.0f;
 
     // Model list
     QString m_modelsFolder;

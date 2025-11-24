@@ -489,7 +489,11 @@ Rectangle {
                             metrics: [
                                 { label: "Usage", value: modelInfo.cpuUsage + "%", progress: modelInfo.cpuUsage / 100.0 },
                                 { label: "Clock", value: (modelInfo.cpuClock / 1000.0).toFixed(2) + " GHz", color: "#4ade80" },
-                                { label: "RAM", value: modelInfo.memoryUsed.toFixed(1) + "/" + modelInfo.memoryTotal.toFixed(1) + " GB", progress: modelInfo.memoryPercent / 100.0 }
+                                {
+                                    label: modelInfo.isLoaded ? "RAM (Model: " + modelInfo.modelMemoryUsed.toFixed(1) + " GB)" : "RAM",
+                                    value: modelInfo.memoryUsed.toFixed(1) + "/" + modelInfo.memoryTotal.toFixed(1) + " GB",
+                                    progress: modelInfo.memoryPercent / 100.0
+                                }
                             ]
                         }
                     }
