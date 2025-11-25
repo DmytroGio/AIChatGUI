@@ -466,6 +466,121 @@ ApplicationWindow {
                 }
             }
         }
+
+        // Автоскролл по средней кнопке мыши
+        MouseArea {
+            id: autoScrollArea
+            anchors.fill: parent
+            acceptedButtons: Qt.MiddleButton
+            hoverEnabled: true
+            propagateComposedEvents: true
+
+            property bool isAutoScrolling: false
+            property point anchorPos // Фиксированная точка якоря
+
+            onPressed: function(mouse) {
+                if (mouse.button === Qt.MiddleButton) {
+                    isAutoScrolling = true
+                    anchorPos = Qt.point(mouse.x, mouse.y)
+
+                    autoScrollCursor.x = anchorPos.x - autoScrollCursor.width / 2
+                    autoScrollCursor.y = anchorPos.y - autoScrollCursor.height / 2
+                    autoScrollCursor.visible = true
+
+                    messagesView.shouldAutoScroll = false
+                    scrollTimer.start()
+                }
+            }
+
+            onReleased: function(mouse) {
+                if (mouse.button === Qt.MiddleButton) {
+                    isAutoScrolling = false
+                    autoScrollCursor.visible = false
+                    scrollTimer.stop()
+
+                    // Восстанавливаем автоскролл если внизу
+                    var maxContentY = messagesView.contentHeight - messagesView.height
+                    if (messagesView.contentY >= maxContentY - 10) {
+                        messagesView.shouldAutoScroll = true
+                    }
+                }
+            }
+
+            // Таймер для постоянного скролла
+            Timer {
+                id: scrollTimer
+                interval: 16 // ~60 FPS
+                repeat: true
+                running: false
+
+                onTriggered: {
+                    if (!autoScrollArea.isAutoScrolling) return
+
+                    // Получаем текущую позицию курсора относительно contentArea
+                    var mousePos = autoScrollArea.mapFromGlobal(autoScrollArea.mapToGlobal(Qt.point(0, 0)))
+                    var cursorPos = autoScrollArea.mapFromItem(null, autoScrollArea.mouseX, autoScrollArea.mouseY)
+
+                    // Используем глобальные координаты через mapFromGlobal
+                    var globalPos = autoScrollArea.mapToGlobal(Qt.point(autoScrollArea.mouseX, autoScrollArea.mouseY))
+                    var localPos = autoScrollArea.mapFromGlobal(globalPos)
+
+                    var deltaY = localPos.y - autoScrollArea.anchorPos.y
+
+                    // Скорость зависит от расстояния (мёртвая зона 10px)
+                    var speed = Math.abs(deltaY) > 10 ? deltaY * 0.4 : 0
+
+                    var maxContentY = messagesView.contentHeight - messagesView.height
+                    var newContentY = messagesView.contentY + speed
+                    messagesView.contentY = Math.max(0, Math.min(newContentY, maxContentY))
+
+                    // Обновляем цвет и направление стрелок
+                    if (Math.abs(deltaY) < 10) {
+                        autoScrollCursor.color = root.textSecondary
+                        autoScrollCursor.showDirection = "none"
+                    } else if (deltaY < 0) {
+                        autoScrollCursor.color = root.primaryColor
+                        autoScrollCursor.showDirection = "up"
+                    } else {
+                        autoScrollCursor.color = root.secondaryColor
+                        autoScrollCursor.showDirection = "down"
+                    }
+                }
+            }
+
+            // Индикатор автоскролла (якорь)
+            Rectangle {
+                id: autoScrollCursor
+                width: 40
+                height: 40
+                radius: 20
+                color: root.textSecondary
+                opacity: 0.8
+                visible: false
+                z: 100
+
+                property string showDirection: "none"
+
+                // Иконка стрелок
+                Item {
+                    anchors.centerIn: parent
+                    width: 20
+                    height: 20
+
+                    Text {
+                        anchors.centerIn: parent
+                        text: autoScrollCursor.showDirection === "none" ? "◆" :
+                              autoScrollCursor.showDirection === "up" ? "▲" : "▼"
+                        color: "white"
+                        font.pixelSize: autoScrollCursor.showDirection === "none" ? 16 : 14
+                        font.bold: true
+                    }
+                }
+
+                Behavior on color {
+                    ColorAnimation { duration: 150 }
+                }
+            }
+        }
     }
 
 
