@@ -699,7 +699,7 @@ Rectangle {
                     // Raw text content с кастомным скроллбаром
                     Item {
                         width: parent.width
-                        height: parent.parent.height - 70
+                        height: parent.parent.height - 95  // Увеличено с 85 до 95
                         visible: !parent.parent.rawOutputCollapsed
                         clip: true
 
@@ -714,7 +714,8 @@ Rectangle {
                             id: rawOutputFlickable
                             anchors.fill: parent
                             anchors.rightMargin: 10
-                            contentHeight: rawOutputText.contentHeight
+                            anchors.bottomMargin: 5
+                            contentHeight: rawOutputText.contentHeight + 15
                             boundsBehavior: Flickable.StopAtBounds
                             clip: true
 
@@ -731,6 +732,7 @@ Rectangle {
                                 leftPadding: 10
                                 rightPadding: 10
                                 topPadding: 8
+                                bottomPadding: 10
 
                                 Connections {
                                     target: llamaConnector
@@ -807,6 +809,7 @@ Rectangle {
                         font.pixelSize: 10
                         visible: !parent.parent.rawOutputCollapsed
                         anchors.horizontalCenter: parent.horizontalCenter
+                        topPadding: 8  // Увеличено с 5 до 8
                     }
                 }
             }
