@@ -55,3 +55,6 @@ Tech Stack: Qt6, QML, C++, HTTP API, LM Studio
 
 ## 2025-11-23
 Work is ongoing on new program icon prototypes (focusing on clarity and modern appeal). The long-term development vector is currently being mapped, prioritizing performance optimization and core feature planning.
+
+## 2025-11-26
+- Icons development in Figma (WIP)
