@@ -149,9 +149,12 @@ Rectangle {
                         spacing: 12
                         visible: modelInfo.isLoaded
 
-                        Text {
-                            text: "🔮"
-                            font.pixelSize: 24
+                        Image {
+                            width: 55
+                            height: 55
+                            source: "/icons/Model_Icon.svg"
+                            fillMode: Image.PreserveAspectFit
+                            smooth: true
                             anchors.verticalCenter: parent.verticalCenter
                         }
 
@@ -454,11 +457,24 @@ Rectangle {
                     width: parent.width - 24
                     spacing: 15
 
-                    Text {
-                        text: "⚡ HARDWARE"
-                        color: modelPanel.textPrimary
-                        font.pixelSize: 16
-                        font.bold: true
+                    Row {
+                        spacing: 8
+
+                        Image {
+                            width: 55
+                            height: 55
+                            source: "/icons/Hardware_Icon.svg"
+                            fillMode: Image.PreserveAspectFit
+                            smooth: true
+                            anchors.verticalCenter: parent.verticalCenter
+                        }
+
+                        Text {
+                            text: "HARDWARE"
+                            color: modelPanel.textPrimary
+                            font.pixelSize: 16
+                            font.bold: true
+                        }
                     }
 
                     Row {
@@ -506,8 +522,17 @@ Rectangle {
                         Row {
                             spacing: 8
 
+                            Image {
+                                width: 30
+                                height: 30
+                                source: "/icons/Speed_Icon.svg"
+                                fillMode: Image.PreserveAspectFit
+                                smooth: true
+                                anchors.verticalCenter: parent.verticalCenter
+                            }
+
                             Text {
-                                text: "⚡ Speed"
+                                text: "Speed"
                                 color: modelPanel.textPrimary
                                 font.pixelSize: 13
                                 font.bold: true
@@ -619,8 +644,17 @@ Rectangle {
                         width: parent.width
                         spacing: 8
 
+                        Image {
+                            width: 55
+                            height: 55
+                            source: "/icons/RawOutput_Icon.svg"
+                            fillMode: Image.PreserveAspectFit
+                            smooth: true
+                            anchors.verticalCenter: parent.verticalCenter
+                        }
+
                         Text {
-                            text: "📄 RAW OUTPUT"
+                            text: "RAW OUTPUT"
                             color: modelPanel.textPrimary
                             font.pixelSize: 14
                             font.bold: true

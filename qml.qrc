@@ -12,5 +12,6 @@
         <file>icons/RawOutput_Icon.svg</file>
         <file>icons/Send_Icon.svg</file>
         <file>icons/Stats_Icon.svg</file>
+        <file>icons/Speed_Icon.svg</file>
     </qresource>
 </RCC>

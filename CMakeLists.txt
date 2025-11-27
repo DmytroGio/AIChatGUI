@@ -77,6 +77,7 @@ qt_add_resources(appAIChatGUI "icons"
         icons/RawOutput_Icon.svg
         icons/Send_Icon.svg
         icons/Stats_Icon.svg
+        icons/Speed_Icon.svg
 )
 
 qt_add_qml_module(appAIChatGUI
