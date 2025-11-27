@@ -81,17 +81,27 @@ ApplicationWindow {
             height: 35
             radius: 8
             color: root.showChatList ? root.primaryColor : "transparent"
+            border.color: menuMouseArea.containsMouse ? "white" : "transparent"
+            border.width: 2
 
-            Text {
+            Image {
                 anchors.centerIn: parent
-                text: "☰"
-                color: root.textPrimary
-                font.pixelSize: 18
+                width: 20
+                height: 20
+                source: "/icons/Chats_Icon.svg"
+                fillMode: Image.PreserveAspectFit
+                smooth: true
             }
 
             MouseArea {
+                id: menuMouseArea
                 anchors.fill: parent
+                hoverEnabled: true
                 onClicked: root.showChatList = !root.showChatList
+            }
+
+            Behavior on border.color {
+                ColorAnimation { duration: 200 }
             }
         }
 
@@ -104,7 +114,7 @@ ApplicationWindow {
             Image {
                 width: 35
                 height: 35
-                source: "/icons/AiGui_Logo_small.png"
+                source: "/icons/Ai_Icon.svg"
                 fillMode: Image.PreserveAspectFit
                 smooth: true
             }
@@ -113,7 +123,7 @@ ApplicationWindow {
                 anchors.verticalCenter: parent.verticalCenter
 
                 Text {
-                    text: chatManager.isWelcomeChat ? "New Chat" : chatManager.currentChatTitle  // ✅ ВОТ ЭТУ СТРОКУ
+                    text: chatManager.isWelcomeChat ? "New Chat" : chatManager.currentChatTitle
                     color: root.textPrimary
                     font.pixelSize: 18
                     font.bold: true
@@ -156,23 +166,30 @@ ApplicationWindow {
             height: 40
             radius: 8
             color: root.showModelPanel ? root.primaryColor : "transparent"
+            border.color: modelMouseArea.containsMouse ? "white" : "transparent"
+            border.width: 2
 
-            Text {
+            Image {
                 anchors.centerIn: parent
-                text: "📊"
-                font.pixelSize: 20
+                width: 22
+                height: 22
+                source: "/icons/Stats_Icon.svg"
+                fillMode: Image.PreserveAspectFit
+                smooth: true
             }
 
             MouseArea {
+                id: modelMouseArea
                 anchors.fill: parent
                 hoverEnabled: true
                 onClicked: root.showModelPanel = !root.showModelPanel
-
-                onEntered: parent.opacity = 0.8
-                onExited: parent.opacity = 1.0
             }
 
             Behavior on color {
+                ColorAnimation { duration: 200 }
+            }
+
+            Behavior on border.color {
                 ColorAnimation { duration: 200 }
             }
 
@@ -684,12 +701,23 @@ ApplicationWindow {
                 ColorAnimation { duration: 200 }
             }
 
+            Image {
+                anchors.centerIn: parent
+                width: 18
+                height: 18
+                source: "/icons/Send_Icon.svg"
+                fillMode: Image.PreserveAspectFit
+                smooth: true
+                visible: !llamaConnector.isGenerating
+            }
+
             Text {
                 anchors.centerIn: parent
-                text: llamaConnector.isGenerating ? "■" : "↑"
+                text: "■"
                 color: "white"
-                font.pixelSize: llamaConnector.isGenerating ? 14 : 16
+                font.pixelSize: 14
                 font.bold: true
+                visible: llamaConnector.isGenerating
             }
 
             MouseArea {

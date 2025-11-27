@@ -4,5 +4,13 @@
         <file>MessageBubble.qml</file>
         <file>icons/AiGui_Logo_small.png</file>
         <file>icons/AiGui_Logo_med.png</file>
+        <file>icons/Ai_Icon.svg</file>
+        <file>icons/Chats_Icon.svg</file>
+        <file>icons/Hardware_Icon.svg</file>
+        <file>icons/Model_Icon.svg</file>
+        <file>icons/NewChat_Icon.svg</file>
+        <file>icons/RawOutput_Icon.svg</file>
+        <file>icons/Send_Icon.svg</file>
+        <file>icons/Stats_Icon.svg</file>
     </qresource>
 </RCC>

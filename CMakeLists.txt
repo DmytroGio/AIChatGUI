@@ -69,6 +69,14 @@ qt_add_resources(appAIChatGUI "icons"
     FILES
         icons/AiGui_Logo_small.png
         icons/AiGui_Logo_med.png
+        icons/Ai_Icon.svg
+        icons/Chats_Icon.svg
+        icons/Hardware_Icon.svg
+        icons/Model_Icon.svg
+        icons/NewChat_Icon.svg
+        icons/RawOutput_Icon.svg
+        icons/Send_Icon.svg
+        icons/Stats_Icon.svg
 )
 
 qt_add_qml_module(appAIChatGUI
