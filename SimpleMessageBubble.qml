@@ -125,6 +125,9 @@ Rectangle {
                 formatted = formatted.replace(/^## (.+)$/gm, '<span style="font-size: 18px; font-weight: bold; color: #3b82f6;">$1</span><br>')
                 formatted = formatted.replace(/^# (.+)$/gm, '<span style="font-size: 20px; font-weight: bold; color: #2563eb;">$1</span><br>')
 
+                // Горизонтальная линия
+                formatted = formatted.replace(/^---$/gm, '<hr style="border: none; border-top: 2px solid #4a5568; margin: 12px 0;">')
+
                 // Bold/Italic
                 formatted = formatted.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>')
                 formatted = formatted.replace(/\*(.+?)\*/g, '<i>$1</i>')
