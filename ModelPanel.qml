@@ -144,37 +144,41 @@ Rectangle {
                     spacing: 12
 
                     // Current model
-                    Row {
+                    Item {
                         width: parent.width
-                        spacing: 12
+                        height: 55
                         visible: modelInfo.isLoaded
 
-                        Image {
-                            width: 55
-                            height: 55
-                            source: "/icons/Model_Icon.svg"
-                            fillMode: Image.PreserveAspectFit
-                            smooth: true
+                        Row {
                             anchors.verticalCenter: parent.verticalCenter
-                        }
+                            spacing: 12
 
-                        Column {
-                            width: parent.width - 50
-                            spacing: 4
-
-                            Text {
-                                text: modelInfo.modelName
-                                color: modelPanel.textPrimary
-                                font.pixelSize: 18
-                                font.bold: true
-                                elide: Text.ElideRight
-                                width: parent.width
+                            Image {
+                                width: 55
+                                height: 55
+                                source: "/icons/Model_Icon.svg"
+                                fillMode: Image.PreserveAspectFit
+                                smooth: true
+                                anchors.verticalCenter: parent.verticalCenter
                             }
 
-                            Text {
-                                text: modelInfo.modelSize + " • " + modelInfo.layers + " layers • " + modelInfo.contextSize + " ctx"
-                                color: modelPanel.textSecondary
-                                font.pixelSize: 12
+                            Column {
+                                anchors.verticalCenter: parent.verticalCenter
+                                spacing: 4
+
+                                Text {
+                                    text: modelInfo.modelName
+                                    color: modelPanel.textPrimary
+                                    font.pixelSize: 18
+                                    font.bold: true
+                                    elide: Text.ElideRight
+                                }
+
+                                Text {
+                                    text: modelInfo.modelSize + " • " + modelInfo.layers + " layers • " + modelInfo.contextSize + " ctx"
+                                    color: modelPanel.textSecondary
+                                    font.pixelSize: 12
+                                }
                             }
                         }
                     }
@@ -472,8 +476,9 @@ Rectangle {
                         Text {
                             text: "HARDWARE"
                             color: modelPanel.textPrimary
-                            font.pixelSize: 16
+                            font.pixelSize: 22
                             font.bold: true
+                            anchors.verticalCenter: parent.verticalCenter
                         }
                     }
 
@@ -623,101 +628,133 @@ Rectangle {
             // ========== RAW OUTPUT (COLLAPSIBLE) ==========
             Rectangle {
                 width: parent.width
-                height: rawOutputCollapsed ? 50 : 250
+                height: rawOutputCollapsed ? 80 : 250
                 color: modelPanel.surfaceColor
                 radius: 12
-                opacity: 0.8
+                border.color: modelPanel.primaryColor
+                border.width: 1
 
                 property bool rawOutputCollapsed: true
 
                 Behavior on height {
-                    NumberAnimation { duration: 200; easing.type: Easing.OutCubic }
+                        NumberAnimation {
+                            duration: 200
+                            easing.type: Easing.OutCubic
+                        }
+                    }
+
+                // Автопрокрутка при изменении высоты
+                onHeightChanged: {
+                    if (!rawOutputCollapsed && height > 80) {
+                        // Используем Qt.callLater чтобы дождаться обновления contentHeight
+                        Qt.callLater(function() {
+                            panelFlickable.contentY = Math.max(0, panelFlickable.contentHeight - panelFlickable.height)
+                        })
+                    }
                 }
 
                 Column {
                     anchors.fill: parent
-                    anchors.margins: 10
-                    spacing: 10
+                    anchors.margins: 15
+                    spacing: 12
 
                     // Header
-                    Row {
+                    Item {
                         width: parent.width
-                        spacing: 8
+                        height: 55
 
-                        Image {
-                            width: 55
-                            height: 55
-                            source: "/icons/RawOutput_Icon.svg"
-                            fillMode: Image.PreserveAspectFit
-                            smooth: true
-                            anchors.verticalCenter: parent.verticalCenter
-                        }
+                        Row {
+                            anchors.fill: parent
+                            spacing: 8
 
-                        Text {
-                            text: "RAW OUTPUT"
-                            color: modelPanel.textPrimary
-                            font.pixelSize: 14
-                            font.bold: true
-                            width: parent.width - 80
-                        }
-
-                        Button {
-                            text: parent.parent.parent.rawOutputCollapsed ? "▼" : "▲"
-                            width: 30
-                            height: 24
-
-                            onClicked: parent.parent.parent.rawOutputCollapsed = !parent.parent.parent.rawOutputCollapsed
-
-                            background: Rectangle {
-                                color: parent.pressed ? Qt.darker(modelPanel.surfaceColor, 1.2) :
-                                       parent.hovered ? Qt.lighter(modelPanel.surfaceColor, 1.2) :
-                                       "transparent"
-                                radius: 6
-                                border.color: modelPanel.textSecondary
-                                border.width: 1
-
-                                Behavior on color {
-                                    ColorAnimation { duration: 150 }
-                                }
+                            Image {
+                                width: 55
+                                height: 55
+                                source: "/icons/RawOutput_Icon.svg"
+                                fillMode: Image.PreserveAspectFit
+                                smooth: true
+                                anchors.verticalCenter: parent.verticalCenter
                             }
 
-                            contentItem: Text {
-                                text: parent.text
+                            Text {
+                                text: "RAW OUTPUT"
                                 color: modelPanel.textPrimary
-                                horizontalAlignment: Text.AlignHCenter
-                                verticalAlignment: Text.AlignVCenter
-                                font.pixelSize: 12
+                                font.pixelSize: 22
+                                font.bold: true
+                                anchors.verticalCenter: parent.verticalCenter
                             }
                         }
 
-                        Button {
-                            text: "📋"
-                            width: 30
-                            height: 24
-                            visible: !parent.parent.parent.rawOutputCollapsed
+                        Row {
+                            anchors.right: parent.right
+                            anchors.verticalCenter: parent.verticalCenter
+                            spacing: 8
 
-                            onClicked: {
-                                clipboardHelper.copyText(llamaConnector.getLastRawResponse())
-                            }
+                            Button {
+                                text: parent.parent.parent.parent.rawOutputCollapsed ? "▼" : "▲"
+                                width: 30
+                                height: 30
 
-                            background: Rectangle {
-                                color: parent.pressed ? modelPanel.accentColor :
-                                       parent.hovered ? Qt.lighter(modelPanel.accentColor, 1.2) :
-                                       "transparent"
-                                radius: 6
-                                border.color: modelPanel.accentColor
-                                border.width: 1
+                                onClicked: {
+                                    var wasCollapsed = parent.parent.parent.parent.rawOutputCollapsed
+                                    parent.parent.parent.parent.rawOutputCollapsed = !wasCollapsed
 
-                                Behavior on color {
-                                    ColorAnimation { duration: 150 }
+                                    if (wasCollapsed) {
+                                        scrollTimer.start()
+                                    }
+                                }
+
+                                background: Rectangle {
+                                    color: parent.pressed ? Qt.darker(modelPanel.surfaceColor, 1.2) :
+                                           parent.hovered ? Qt.lighter(modelPanel.surfaceColor, 1.2) :
+                                           "transparent"
+                                    radius: 6
+                                    border.color: modelPanel.textSecondary
+                                    border.width: 1
+
+                                    Behavior on color {
+                                        ColorAnimation { duration: 150 }
+                                    }
+                                }
+
+                                contentItem: Text {
+                                    text: parent.text
+                                    color: modelPanel.textPrimary
+                                    horizontalAlignment: Text.AlignHCenter
+                                    verticalAlignment: Text.AlignVCenter
+                                    font.pixelSize: 12
                                 }
                             }
 
-                            contentItem: Text {
-                                text: parent.text
-                                horizontalAlignment: Text.AlignHCenter
-                                verticalAlignment: Text.AlignVCenter
-                                font.pixelSize: 14
+                            Button {
+                                text: "📋"
+                                width: 30
+                                height: 30
+                                visible: !parent.parent.parent.parent.rawOutputCollapsed
+
+                                onClicked: {
+                                    clipboardHelper.copyText(llamaConnector.getLastRawResponse())
+                                }
+
+                                background: Rectangle {
+                                    color: parent.pressed ? modelPanel.accentColor :
+                                           parent.hovered ? Qt.lighter(modelPanel.accentColor, 1.2) :
+                                           "transparent"
+                                    radius: 6
+                                    border.color: modelPanel.accentColor
+                                    border.width: 1
+
+                                    Behavior on color {
+                                        ColorAnimation { duration: 150 }
+                                    }
+                                }
+
+                                contentItem: Text {
+                                    text: parent.text
+                                    horizontalAlignment: Text.AlignHCenter
+                                    verticalAlignment: Text.AlignVCenter
+                                    font.pixelSize: 14
+                                }
                             }
                         }
                     }
@@ -733,13 +770,14 @@ Rectangle {
                     // Raw text content с кастомным скроллбаром
                     Item {
                         width: parent.width
-                        height: parent.parent.height - 95  // Увеличено с 85 до 95
+                        height: parent.parent.height - 110
                         visible: !parent.parent.rawOutputCollapsed
                         clip: true
 
                         // Фон
                         Rectangle {
                             anchors.fill: parent
+                            anchors.bottomMargin: 10
                             color: "#0a0a15"
                             radius: 6
                         }
@@ -748,7 +786,7 @@ Rectangle {
                             id: rawOutputFlickable
                             anchors.fill: parent
                             anchors.rightMargin: 10
-                            anchors.bottomMargin: 5
+                            anchors.bottomMargin: 10
                             contentHeight: rawOutputText.contentHeight + 15
                             boundsBehavior: Flickable.StopAtBounds
                             clip: true
@@ -785,7 +823,7 @@ Rectangle {
                             anchors.bottom: parent.bottom
                             anchors.rightMargin: 2
                             anchors.topMargin: 5
-                            anchors.bottomMargin: 5
+                            anchors.bottomMargin: 15
                             width: 6
                             visible: rawOutputFlickable.contentHeight > rawOutputFlickable.height
                             color: "transparent"
@@ -836,17 +874,9 @@ Rectangle {
                             }
                         }
                     }
-
-                    Text {
-                        text: "Last AI response (unprocessed)"
-                        color: modelPanel.textSecondary
-                        font.pixelSize: 10
-                        visible: !parent.parent.rawOutputCollapsed
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        topPadding: 8  // Увеличено с 5 до 8
-                    }
                 }
             }
+
         }
     }
 
