@@ -1,5 +1,6 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
+import SyntaxHighlighter 1.0
 
 Rectangle {
     id: messageContainer
@@ -247,7 +248,7 @@ Rectangle {
                     }
                 }
 
-                // Код
+                // ✅ Код с подсветкой синтаксиса
                 TextEdit {
                     id: codeContent
                     width: parent.width
@@ -264,6 +265,18 @@ Rectangle {
                     selectByMouse: true
                     selectionColor: "#4facfe"
                     selectedTextColor: "#ffffff"
+
+                    // ✅ Подключаем SyntaxHighlighter
+                    Component.onCompleted: {
+                        if (blockData.language) {
+                            var highlighter = Qt.createQmlObject(
+                                'import QtQuick 2.15; import SyntaxHighlighter 1.0; SyntaxHighlighter {}',
+                                codeContent
+                            )
+                            highlighter.language = blockData.language
+                            highlighter.setDocument(codeContent.textDocument)
+                        }
+                    }
                 }
             }
         }
