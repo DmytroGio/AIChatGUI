@@ -30,36 +30,56 @@ Rectangle {
         Row {
             width: parent.width
             height: 40
-            spacing: 10
 
-            Text {
+            Row {
+                anchors.left: parent.left
                 anchors.verticalCenter: parent.verticalCenter
-                text: "💬 Chats"
-                color: "#ffffff"
-                font.pixelSize: 18
-                font.bold: true
-            }
+                spacing: 10
 
-            Item { width: parent.width - newChatBtn.width - 80 }
+                Image {
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: 24
+                    height: 24
+                    source: "/icons/Chat_Icon.svg"
+                    fillMode: Image.PreserveAspectFit
+                    smooth: true
+                }
+
+                Text {
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: "Chats"
+                    color: "#ffffff"
+                    font.pixelSize: 18
+                    font.bold: true
+                }
+            }
 
             Rectangle {
                 id: newChatBtn
-                width: 30
-                height: 30
-                radius: 15
-                color: newChatMouseArea.containsMouse ? "#00f2fe" : "#4facfe"
+                anchors.right: parent.right
                 anchors.verticalCenter: parent.verticalCenter
+                width: 35
+                height: 35
+                radius: 8
+                color: newChatMouseArea.containsMouse ? root.primaryColor : "transparent"
+                border.color: newChatMouseArea.containsMouse ? "white" : "transparent"
+                border.width: 2
 
                 Behavior on color {
                     ColorAnimation { duration: 200 }
                 }
 
-                Text {
+                Behavior on border.color {
+                    ColorAnimation { duration: 200 }
+                }
+
+                Image {
                     anchors.centerIn: parent
-                    text: "+"
-                    color: "white"
-                    font.pixelSize: 16
-                    font.bold: true
+                    width: 20
+                    height: 20
+                    source: "/icons/NewChat_Icon.svg"
+                    fillMode: Image.PreserveAspectFit
+                    smooth: true
                 }
 
                 MouseArea {

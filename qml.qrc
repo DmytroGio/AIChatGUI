@@ -13,5 +13,6 @@
         <file>icons/Send_Icon.svg</file>
         <file>icons/Stats_Icon.svg</file>
         <file>icons/Speed_Icon.svg</file>
+        <file>icons/Chat_Icon.svg</file>
     </qresource>
 </RCC>

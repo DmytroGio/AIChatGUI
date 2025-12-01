@@ -70,6 +70,7 @@ qt_add_resources(appAIChatGUI "icons"
         icons/AiGui_Logo_small.png
         icons/AiGui_Logo_med.png
         icons/Ai_Icon.svg
+        icons/Chat_Icon.svg
         icons/Chats_Icon.svg
         icons/Hardware_Icon.svg
         icons/Model_Icon.svg
