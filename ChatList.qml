@@ -23,7 +23,7 @@ Rectangle {
     Column {
         id: mainColumn
         anchors.fill: parent
-        anchors.margins: 15
+        anchors.margins: 10
         spacing: 10
 
         // Header
@@ -61,7 +61,7 @@ Rectangle {
                 width: 35
                 height: 35
                 radius: 8
-                color: newChatMouseArea.containsMouse ? root.primaryColor : "transparent"
+                color: newChatMouseArea.pressed ? root.primaryColor : "transparent"
                 border.color: newChatMouseArea.containsMouse ? "white" : "transparent"
                 border.width: 2
 

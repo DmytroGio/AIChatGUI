@@ -105,11 +105,61 @@ ApplicationWindow {
             }
         }
 
-        Row {
+        // New Chat button (visible when chat list is closed)
+        Rectangle {
+            id: newChatButton
             anchors.left: menuButton.right
+            anchors.leftMargin: root.showChatList ? -45 : 10
+            anchors.verticalCenter: parent.verticalCenter
+            width: 35
+            height: 35
+            radius: 8
+            color: newChatMouseArea.pressed ? root.primaryColor : "transparent"
+            border.color: newChatMouseArea.containsMouse ? "white" : "transparent"
+            border.width: 2
+            visible: !root.showChatList
+
+            Behavior on anchors.leftMargin {
+                NumberAnimation { duration: 200; easing.type: Easing.OutQuad }
+            }
+
+            Behavior on color {
+                ColorAnimation { duration: 200 }
+            }
+
+            Behavior on border.color {
+                ColorAnimation { duration: 200 }
+            }
+
+            Image {
+                anchors.centerIn: parent
+                width: 20
+                height: 20
+                source: "/icons/NewChat_Icon.svg"
+                fillMode: Image.PreserveAspectFit
+                smooth: true
+            }
+
+            MouseArea {
+                id: newChatMouseArea
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: {
+                    chatManager.createNewWelcomeChat()
+                }
+            }
+        }
+
+        Row {
+            anchors.left: root.showChatList ? menuButton.right : newChatButton.right
             anchors.leftMargin: 15
             anchors.verticalCenter: parent.verticalCenter
             spacing: 15
+
+            Behavior on anchors.left {
+                AnchorAnimation { duration: 200; easing.type: Easing.OutQuad }
+            }
 
             Image {
                 width: 35
