@@ -61,3 +61,6 @@ Work is ongoing on new program icon prototypes (focusing on clarity and modern a
 
 ## 2025-11-30
 - Planning further design development and direction.
+
+## 2025-12-02
+- Working on app Icon in figma
