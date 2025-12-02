@@ -198,29 +198,29 @@ Rectangle {
 
                         ActionButton {
                             text: modelInfo.modelsFolder ? "📁 Change" : "📁 Choose"
-                            width: parent.width * 0.35
+                            width: parent.width * 0.42  // было 0.35
                             isPrimary: true
                             onClicked: folderDialog.open()
                         }
 
                         ActionButton {
                             text: "🔄"
-                            width: parent.width * 0.12
+                            width: parent.width * 0.15  // было 0.12
                             enabled: modelInfo.modelsFolder !== ""
                             onClicked: modelInfo.scanModelsFolder()
                             tooltipText: "Rescan folder"
                         }
-
+                        /*
                         ActionButton {
                             text: "⚙️"
                             width: parent.width * 0.12
                             enabled: modelInfo.isLoaded
                             onClicked: settingsPopup.open()
                         }
-
+                        */
                         ActionButton {
                             text: "Unload"
-                            width: parent.width * 0.35
+                            width: parent.width * 0.40  // было 0.35
                             enabled: modelInfo.isLoaded
                             isDanger: true
                             onClicked: llamaConnector.unloadModel()
@@ -269,28 +269,43 @@ Rectangle {
                                     width: parent.width - 40
                                 }
 
-                                Button {
-                                    text: parent.parent.parent.modelsListCollapsed ? "▼" : "▲"
+                                Item {
                                     width: 30
                                     height: 24
 
-                                    onClicked: parent.parent.parent.modelsListCollapsed = !parent.parent.parent.modelsListCollapsed
-
-                                    background: Rectangle {
-                                        color: parent.pressed ? Qt.darker(modelPanel.surfaceColor, 1.2) :
-                                               parent.hovered ? Qt.lighter(modelPanel.surfaceColor, 1.2) :
-                                               "transparent"
+                                    Rectangle {
+                                        anchors.fill: parent
+                                        color: {
+                                            if (collapseMouseArea.pressed) {
+                                                return Qt.darker(modelPanel.surfaceColor, 1.2)
+                                            }
+                                            if (collapseMouseArea.containsMouse) {
+                                                return Qt.lighter(modelPanel.surfaceColor, 1.2)
+                                            }
+                                            return "transparent"
+                                        }
                                         radius: 6
                                         border.color: modelPanel.textSecondary
                                         border.width: 1
-                                    }
 
-                                    contentItem: Text {
-                                        text: parent.text
-                                        color: modelPanel.textPrimary
-                                        horizontalAlignment: Text.AlignHCenter
-                                        verticalAlignment: Text.AlignVCenter
-                                        font.pixelSize: 12
+                                        Behavior on color {
+                                            ColorAnimation { duration: 200; easing.type: Easing.OutCubic }
+                                        }
+
+                                        Text {
+                                            anchors.centerIn: parent
+                                            text: parent.parent.parent.parent.parent.modelsListCollapsed ? "▼" : "▲"
+                                            color: modelPanel.textPrimary
+                                            font.pixelSize: 12
+                                        }
+
+                                        MouseArea {
+                                            id: collapseMouseArea
+                                            anchors.fill: parent
+                                            hoverEnabled: true
+                                            cursorShape: Qt.PointingHandCursor
+                                            onClicked: parent.parent.parent.parent.parent.modelsListCollapsed = !parent.parent.parent.parent.parent.modelsListCollapsed
+                                        }
                                     }
                                 }
                             }
@@ -690,70 +705,90 @@ Rectangle {
                             anchors.verticalCenter: parent.verticalCenter
                             spacing: 8
 
-                            Button {
-                                text: parent.parent.parent.parent.rawOutputCollapsed ? "▼" : "▲"
+                            Item {
                                 width: 30
                                 height: 30
 
-                                onClicked: {
-                                    var wasCollapsed = parent.parent.parent.parent.rawOutputCollapsed
-                                    parent.parent.parent.parent.rawOutputCollapsed = !wasCollapsed
-
-                                    if (wasCollapsed) {
-                                        scrollTimer.start()
+                                Rectangle {
+                                    anchors.fill: parent
+                                    color: {
+                                        if (rawCollapseMouseArea.pressed) {
+                                            return Qt.darker(modelPanel.surfaceColor, 1.2)
+                                        }
+                                        if (rawCollapseMouseArea.containsMouse) {
+                                            return Qt.lighter(modelPanel.surfaceColor, 1.2)
+                                        }
+                                        return "transparent"
                                     }
-                                }
-
-                                background: Rectangle {
-                                    color: parent.pressed ? Qt.darker(modelPanel.surfaceColor, 1.2) :
-                                           parent.hovered ? Qt.lighter(modelPanel.surfaceColor, 1.2) :
-                                           "transparent"
                                     radius: 6
                                     border.color: modelPanel.textSecondary
                                     border.width: 1
 
                                     Behavior on color {
-                                        ColorAnimation { duration: 150 }
+                                        ColorAnimation { duration: 200; easing.type: Easing.OutCubic }
                                     }
-                                }
 
-                                contentItem: Text {
-                                    text: parent.text
-                                    color: modelPanel.textPrimary
-                                    horizontalAlignment: Text.AlignHCenter
-                                    verticalAlignment: Text.AlignVCenter
-                                    font.pixelSize: 12
+                                    Text {
+                                        anchors.centerIn: parent
+                                        text: parent.parent.parent.parent.parent.parent.rawOutputCollapsed ? "▼" : "▲"
+                                        color: modelPanel.textPrimary
+                                        font.pixelSize: 12
+                                    }
+
+                                    MouseArea {
+                                        id: rawCollapseMouseArea
+                                        anchors.fill: parent
+                                        hoverEnabled: true
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: {
+                                            var wasCollapsed = parent.parent.parent.parent.parent.parent.rawOutputCollapsed
+                                            parent.parent.parent.parent.parent.parent.rawOutputCollapsed = !wasCollapsed
+
+                                            if (wasCollapsed) {
+                                                scrollTimer.start()
+                                            }
+                                        }
+                                    }
                                 }
                             }
 
-                            Button {
-                                text: "📋"
+                            Item {
                                 width: 30
                                 height: 30
                                 visible: !parent.parent.parent.parent.rawOutputCollapsed
 
-                                onClicked: {
-                                    clipboardHelper.copyText(llamaConnector.getLastRawResponse())
-                                }
-
-                                background: Rectangle {
-                                    color: parent.pressed ? modelPanel.accentColor :
-                                           parent.hovered ? Qt.lighter(modelPanel.accentColor, 1.2) :
-                                           "transparent"
+                                Rectangle {
+                                    anchors.fill: parent
+                                    color: {
+                                        if (copyMouseArea.pressed) {
+                                            return modelPanel.accentColor
+                                        }
+                                        if (copyMouseArea.containsMouse) {
+                                            return Qt.lighter(modelPanel.accentColor, 1.2)
+                                        }
+                                        return "transparent"
+                                    }
                                     radius: 6
                                     border.color: modelPanel.accentColor
                                     border.width: 1
 
                                     Behavior on color {
-                                        ColorAnimation { duration: 150 }
+                                        ColorAnimation { duration: 200; easing.type: Easing.OutCubic }
                                     }
-                                }
 
-                                contentItem: Text {
-                                    text: parent.text
-                                    horizontalAlignment: Text.AlignHCenter
-                                    verticalAlignment: Text.AlignVCenter
-                                    font.pixelSize: 14
+                                    Text {
+                                        anchors.centerIn: parent
+                                        text: "📋"
+                                        font.pixelSize: 14
+                                    }
+
+                                    MouseArea {
+                                        id: copyMouseArea
+                                        anchors.fill: parent
+                                        hoverEnabled: true
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: clipboardHelper.copyText(llamaConnector.getLastRawResponse())
+                                    }
                                 }
                             }
                         }
@@ -918,23 +953,32 @@ Rectangle {
         }
     }
 
-    component ActionButton: Button {
+    component ActionButton: Item {
         property bool isPrimary: false
         property bool isDanger: false
         property string tooltipText: ""
+        property alias text: buttonText.text
+        property bool enabled: true
+        signal clicked()
 
         height: 38
 
-        ToolTip.visible: tooltipText !== "" && hovered
-        ToolTip.text: tooltipText
-
-        background: Rectangle {
+        Rectangle {
+            id: buttonBackground
+            anchors.fill: parent
             color: {
-                if (parent.pressed) {
-                    return isDanger ? "#c0392b" : Qt.darker(isPrimary ? modelPanel.primaryColor : modelPanel.accentColor, 1.2)
+                if (!parent.enabled) {
+                    return isPrimary ? modelPanel.primaryColor : "transparent"
                 }
-                if (parent.hovered) {
-                    return isDanger ? "#e74c3c" : Qt.lighter(isPrimary ? modelPanel.primaryColor : modelPanel.accentColor, 1.1)
+                if (buttonMouseArea.pressed) {
+                    return isDanger ? Qt.darker("#e74c3c", 1.2) :
+                           (isPrimary ? Qt.darker(modelPanel.primaryColor, 1.2) :
+                            Qt.rgba(modelPanel.accentColor.r, modelPanel.accentColor.g, modelPanel.accentColor.b, 0.3))
+                }
+                if (buttonMouseArea.containsMouse) {
+                    return isDanger ? "#e74c3c" :
+                           (isPrimary ? Qt.lighter(modelPanel.primaryColor, 1.15) :
+                            Qt.rgba(modelPanel.accentColor.r, modelPanel.accentColor.g, modelPanel.accentColor.b, 0.2))
                 }
                 if (isPrimary) return modelPanel.primaryColor
                 if (isDanger) return "transparent"
@@ -944,15 +988,33 @@ Rectangle {
             border.color: isDanger ? "#e74c3c" : (isPrimary ? "transparent" : modelPanel.accentColor)
             border.width: isPrimary ? 0 : 1
             opacity: parent.enabled ? 1.0 : 0.4
-        }
 
-        contentItem: Text {
-            text: parent.text
-            color: isPrimary ? "white" : modelPanel.textPrimary
-            font.pixelSize: 13
-            font.bold: isPrimary
-            horizontalAlignment: Text.AlignHCenter
-            verticalAlignment: Text.AlignVCenter
+            Behavior on color {
+                ColorAnimation { duration: 200; easing.type: Easing.OutCubic }
+            }
+
+            Text {
+                id: buttonText
+                anchors.centerIn: parent
+                color: isPrimary ? "white" : modelPanel.textPrimary
+                font.pixelSize: 13
+                font.bold: isPrimary
+            }
+
+            MouseArea {
+                id: buttonMouseArea
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: parent.parent.enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
+                enabled: parent.parent.enabled
+                onClicked: parent.parent.parent.clicked()
+            }
+
+            ToolTip {
+                visible: tooltipText !== "" && buttonMouseArea.containsMouse
+                text: tooltipText
+                delay: 500
+            }
         }
     }
 
