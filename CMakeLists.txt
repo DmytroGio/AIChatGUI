@@ -49,6 +49,10 @@ set(LLAMA_PREBUILT_DIR "${CMAKE_SOURCE_DIR}/external/llama_prebuilt")
 
 qt_standard_project_setup()
 
+if(WIN32)
+    set(APP_ICON_RC "${CMAKE_CURRENT_SOURCE_DIR}/app.rc")
+endif()
+
 qt_add_executable(appAIChatGUI
     main.cpp
     llamaconnector.h
@@ -61,6 +65,7 @@ qt_add_executable(appAIChatGUI
     syntaxhighlighter.cpp
     modelinfo.h
     modelinfo.cpp
+    ${APP_ICON_RC}
 )
 
 # Добавляем ресурсы отдельно
@@ -79,6 +84,8 @@ qt_add_resources(appAIChatGUI "icons"
         icons/Send_Icon.svg
         icons/Stats_Icon.svg
         icons/Speed_Icon.svg
+        icons/App_Icon_128.ico
+        icons/App_Icon_256.ico
 )
 
 qt_add_qml_module(appAIChatGUI

@@ -2,6 +2,7 @@
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
 #include <QFile>
+#include <QIcon>
 #include "llamaconnector.h"
 #include <QtCore/QString>
 #include "chatmanager.h"
@@ -14,6 +15,12 @@ using namespace Qt::StringLiterals;
 int main(int argc, char *argv[])
 {
     QGuiApplication app(argc, argv);
+
+    app.setWindowIcon(QIcon(":/icons/App_Icon_256.ico"));
+
+    app.setApplicationName("AI Chat Assistant");
+    app.setOrganizationName("DmytroVision");
+
     QQmlApplicationEngine engine;
 
     LlamaConnector connector;

@@ -11,6 +11,10 @@ ApplicationWindow {
     minimumHeight: 500
     title: "AI Chat Assistant"
 
+    flags: Qt.Window | Qt.WindowTitleHint | Qt.WindowSystemMenuHint |
+           Qt.WindowMinimizeButtonHint | Qt.WindowMaximizeButtonHint |
+           Qt.WindowCloseButtonHint
+
     // Dark theme colors
     property color backgroundColor: "#0f0f23"
     property color surfaceColor: "#1a1b2e"

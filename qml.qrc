@@ -14,5 +14,7 @@
         <file>icons/Stats_Icon.svg</file>
         <file>icons/Speed_Icon.svg</file>
         <file>icons/Chat_Icon.svg</file>
+        <file>icons/App_Icon_128.ico</file>
+        <file>icons/App_Icon_256.ico</file>
     </qresource>
 </RCC>
