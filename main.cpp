@@ -16,7 +16,15 @@ int main(int argc, char *argv[])
 {
     QGuiApplication app(argc, argv);
 
-    app.setWindowIcon(QIcon(":/icons/App_Icon_256.ico"));
+    // Включаем тёмный режим (как в VisionCompass)
+    app.setAttribute(Qt::AA_UseStyleSheetPropagationInWidgetStyles, true);
+    qputenv("QT_QUICK_CONTROLS_STYLE", "Material");
+    qputenv("QT_QUICK_CONTROLS_MATERIAL_THEME", "Dark");
+
+    // Устанавливаем иконки
+    QIcon appIcon;
+    appIcon.addFile(":/icons/App_Icon_128.ico");  // Только для окна программы
+    app.setWindowIcon(appIcon);
 
     app.setApplicationName("AI Chat Assistant");
     app.setOrganizationName("DmytroVision");

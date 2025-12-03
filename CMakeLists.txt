@@ -86,6 +86,7 @@ qt_add_resources(appAIChatGUI "icons"
         icons/Speed_Icon.svg
         icons/App_Icon_128.ico
         icons/App_Icon_256.ico
+        icons/App_Icon_Invert_128.ico
 )
 
 qt_add_qml_module(appAIChatGUI

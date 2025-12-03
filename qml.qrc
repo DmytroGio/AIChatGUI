@@ -16,5 +16,6 @@
         <file>icons/Chat_Icon.svg</file>
         <file>icons/App_Icon_128.ico</file>
         <file>icons/App_Icon_256.ico</file>
+        <file>icons/App_Icon_Invert_128.ico</file>
     </qresource>
 </RCC>

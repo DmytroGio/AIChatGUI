@@ -4,6 +4,8 @@ import QtQuick.Effects
 
 ApplicationWindow {
     id: root
+
+
     visible: true
     width: 2000
     height: 1000
