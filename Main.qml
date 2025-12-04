@@ -77,182 +77,246 @@ ApplicationWindow {
             radius: 0
         }
 
-        // Menu button
+        // Группа кнопок Menu и New Chat
         Rectangle {
-            id: menuButton
+            id: controlButtonsGroup
             anchors.left: parent.left
             anchors.leftMargin: 15
             anchors.verticalCenter: parent.verticalCenter
-            width: 35
+            width: root.showChatList ? menuButton.width : (menuButton.width + newChatButton.width + 10)
             height: 35
             radius: 8
-            color: root.showChatList ? root.primaryColor : "transparent"
-            border.color: menuMouseArea.containsMouse ? "white" : "transparent"
-            border.width: 2
+            color: root.inputBackground
+            opacity: 0.6
 
-            Image {
-                anchors.centerIn: parent
-                width: 20
-                height: 20
-                source: "/icons/Chats_Icon.svg"
-                fillMode: Image.PreserveAspectFit
-                smooth: true
-            }
-
-            MouseArea {
-                id: menuMouseArea
-                anchors.fill: parent
-                hoverEnabled: true
-                onClicked: root.showChatList = !root.showChatList
-            }
-
-            Behavior on border.color {
-                ColorAnimation { duration: 200 }
-            }
-        }
-
-        // New Chat button (visible when chat list is closed)
-        Rectangle {
-            id: newChatButton
-            anchors.left: menuButton.right
-            anchors.leftMargin: root.showChatList ? -45 : 10
-            anchors.verticalCenter: parent.verticalCenter
-            width: 35
-            height: 35
-            radius: 8
-            color: newChatMouseArea.pressed ? root.primaryColor : "transparent"
-            border.color: newChatMouseArea.containsMouse ? "white" : "transparent"
-            border.width: 2
-            visible: !root.showChatList
-
-            Behavior on anchors.leftMargin {
+            Behavior on width {
                 NumberAnimation { duration: 200; easing.type: Easing.OutQuad }
             }
 
-            Behavior on color {
-                ColorAnimation { duration: 200 }
-            }
-
-            Behavior on border.color {
-                ColorAnimation { duration: 200 }
-            }
-
-            Image {
-                anchors.centerIn: parent
-                width: 20
-                height: 20
-                source: "/icons/NewChat_Icon.svg"
-                fillMode: Image.PreserveAspectFit
-                smooth: true
-            }
-
-            MouseArea {
-                id: newChatMouseArea
-                anchors.fill: parent
-                hoverEnabled: true
-                cursorShape: Qt.PointingHandCursor
-                onClicked: {
-                    chatManager.createNewWelcomeChat()
-                }
-            }
-        }
-
-        Row {
-            anchors.left: root.showChatList ? menuButton.right : newChatButton.right
-            anchors.leftMargin: 15
-            anchors.verticalCenter: parent.verticalCenter
-            spacing: 15
-
-            Behavior on anchors.left {
-                AnchorAnimation { duration: 200; easing.type: Easing.OutQuad }
-            }
-
-            Image {
+            // Menu button
+            Rectangle {
+                id: menuButton
+                anchors.left: parent.left
+                anchors.verticalCenter: parent.verticalCenter
                 width: 35
                 height: 35
-                source: "/icons/Ai_Icon.svg"
-                fillMode: Image.PreserveAspectFit
-                smooth: true
+                radius: 8
+                color: root.showChatList ? root.primaryColor : "transparent"
+                border.color: menuMouseArea.containsMouse ? "white" : "transparent"
+                border.width: 2
+
+                Image {
+                    anchors.centerIn: parent
+                    width: 20
+                    height: 20
+                    source: "/icons/Chats_Icon.svg"
+                    fillMode: Image.PreserveAspectFit
+                    smooth: true
+                }
+
+                MouseArea {
+                    id: menuMouseArea
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    onClicked: root.showChatList = !root.showChatList
+                }
+
+                Behavior on border.color {
+                    ColorAnimation { duration: 200 }
+                }
             }
 
-            Column {
+            // New Chat button (visible when chat list is closed)
+            Rectangle {
+                id: newChatButton
+                anchors.left: menuButton.right
+                anchors.leftMargin: 10
                 anchors.verticalCenter: parent.verticalCenter
+                width: 35
+                height: 35
+                radius: 8
+                color: newChatMouseArea.pressed ? root.primaryColor : "transparent"
+                border.color: newChatMouseArea.containsMouse ? "white" : "transparent"
+                border.width: 2
+                visible: !root.showChatList
+                opacity: root.showChatList ? 0 : 1
 
-                Text {
-                    text: chatManager.isWelcomeChat ? "New Chat" : chatManager.currentChatTitle
-                    color: root.textPrimary
-                    font.pixelSize: 18
-                    font.bold: true
+                Behavior on opacity {
+                    NumberAnimation { duration: 200; easing.type: Easing.OutQuad }
                 }
 
-                Text {
-                    text: "Connected to Local Model"
-                    color: root.textSecondary
-                    font.pixelSize: 12
+                Behavior on color {
+                    ColorAnimation { duration: 200 }
+                }
+
+                Behavior on border.color {
+                    ColorAnimation { duration: 200 }
+                }
+
+                Image {
+                    anchors.centerIn: parent
+                    width: 20
+                    height: 20
+                    source: "/icons/NewChat_Icon.svg"
+                    fillMode: Image.PreserveAspectFit
+                    smooth: true
+                }
+
+                MouseArea {
+                    id: newChatMouseArea
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: {
+                        chatManager.createNewWelcomeChat()
+                    }
                 }
             }
         }
 
-        // Connection status indicator
+        // Блок с AI иконкой и информацией (выделен фоном)
         Rectangle {
-            width: 12
-            height: 12
-            radius: 6
-            color: modelInfo.isLoaded ? root.primaryColor : "#808080"
-            anchors.right: parent.right
-            anchors.rightMargin: 20
+            id: aiInfoBlock
+            anchors.left: controlButtonsGroup.right
+            anchors.leftMargin: 15
             anchors.verticalCenter: parent.verticalCenter
-            visible: !root.showModelPanel
+            height: 45
+            width: aiInfoRow.width + 20
+            radius: 10
+            color: root.inputBackground
+            opacity: 0.9
 
-            SequentialAnimation on opacity {
-                running: modelInfo.status === "Generating"
-                loops: Animation.Infinite
-                NumberAnimation { to: 0.3; duration: 500 }
-                NumberAnimation { to: 1.0; duration: 500 }
+            // Эффект свечения для акцента
+            layer.enabled: true
+            layer.effect: MultiEffect {
+                shadowEnabled: true
+                shadowColor: root.primaryColor
+                shadowOpacity: 0.3
+                shadowBlur: 0.4
+                shadowScale: 1.02
+            }
+
+            Row {
+                id: aiInfoRow
+                anchors.centerIn: parent
+                spacing: 12
+
+                Image {
+                    width: 32
+                    height: 32
+                    anchors.verticalCenter: parent.verticalCenter
+                    source: "/icons/Ai_Icon.svg"
+                    fillMode: Image.PreserveAspectFit
+                    smooth: true
+                }
+
+                Column {
+                    anchors.verticalCenter: parent.verticalCenter
+                    spacing: 2
+
+                    Text {
+                        text: chatManager.isWelcomeChat ? "New Chat" : chatManager.currentChatTitle
+                        color: root.textPrimary
+                        font.pixelSize: 16
+                        font.bold: true
+                    }
+
+                    Text {
+                        text: "Connected to Local Model"
+                        color: root.textSecondary
+                        font.pixelSize: 11
+                    }
+                }
             }
         }
 
-        // Model Panel button
+        // Группа кнопок Connection status и Model Panel
         Rectangle {
-            id: modelPanelButton
+            id: statusButtonsGroup
             anchors.right: parent.right
-            anchors.rightMargin: root.showModelPanel ? 20 : 50
+            anchors.rightMargin: 15
             anchors.verticalCenter: parent.verticalCenter
-            width: 40
+            width: root.showModelPanel ? modelPanelButton.width : (connectionStatus.width + modelPanelButton.width + 10)
             height: 40
             radius: 8
-            color: root.showModelPanel ? root.primaryColor : "transparent"
-            border.color: modelMouseArea.containsMouse ? "white" : "transparent"
-            border.width: 2
+            color: root.inputBackground
+            opacity: 0.6
 
-            Image {
-                anchors.centerIn: parent
-                width: 22
-                height: 22
-                source: "/icons/Stats_Icon.svg"
-                fillMode: Image.PreserveAspectFit
-                smooth: true
-            }
-
-            MouseArea {
-                id: modelMouseArea
-                anchors.fill: parent
-                hoverEnabled: true
-                onClicked: root.showModelPanel = !root.showModelPanel
-            }
-
-            Behavior on color {
-                ColorAnimation { duration: 200 }
-            }
-
-            Behavior on border.color {
-                ColorAnimation { duration: 200 }
-            }
-
-            Behavior on anchors.rightMargin {
+            Behavior on width {
                 NumberAnimation { duration: 200; easing.type: Easing.OutQuad }
             }
+
+            // Connection status indicator
+            Rectangle {
+                id: connectionStatus
+                anchors.left: parent.left
+                anchors.verticalCenter: parent.verticalCenter
+                width: 40
+                height: 40
+                radius: 8
+                color: "transparent"
+                visible: !root.showModelPanel
+                opacity: root.showModelPanel ? 0 : 1
+
+                Behavior on opacity {
+                    NumberAnimation { duration: 200; easing.type: Easing.OutQuad }
+                }
+
+                Rectangle {
+                    width: 12
+                    height: 12
+                    radius: 6
+                    color: modelInfo.isLoaded ? root.primaryColor : "#808080"
+                    anchors.centerIn: parent
+
+                    SequentialAnimation on opacity {
+                        running: modelInfo.status === "Generating"
+                        loops: Animation.Infinite
+                        NumberAnimation { to: 0.3; duration: 500 }
+                        NumberAnimation { to: 1.0; duration: 500 }
+                    }
+                }
+            }
+
+            // Model Panel button
+            Rectangle {
+                id: modelPanelButton
+                anchors.right: parent.right
+                anchors.verticalCenter: parent.verticalCenter
+                width: 40
+                height: 40
+                radius: 8
+                color: root.showModelPanel ? root.primaryColor : "transparent"
+                border.color: modelMouseArea.containsMouse ? "white" : "transparent"
+                border.width: 2
+
+                Image {
+                    anchors.centerIn: parent
+                    width: 22
+                    height: 22
+                    source: "/icons/Stats_Icon.svg"
+                    fillMode: Image.PreserveAspectFit
+                    smooth: true
+                }
+
+                MouseArea {
+                    id: modelMouseArea
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: root.showModelPanel = !root.showModelPanel
+                }
+
+                Behavior on color {
+                    ColorAnimation { duration: 200 }
+                }
+
+                Behavior on border.color {
+                    ColorAnimation { duration: 200 }
+                }
+            }
         }
+
     }
 
     // Main content area

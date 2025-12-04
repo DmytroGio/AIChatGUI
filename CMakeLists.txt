@@ -95,7 +95,6 @@ qt_add_qml_module(appAIChatGUI
     RESOURCE_PREFIX "/"
     QML_FILES
         Main.qml
-        MessageBubble.qml
         ChatList.qml
         ModelPanel.qml
         SimpleMessageBubble.qml
