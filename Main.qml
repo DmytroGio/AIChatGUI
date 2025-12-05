@@ -762,48 +762,55 @@ ApplicationWindow {
                 ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
                 ScrollBar.vertical.policy: inputField.contentHeight > 200 ? ScrollBar.AsNeeded : ScrollBar.AlwaysOff
 
-                TextArea {
+                TextEdit {
                     id: inputField
                     width: parent.width
-                    placeholderText: "Type your message..."
-                    placeholderTextColor: root.textSecondary
                     color: root.textPrimary
                     font.pixelSize: 16
-                    wrapMode: TextArea.Wrap
+                    wrapMode: TextEdit.Wrap
                     selectByMouse: true
-                    topPadding: 0
-                    bottomPadding: 0
-                    leftPadding: 4
-                    rightPadding: 4
-                    verticalAlignment: TextArea.AlignVCenter
+                    selectionColor: root.primaryColor
+                    selectedTextColor: "white"
+                    leftPadding: 8
+                    rightPadding: 8
+                    verticalAlignment: TextEdit.AlignVCenter
 
-                    // Межстрочный интервал для Qt 6
-                    textFormat: TextEdit.PlainText
+                    // Убираем все стандартные виндовс эффекты
+                    renderType: Text.NativeRendering
 
-                    background: Rectangle {
-                        color: "transparent"
-                        border.width: 0
+                    // Placeholder текст
+                    Text {
+                        id: placeholderText
+                        anchors.fill: parent
+                        anchors.leftMargin: 8
+                        anchors.rightMargin: 8
+                        text: "Type your message..."
+                        color: root.textSecondary
+                        font.pixelSize: 16
+                        verticalAlignment: Text.AlignVCenter
+                        visible: inputField.text.length === 0
+
+                        // Предотвращаем взаимодействие с placeholder
+                        enabled: false
                     }
 
-                    Keys.onReturnPressed: function(event) {
-                        if (event.modifiers & Qt.ShiftModifier) {
-                            // Shift+Enter = новая строка
-                            event.accepted = false
-                            return
-                        }
+                    // Кастомный курсор
+                    cursorDelegate: Rectangle {
+                        width: 1
+                        color: "white"
+                        visible: inputField.cursorVisible
 
-                        // Enter = отправка
-                        event.accepted = true
-                        if (llamaConnector.isGenerating) {
-                            return
-                        }
-                        if (inputField.text.trim() !== "") {
-                            chatManager.addMessage(inputField.text.trim(), true)
-                            llamaConnector.sendMessage(inputField.text.trim())
-                            inputField.text = ""
+                        SequentialAnimation on visible {
+                            running: inputField.cursorVisible
+                            loops: Animation.Infinite
+                            PropertyAnimation { to: true; duration: 0 }
+                            PauseAnimation { duration: 500 }
+                            PropertyAnimation { to: false; duration: 0 }
+                            PauseAnimation { duration: 500 }
                         }
                     }
                 }
+
             }
         }
 
