@@ -282,16 +282,17 @@ Rectangle {
 
                 delegate: Rectangle {
                     width: chatListView.width
-                    height: 65
-                    color: modelData.isCurrent ? "#2d3748" : "#1e2332"
-                    radius: 12
+                    height: 55
+                    color: modelData.isCurrent ? "#2d3748" : "transparent"
+                    radius: 10
                     border.color: modelData.isCurrent ? "#4facfe" : "transparent"
                     border.width: modelData.isCurrent ? 2 : 0
 
+                    // Фоновая подсветка при hover
                     Rectangle {
                         anchors.fill: parent
                         color: "#4facfe"
-                        opacity: chatMouseArea.containsMouse && !modelData.isCurrent ? 0.1 : 0.0
+                        opacity: chatMouseArea.containsMouse && !modelData.isCurrent ? 0.08 : 0.0
                         radius: parent.radius
 
                         Behavior on opacity {
@@ -302,45 +303,51 @@ Rectangle {
                     Row {
                         anchors.fill: parent
                         anchors.margins: 12
-                        spacing: 8
+                        spacing: 12
 
-                        Column {
-                            width: parent.width - deleteBtn.width - 16
+                        // Иконка чата
+                        Rectangle {
+                            width: 32
+                            height: 32
+                            radius: 8
                             anchors.verticalCenter: parent.verticalCenter
-                            spacing: 3
+                            color: modelData.isCurrent ? "#4facfe" : "#1e2749"
+                            border.color: modelData.isCurrent ? "transparent" : "#4facfe"
+                            border.width: 1
+
+                        }
+
+                        // Контент
+                        Column {
+                            width: parent.width - 32 - deleteBtn.width - 24
+                            anchors.verticalCenter: parent.verticalCenter
+                            spacing: 6
 
                             Text {
                                 text: modelData.title
                                 color: "#ffffff"
                                 font.pixelSize: 13
-                                font.bold: modelData.isCurrent
+                                font.weight: modelData.isCurrent ? Font.DemiBold : Font.Normal
                                 elide: Text.ElideRight
                                 width: parent.width
-                            }
-
-                            Text {
-                                text: modelData.lastMessage
-                                color: "#a0a0a0"
-                                font.pixelSize: 11
-                                elide: Text.ElideRight
-                                width: parent.width
-                                maximumLineCount: 1
                             }
 
                             Text {
                                 text: formatTime(modelData.lastTimestamp)
-                                color: "#6c5ce7"
-                                font.pixelSize: 9
+                                color: modelData.isCurrent ? "#4facfe" : "#7a7a8c"
+                                font.pixelSize: 10
+                                font.weight: Font.Medium
                             }
                         }
 
+                        // Кнопка удаления
                         Rectangle {
                             id: deleteBtn
-                            width: 22
-                            height: 22
-                            radius: 11
-                            color: "#e74c3c"
-                            opacity: (chatMouseArea.containsMouse || deleteBtnMouseArea.containsMouse) ? 0.9 : 0.0
+                            width: 32
+                            height: 32
+                            radius: 8
+                            color: deleteBtnMouseArea.containsMouse ? "#e74c3c" : "#2d3748"
+                            opacity: (chatMouseArea.containsMouse || deleteBtnMouseArea.containsMouse) ? 1.0 : 0.0
                             visible: !modelData.isCurrent || chatManager.chatList.length > 1
                             anchors.verticalCenter: parent.verticalCenter
 
@@ -348,18 +355,22 @@ Rectangle {
                                 NumberAnimation { duration: 200 }
                             }
 
+                            Behavior on color {
+                                ColorAnimation { duration: 150 }
+                            }
+
+                            // Иконка корзины
                             Text {
                                 anchors.centerIn: parent
-                                text: "×"
-                                color: "white"
-                                font.pixelSize: 12
-                                font.bold: true
+                                text: "🗑"
+                                font.pixelSize: 14
                             }
 
                             MouseArea {
                                 id: deleteBtnMouseArea
-                                anchors.fill: deleteBtn
+                                anchors.fill: parent
                                 hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
 
                                 onClicked: {
                                     chatListPanel.showDeleteDialog(modelData.id, modelData.title)
@@ -374,6 +385,7 @@ Rectangle {
                         anchors.fill: parent
                         anchors.rightMargin: deleteBtn.width + 12
                         hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
 
                         onClicked: {
                             if (!modelData.isCurrent) {
