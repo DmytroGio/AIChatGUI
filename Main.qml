@@ -778,6 +778,31 @@ ApplicationWindow {
                     // Убираем все стандартные виндовс эффекты
                     renderType: Text.NativeRendering
 
+                    // Обработка Enter
+                    Keys.onReturnPressed: function(event) {
+                        if (event.modifiers & Qt.ShiftModifier) {
+                            // Shift+Enter - новая строка (стандартное поведение)
+                            event.accepted = false
+                        } else {
+                            // Enter - отправка
+                            event.accepted = true
+                            if (inputField.text.trim().length > 0) {
+                                sendMessage()
+                            }
+                        }
+                    }
+
+                    Keys.onEnterPressed: function(event) {
+                        if (event.modifiers & Qt.ShiftModifier) {
+                            event.accepted = false
+                        } else {
+                            event.accepted = true
+                            if (inputField.text.trim().length > 0) {
+                                sendMessage()
+                            }
+                        }
+                    }
+
                     // Placeholder текст
                     Text {
                         id: placeholderText
@@ -822,10 +847,42 @@ ApplicationWindow {
             width: 40
             height: 40
             radius: 20
-            color: llamaConnector.isGenerating ? "#1A77EB" : root.primaryColor
+
+            property bool hasText: inputField.text.trim().length > 0
+
+            // Цвет в зависимости от состояния
+            color: {
+                if (llamaConnector.isGenerating) return "#1A77EB"
+                if (!hasText) return root.inputBackground
+                if (sendMouseArea.containsMouse) return Qt.lighter(root.primaryColor, 1.2)
+                return root.primaryColor
+            }
+
+            opacity: hasText || llamaConnector.isGenerating ? 1.0 : 0.4
+
+            // Тень для активной кнопки (более тонкая)
+            layer.enabled: hasText || llamaConnector.isGenerating
+            layer.effect: MultiEffect {
+                shadowEnabled: true
+                shadowColor: llamaConnector.isGenerating ? "#1A77EB" : root.primaryColor
+                shadowOpacity: sendMouseArea.containsMouse ? 0.3 : 0.15
+                shadowBlur: sendMouseArea.containsMouse ? 0.35 : 0.25
+                shadowScale: 1.02
+            }
 
             Behavior on color {
                 ColorAnimation { duration: 200 }
+            }
+
+            Behavior on opacity {
+                NumberAnimation { duration: 200 }
+            }
+
+            // Масштабирование при наведении (едва заметное)
+            scale: (hasText && sendMouseArea.containsMouse && !llamaConnector.isGenerating) ? 1.05 : 1.0
+
+            Behavior on scale {
+                NumberAnimation { duration: 150; easing.type: Easing.OutQuad }
             }
 
             Image {
@@ -836,6 +893,11 @@ ApplicationWindow {
                 fillMode: Image.PreserveAspectFit
                 smooth: true
                 visible: !llamaConnector.isGenerating
+                opacity: hasText ? 1.0 : 0.5
+
+                Behavior on opacity {
+                    NumberAnimation { duration: 200 }
+                }
             }
 
             Text {
@@ -848,11 +910,16 @@ ApplicationWindow {
             }
 
             MouseArea {
+                id: sendMouseArea
                 anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: parent.hasText || llamaConnector.isGenerating ? Qt.PointingHandCursor : Qt.ArrowCursor
+                enabled: parent.hasText || llamaConnector.isGenerating
+
                 onClicked: {
                     if (llamaConnector.isGenerating) {
                         llamaConnector.stopGeneration()
-                    } else {
+                    } else if (parent.hasText) {
                         sendMessage()
                     }
                 }
