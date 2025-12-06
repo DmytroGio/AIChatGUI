@@ -1007,7 +1007,7 @@ Rectangle {
                 hoverEnabled: true
                 cursorShape: parent.parent.enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
                 enabled: parent.parent.enabled
-                onClicked: parent.parent.parent.clicked()
+                onClicked: parent.parent.clicked()
             }
 
             ToolTip {
@@ -1244,17 +1244,26 @@ Rectangle {
 
     // ========== DIALOGS ==========
 
-    FolderDialog {
+    FileDialog {
         id: folderDialog
-        title: "Select Models Folder"
+        title: "Select Models Folder or GGUF File"
         currentFolder: modelInfo.modelsFolder ? "file:///" + modelInfo.modelsFolder : ""
+        fileMode: FileDialog.OpenFile
+        nameFilters: ["GGUF Models (*.gguf)", "All files (*)"]
 
         onAccepted: {
-            var path = folderDialog.selectedFolder.toString()
+            var path = folderDialog.selectedFile.toString()
             path = path.replace(/^(file:\/{3})/, "")
             if (Qt.platform.os === "windows") {
                 path = path.replace(/^\//, "")
             }
+
+            // Извлекаем директорию из пути к файлу
+            var lastSlash = Math.max(path.lastIndexOf('/'), path.lastIndexOf('\\'))
+            if (lastSlash !== -1) {
+                path = path.substring(0, lastSlash)
+            }
+
             modelInfo.modelsFolder = path
         }
     }
