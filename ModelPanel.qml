@@ -202,6 +202,7 @@ Rectangle {
                             isPrimary: true
                             onClicked: folderDialog.open()
                             iconSource: "/icons/Folder_Icon.svg"
+                            tooltipText: "Select folder with GGUF models"
                         }
 
                         ActionButton {
@@ -227,6 +228,7 @@ Rectangle {
                             isDanger: true
                             onClicked: llamaConnector.unloadModel()
                             iconSource: "/icons/Unload_Icon.svg"
+                            tooltipText: "Unload current model from memory"
                         }
                     }
 
@@ -1031,9 +1033,21 @@ Rectangle {
             }
 
             ToolTip {
+                id: buttonTooltip
                 visible: tooltipText !== "" && buttonMouseArea.containsMouse
                 text: tooltipText
                 delay: 500
+                //padding: 8
+
+                background: Rectangle {
+                    color: modelPanel.accentColor
+                }
+
+                contentItem: Text {
+                    text: buttonTooltip.text
+                    color: "white"
+                    font.pixelSize: 12
+                }
             }
         }
     }
