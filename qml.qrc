@@ -14,6 +14,9 @@
         <file>icons/Stats_Icon.svg</file>
         <file>icons/Speed_Icon.svg</file>
         <file>icons/Chat_Icon.svg</file>
+        <file>icons/Folder_Icon.svg</file>
+        <file>icons/Unload_Icon.svg</file>
+        <file>icons/RescanFolder_Icon.svg</file>
         <file>icons/App_Icon_128.ico</file>
         <file>icons/App_Icon_256.ico</file>
         <file>icons/App_Icon_Invert_128.ico</file>

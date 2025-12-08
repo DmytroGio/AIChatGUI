@@ -84,6 +84,9 @@ qt_add_resources(appAIChatGUI "icons"
         icons/Send_Icon.svg
         icons/Stats_Icon.svg
         icons/Speed_Icon.svg
+        icons/RescanFolder_Icon.svg
+        icons/Folder_Icon.svg
+        icons/Unload_Icon.svg
         icons/App_Icon_128.ico
         icons/App_Icon_256.ico
         icons/App_Icon_Invert_128.ico

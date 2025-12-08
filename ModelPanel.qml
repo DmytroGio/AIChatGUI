@@ -197,18 +197,20 @@ Rectangle {
                         spacing: 8
 
                         ActionButton {
-                            text: modelInfo.modelsFolder ? "📁 Change" : "📁 Choose"
-                            width: parent.width * 0.42  // было 0.35
+                            text: modelInfo.modelsFolder ? "Change Folder" : "Choose Folder"
+                            width: parent.width * 0.42
                             isPrimary: true
                             onClicked: folderDialog.open()
+                            iconSource: "/icons/Folder_Icon.svg"
                         }
 
                         ActionButton {
-                            text: "🔄"
-                            width: parent.width * 0.15  // было 0.12
+                            text: ""
+                            width: parent.width * 0.15
                             enabled: modelInfo.modelsFolder !== ""
                             onClicked: modelInfo.scanModelsFolder()
                             tooltipText: "Rescan folder"
+                            iconSource: "/icons/RescanFolder_Icon.svg"
                         }
                         /*
                         ActionButton {
@@ -220,10 +222,11 @@ Rectangle {
                         */
                         ActionButton {
                             text: "Unload"
-                            width: parent.width * 0.40  // было 0.35
+                            width: parent.width * 0.40
                             enabled: modelInfo.isLoaded
                             isDanger: true
                             onClicked: llamaConnector.unloadModel()
+                            iconSource: "/icons/Unload_Icon.svg"
                         }
                     }
 
@@ -959,6 +962,7 @@ Rectangle {
         property string tooltipText: ""
         property alias text: buttonText.text
         property bool enabled: true
+        property string iconSource: ""  // Добавлено
         signal clicked()
 
         height: 38
@@ -993,12 +997,28 @@ Rectangle {
                 ColorAnimation { duration: 200; easing.type: Easing.OutCubic }
             }
 
-            Text {
-                id: buttonText
+            Row {
                 anchors.centerIn: parent
-                color: isPrimary ? "white" : modelPanel.textPrimary
-                font.pixelSize: 13
-                font.bold: isPrimary
+                spacing: 6
+
+                Image {
+                    width: 24
+                    height: 24
+                    source: iconSource
+                    fillMode: Image.PreserveAspectFit
+                    smooth: true
+                    visible: iconSource !== ""
+                    anchors.verticalCenter: parent.verticalCenter
+                }
+
+                Text {
+                    id: buttonText
+                    color: isPrimary ? "white" : modelPanel.textPrimary
+                    font.pixelSize: 13
+                    font.bold: isPrimary
+                    visible: text !== ""
+                    anchors.verticalCenter: parent.verticalCenter
+                }
             }
 
             MouseArea {
