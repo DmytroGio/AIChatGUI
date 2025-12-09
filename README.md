@@ -17,7 +17,10 @@ A modern, native desktop application for running local AI models with GPU accele
 
 ## Screenshots
 
-*Coming soon*
+<div align="center">
+  <img src="screenshots/Screenchot_01.png" alt="Main Interface" width="45%">
+  <img src="screenshots/Screenchot_02.png" alt="Chat View" width="45%">
+</div>
 
 ## Requirements
 
@@ -68,6 +71,19 @@ cmake --build . --config Release
 2. Click the Model panel (right side) to load a GGUF model
 3. Start chatting with your local AI assistant
 4. Use Shift+Enter for multiline input, Enter to send
+
+### Recommended Model
+
+This application has been tested and optimized for:
+
+**[MD-Coder-Qwen3-8B (Q4_K_M)](https://huggingface.co/mradermacher/MD-Coder-Qwen3-8B-GGUF)** ⭐
+
+- Excellent code generation capabilities
+- Balanced size/performance ratio
+- Q4_K_M quantization provides optimal speed and quality
+- ~5GB VRAM requirement
+
+Download the `MD-Coder-Qwen3-8B.Q4_K_M.gguf` file and load it through the Model Panel.
 
 ### Keyboard Shortcuts
 
