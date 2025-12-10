@@ -27,20 +27,20 @@ Rectangle {
         anchors.margins: 10
         spacing: 10
 
-        // 🎨 НОВЫЙ СТИЛЬНЫЙ ХЕДЕР
+        // Chat list header with New Chat button
         Rectangle {
             id: headerContainer
             width: parent.width
             height: 100
             radius: 15
 
-            // Градиентный фон
+            // Gradient background
             gradient: Gradient {
                 GradientStop { position: 0.0; color: "#1e2749" }
                 GradientStop { position: 1.0; color: "#16213e" }
             }
 
-            // Эффект свечения
+            // Glow effect
             layer.enabled: true
             layer.effect: MultiEffect {
                 shadowEnabled: true
@@ -50,7 +50,7 @@ Rectangle {
                 shadowScale: 1.03
             }
 
-            // Декоративная полоска сверху
+            // Decorative top bar
             Rectangle {
                 anchors.top: parent.top
                 anchors.left: parent.left
@@ -71,13 +71,13 @@ Rectangle {
                 anchors.topMargin: 15
                 spacing: 12
 
-                // Верхняя часть - иконка и заголовок
+                // Top part - icon and title
                 Row {
                     width: parent.width
                     height: 42
                     spacing: 12
 
-                    // Иконка в стильной рамке
+                    // Icon in a stylish border
                     Rectangle {
                         width: 40
                         height: 40
@@ -87,7 +87,7 @@ Rectangle {
                         border.color: "#4facfe"
                         border.width: 2
 
-                        // Внутреннее свечение
+                        // Inner glow/border
                         Rectangle {
                             anchors.fill: parent
                             anchors.margins: 2
@@ -108,7 +108,7 @@ Rectangle {
                         }
                     }
 
-                    // Текст и счётчик
+                    // Text and counter
                     Column {
                         anchors.verticalCenter: parent.verticalCenter
                         spacing: 4
@@ -144,7 +144,7 @@ Rectangle {
                                 }
                             }
 
-                            // Индикатор активности
+                            // Activity indicator (pulsing dot)
                             Rectangle {
                                 width: 8
                                 height: 8
@@ -168,7 +168,7 @@ Rectangle {
                     }
                 }
 
-                // Нижняя часть - кнопка New Chat
+                // Bottom part - New Chat button
                 Rectangle {
                     id: newChatBtn
                     width: parent.width
@@ -186,7 +186,7 @@ Rectangle {
                         ColorAnimation { duration: 200 }
                     }
 
-                    // Эффект при нажатии
+                    // Press down effect
                     scale: newChatMouseArea.pressed ? 0.97 : 1.0
 
                     Behavior on scale {
@@ -197,7 +197,7 @@ Rectangle {
                         anchors.centerIn: parent
                         spacing: 10
 
-                        // Иконка плюса в кружочке
+                        // Plus icon in a circle
                         Rectangle {
                             width: 26
                             height: 26
@@ -226,7 +226,7 @@ Rectangle {
                             font.weight: Font.Medium
                         }
 
-                        // Стрелка
+                        // Arrow icon
                         Text {
                             anchors.verticalCenter: parent.verticalCenter
                             text: "→"
@@ -253,7 +253,7 @@ Rectangle {
             }
         }
 
-        // Декоративный разделитель с градиентом
+        // Decorative gradient separator
         Rectangle {
             width: parent.width
             height: 2
@@ -270,12 +270,12 @@ Rectangle {
         // Chat list area
         Item {
             width: parent.width
-            height: parent.height - 115
+            height: parent.height - 115 // Adjusting for the header height
 
             ListView {
                 id: chatListView
                 anchors.fill: parent
-                anchors.rightMargin: 15
+                anchors.rightMargin: 15 // Space for the scrollbar
                 model: chatManager.chatList
                 spacing: 8
                 clip: true
@@ -288,7 +288,7 @@ Rectangle {
                     border.color: modelData.isCurrent ? "#4facfe" : "transparent"
                     border.width: modelData.isCurrent ? 2 : 0
 
-                    // Фоновая подсветка при hover
+                    // Background highlight on hover
                     Rectangle {
                         anchors.fill: parent
                         color: "#4facfe"
@@ -305,7 +305,7 @@ Rectangle {
                         anchors.margins: 12
                         spacing: 12
 
-                        // Иконка чата
+                        // Chat icon
                         Rectangle {
                             width: 32
                             height: 32
@@ -315,11 +315,12 @@ Rectangle {
                             border.color: modelData.isCurrent ? "transparent" : "#4facfe"
                             border.width: 1
 
+                            // Icon would be placed here (e.g., Image or Text)
                         }
 
-                        // Контент
+                        // Content (title and timestamp)
                         Column {
-                            width: parent.width - 32 - deleteBtn.width - 24
+                            width: parent.width - 32 - deleteBtn.width - 24 // Icon width + delete button width + spacing
                             anchors.verticalCenter: parent.verticalCenter
                             spacing: 6
 
@@ -340,7 +341,7 @@ Rectangle {
                             }
                         }
 
-                        // Кнопка удаления
+                        // Delete button
                         Rectangle {
                             id: deleteBtn
                             width: 32
@@ -348,7 +349,7 @@ Rectangle {
                             radius: 8
                             color: deleteBtnMouseArea.containsMouse ? "#e74c3c" : "#2d3748"
                             opacity: (chatMouseArea.containsMouse || deleteBtnMouseArea.containsMouse) ? 1.0 : 0.0
-                            visible: !modelData.isCurrent || chatManager.chatList.length > 1
+                            visible: !modelData.isCurrent || chatManager.chatList.length > 1 // Hide delete for the single current chat
                             anchors.verticalCenter: parent.verticalCenter
 
                             Behavior on opacity {
@@ -359,7 +360,7 @@ Rectangle {
                                 ColorAnimation { duration: 150 }
                             }
 
-                            // Иконка корзины
+                            // Trash icon
                             Text {
                                 anchors.centerIn: parent
                                 text: "🗑"
@@ -374,7 +375,7 @@ Rectangle {
 
                                 onClicked: {
                                     chatListPanel.showDeleteDialog(modelData.id, modelData.title)
-                                    mouse.accepted = true
+                                    mouse.accepted = true // Prevent propagation to chatMouseArea
                                 }
                             }
                         }
@@ -383,7 +384,7 @@ Rectangle {
                     MouseArea {
                         id: chatMouseArea
                         anchors.fill: parent
-                        anchors.rightMargin: deleteBtn.width + 12
+                        anchors.rightMargin: deleteBtn.width + 12 // Leave space for delete button
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
 
@@ -396,6 +397,7 @@ Rectangle {
                 }
             }
 
+            // MouseArea for wheel scrolling in the scrollbar area
             MouseArea {
                 anchors.right: parent.right
                 anchors.top: parent.top
@@ -413,7 +415,7 @@ Rectangle {
         }
     }
 
-    // Кастомный скроллбар
+    // Custom Scrollbar
     Item {
         id: chatListScrollBar
         anchors.right: parent.right
@@ -484,6 +486,7 @@ Rectangle {
                 } else {
                     if (chatListScrollBar.contentHeight <= chatListScrollBar.scrollBarHeight) return
 
+                    // Jump scroll on track click
                     var clickRatio = mouseY / height
                     var targetContentY = clickRatio * (chatListScrollBar.contentHeight - chatListScrollBar.scrollBarHeight)
                     chatListView.contentY = Math.max(0, Math.min(targetContentY, chatListScrollBar.contentHeight - chatListScrollBar.scrollBarHeight))
@@ -496,6 +499,7 @@ Rectangle {
                     var newThumbY = thumbStartY + delta
                     newThumbY = Math.max(0, Math.min(newThumbY, chatListScrollBar.maxThumbY))
 
+                    // Calculate new content Y based on thumb position ratio
                     var ratio = newThumbY / chatListScrollBar.maxThumbY
                     var newContentY = ratio * (chatListScrollBar.contentHeight - chatListScrollBar.scrollBarHeight)
                     chatListView.contentY = Math.max(0, Math.min(newContentY, chatListScrollBar.contentHeight - chatListScrollBar.scrollBarHeight))
@@ -516,11 +520,11 @@ Rectangle {
         }
     }
 
-    // Диалог подтверждения удаления
+    // Delete confirmation dialog
     Rectangle {
         id: deleteDialog
         anchors.fill: parent
-        color: "#80000000"
+        color: "#80000000" // Black with 50% opacity
         visible: false
         z: 100
         focus: visible
@@ -584,7 +588,7 @@ Rectangle {
                         width: 80
                         height: 35
                         radius: 8
-                        color: "#6c5ce7"
+                        color: "#6c5ce7" // Cancel button
 
                         Text {
                             anchors.centerIn: parent
@@ -605,7 +609,7 @@ Rectangle {
                         width: 80
                         height: 35
                         radius: 8
-                        color: "#e74c3c"
+                        color: "#e74c3c" // Delete button
 
                         Text {
                             anchors.centerIn: parent
@@ -627,6 +631,7 @@ Rectangle {
         }
     }
 
+    // Helper function to format timestamp
     function formatTime(timestamp) {
         if (!timestamp) return ""
         var date = new Date(timestamp)
@@ -639,6 +644,7 @@ Rectangle {
         }
     }
 
+    // Function to show the delete dialog
     function showDeleteDialog(chatId, chatTitle) {
         deleteDialog.chatIdToDelete = chatId
         deleteDialog.chatTitleToDelete = chatTitle

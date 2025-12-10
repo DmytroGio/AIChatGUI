@@ -109,10 +109,10 @@ ModelInfo::ModelInfo(QObject *parent)
     m_requestLog = new RequestLogModel(this);
     m_statsTimer = new QTimer(this);
     connect(m_statsTimer, &QTimer::timeout, this, &ModelInfo::updateCurrentStats);
-    m_statsTimer->setInterval(1000);  // Обновление каждую секунду
+    m_statsTimer->setInterval(1000);
     m_statsTimer->start();
 
-    // GPU monitoring setup (добавить в конец конструктора после m_statsTimer->setInterval(1000);)
+    // GPU monitoring setup
     m_gpuTimer = new QTimer(this);
     connect(m_gpuTimer, &QTimer::timeout, this, &ModelInfo::updateGPUMetrics);
     m_gpuTimer->setInterval(500);
@@ -139,10 +139,8 @@ ModelInfo::ModelInfo(QObject *parent)
             }
         }
     }
-#endif
 
-#ifdef _WIN32
-    // Get CPU name
+    // Get CPU name from registry
     HKEY hKey;
     if (RegOpenKeyExA(HKEY_LOCAL_MACHINE,
                       "HARDWARE\\DESCRIPTION\\System\\CentralProcessor\\0",
@@ -156,7 +154,7 @@ ModelInfo::ModelInfo(QObject *parent)
         RegCloseKey(hKey);
     }
 #endif
-    // Load saved settings
+
     loadSettings();
     updateGPUMetrics();
 }
@@ -178,17 +176,18 @@ ModelInfo::~ModelInfo()
 
 void ModelInfo::setModel(llama_model *model, llama_context *ctx, const QString &path)
 {
-    if (!model || !ctx) return;
+    if (!model || !ctx)
+        return;
 
     m_ctx = ctx;
 
-    // Пытаемся получить точный размер через llama.cpp API
+    // Get model size from llama.cpp API
     size_t model_size = llama_model_size(model);
     if (model_size > 0) {
         m_modelMemoryUsed = model_size / (1024.0f * 1024.0f * 1024.0f);
         qDebug() << "Model memory from llama API:" << m_modelMemoryUsed << "GB";
     } else {
-        // Fallback на размер файла
+        // Fallback to file size estimation
         QFileInfo modelFileInfo(path);
         qint64 fileSizeBytes = modelFileInfo.size();
         m_modelMemoryUsed = (fileSizeBytes / (1024.0f * 1024.0f * 1024.0f)) * 1.1f;
@@ -201,11 +200,9 @@ void ModelInfo::setModel(llama_model *model, llama_context *ctx, const QString &
     QFileInfo fileInfo(path);
     m_modelName = fileInfo.fileName();
 
-    // Размер файла модели
     qint64 fileSize = fileInfo.size();
     m_modelSize = QString::number(fileSize / (1024.0 * 1024.0 * 1024.0), 'f', 1) + "GB";
 
-    // Информация из модели
     m_layers = llama_model_n_layer(model);
     m_contextSize = QString::number(llama_model_n_ctx_train(model));
 
@@ -223,7 +220,7 @@ void ModelInfo::setModel(llama_model *model, llama_context *ctx, const QString &
         m_vocabSize = QString::number(llama_vocab_n_tokens(vocab));
     }
 
-    // Определяем тип квантизации из имени файла
+    // Detect quantization type from filename
     QString fileName = m_modelName.toLower();
     if (fileName.contains("q4_0")) m_quantization = "Q4_0";
     else if (fileName.contains("q4_1")) m_quantization = "Q4_1";
@@ -234,7 +231,6 @@ void ModelInfo::setModel(llama_model *model, llama_context *ctx, const QString &
     else if (fileName.contains("f32")) m_quantization = "F32";
     else m_quantization = "Unknown";
 
-    // Определяем тип модели
     char model_desc[128];
     llama_model_desc(model, model_desc, sizeof(model_desc));
     m_modelType = QString::fromUtf8(model_desc);
@@ -243,7 +239,6 @@ void ModelInfo::setModel(llama_model *model, llama_context *ctx, const QString &
 
     m_threads = llama_n_threads(ctx);
 
-    // Запускаем таймеры
     m_statsTimer->start();
     if (m_gpuTimer && !m_gpuTimer->isActive()) {
         m_gpuTimer->start();
@@ -281,9 +276,9 @@ void ModelInfo::clearModel()
 
 void ModelInfo::updateStats(llama_context *ctx)
 {
-    if (!ctx) return;
+    if (!ctx)
+        return;
 
-    // Обновляем статистику производительности
     auto perf = llama_perf_context(ctx);
 
     if (perf.n_eval > 0) {
@@ -294,17 +289,15 @@ void ModelInfo::updateStats(llama_context *ctx)
     m_tokensIn = perf.n_p_eval;
     m_tokensOut = perf.n_eval;
 
-// Получаем реальную информацию о RAM
 #ifdef _WIN32
     MEMORYSTATUSEX memInfo;
     memInfo.dwLength = sizeof(MEMORYSTATUSEX);
     if (GlobalMemoryStatusEx(&memInfo)) {
-        m_memoryTotal = memInfo.ullTotalPhys / (1024.0f * 1024.0f * 1024.0f); // GB
-        m_memoryUsed = (memInfo.ullTotalPhys - memInfo.ullAvailPhys) / (1024.0f * 1024.0f * 1024.0f); // GB
-        m_memoryPercent = memInfo.dwMemoryLoad; // Уже в процентах
+        m_memoryTotal = memInfo.ullTotalPhys / (1024.0f * 1024.0f * 1024.0f);
+        m_memoryUsed = (memInfo.ullTotalPhys - memInfo.ullAvailPhys) / (1024.0f * 1024.0f * 1024.0f);
+        m_memoryPercent = memInfo.dwMemoryLoad;
     }
 #else
-    // Linux/Mac implementation if needed
     m_memoryTotal = 8.0f;
     m_memoryUsed = 2.5f;
     m_memoryPercent = static_cast<int>((m_memoryUsed / m_memoryTotal) * 100);
@@ -330,7 +323,6 @@ void ModelInfo::recordGeneration(int n_tokens, double duration_ms)
             currentTokensIn = perf.n_p_eval;
         }
 
-        // Добавляем запись в лог
         QString currentTime = QDateTime::currentDateTime().toString("HH:mm:ss");
         int tokensInThisRequest = currentTokensIn - m_lastTokensIn;
         m_lastTokensIn = currentTokensIn;
@@ -350,7 +342,7 @@ void ModelInfo::setGenerating(bool generating)
 
 void ModelInfo::updateCurrentStats()
 {
-    // Получаем реальную информацию о RAM (работает всегда, независимо от модели)
+    // Update RAM info (always works, independent of model)
 #ifdef _WIN32
     MEMORYSTATUSEX memInfo;
     memInfo.dwLength = sizeof(MEMORYSTATUSEX);
@@ -365,7 +357,6 @@ void ModelInfo::updateCurrentStats()
     m_memoryPercent = static_cast<int>((m_memoryUsed / m_memoryTotal) * 100);
 #endif
 
-    // Проверяем модель только для её специфичных метрик
     if (!m_ctx || !m_isLoaded) {
         m_status = "Idle";
         m_speed = 0.0f;
@@ -375,24 +366,19 @@ void ModelInfo::updateCurrentStats()
         return;
     }
 
-    // Получаем данные производительности
     struct llama_perf_context_data perf = llama_perf_context(m_ctx);
 
-    // Обновляем статус на основе количества сгенерированных токенов
     bool isGenerating = (perf.n_eval > m_tokensOut);
     m_status = isGenerating ? "Generating" : "Idle";
 
-    // Обновляем скорость если есть генерация
     if (perf.n_eval > 0 && perf.t_eval_ms > 0) {
         m_speed = (perf.n_eval * 1000.0) / perf.t_eval_ms;
 
-        // Отправляем точку данных для графика только если генерируем
         if (isGenerating) {
             emit speedDataPoint(m_speed);
         }
     }
 
-    // Обновляем счетчики токенов
     m_tokensIn = perf.n_p_eval;
     m_tokensOut = perf.n_eval;
 
@@ -412,7 +398,6 @@ void ModelInfo::updateGPUMetrics()
     auto nvmlDeviceGetPowerUsage = (nvmlDeviceGetPowerUsage_t)GetProcAddress((HMODULE)m_nvmlLib, "nvmlDeviceGetPowerUsage");
     auto nvmlDeviceGetClockInfo = (nvmlDeviceGetClockInfo_t)GetProcAddress((HMODULE)m_nvmlLib, "nvmlDeviceGetClockInfo");
 
-    // Temperature
     if (nvmlDeviceGetTemperature) {
         unsigned int temp = 0;
         if (nvmlDeviceGetTemperature(m_nvmlDevice, 0, &temp) == 0) {
@@ -420,7 +405,6 @@ void ModelInfo::updateGPUMetrics()
         }
     }
 
-    // Utilization
     if (nvmlDeviceGetUtilizationRates) {
         nvmlUtilization_t util;
         if (nvmlDeviceGetUtilizationRates(m_nvmlDevice, &util) == 0) {
@@ -428,39 +412,36 @@ void ModelInfo::updateGPUMetrics()
         }
     }
 
-    // Memory
     if (nvmlDeviceGetMemoryInfo) {
         nvmlMemory_t mem;
         if (nvmlDeviceGetMemoryInfo(m_nvmlDevice, &mem) == 0) {
-            m_gpuMemUsed = static_cast<int>(mem.used / (1024 * 1024)); // MB
-            m_gpuMemTotal = static_cast<int>(mem.total / (1024 * 1024)); // MB
+            m_gpuMemUsed = static_cast<int>(mem.used / (1024 * 1024));
+            m_gpuMemTotal = static_cast<int>(mem.total / (1024 * 1024));
         }
     }
 
-    // Power
     if (nvmlDeviceGetPowerUsage) {
         unsigned int power = 0;
         if (nvmlDeviceGetPowerUsage(m_nvmlDevice, &power) == 0) {
-            m_gpuPower = static_cast<int>(power / 1000); // Convert mW to W
+            m_gpuPower = static_cast<int>(power / 1000);
         }
     }
 
-    // Clock speed
     if (nvmlDeviceGetClockInfo) {
         unsigned int clock = 0;
-        if (nvmlDeviceGetClockInfo(m_nvmlDevice, 0, &clock) == 0) { // 0 = Graphics clock
+        if (nvmlDeviceGetClockInfo(m_nvmlDevice, 0, &clock) == 0) {
             m_gpuClock = static_cast<int>(clock);
         }
     }
 
     emit gpuMetricsChanged();
 
-    // CPU metrics (можно вызывать реже для экономии ресурсов)
+    // CPU metrics (update less frequently to save resources)
     static int cpuUpdateCounter = 0;
-    if (++cpuUpdateCounter >= 4) { // Обновлять каждые 2 секунды
+    if (++cpuUpdateCounter >= 4) {
         cpuUpdateCounter = 0;
 
-        // CPU Usage через PDH (Performance Data Helper)
+        // CPU Usage via PDH (Performance Data Helper)
         static PDH_HQUERY cpuQuery = NULL;
         static PDH_HCOUNTER cpuCounter = NULL;
 
@@ -476,7 +457,7 @@ void ModelInfo::updateGPUMetrics()
             }
         }
 
-        // CPU Frequency через WMI (выполнить один раз или редко)
+        // CPU Frequency via WMI (one-time initialization)
         static bool freqInitialized = false;
         if (!freqInitialized) {
             CoInitializeEx(0, COINIT_MULTITHREADED);
@@ -506,18 +487,17 @@ void ModelInfo::updateGPUMetrics()
 
                         while (pEnumerator) {
                             HRESULT hr = pEnumerator->Next(WBEM_INFINITE, 1, &pclsObj, &uReturn);
-                            if (0 == uReturn) break;
+                            if (0 == uReturn)
+                                break;
 
                             VARIANT vtProp;
 
-                            // MaxClockSpeed (базовая частота)
                             hr = pclsObj->Get(L"MaxClockSpeed", 0, &vtProp, 0, 0);
                             if (SUCCEEDED(hr) && vtProp.vt == VT_I4) {
                                 m_cpuBaseFreq = vtProp.intVal;
                             }
                             VariantClear(&vtProp);
 
-                            // CurrentClockSpeed (текущая частота)
                             hr = pclsObj->Get(L"CurrentClockSpeed", 0, &vtProp, 0, 0);
                             if (SUCCEEDED(hr) && vtProp.vt == VT_I4) {
                                 m_cpuClock = vtProp.intVal;
@@ -540,12 +520,9 @@ void ModelInfo::updateGPUMetrics()
         emit cpuMetricsChanged();
     }
 
-
     emit cpuMetricsChanged();
-
 #endif
 }
-
 
 void ModelInfo::setModelsFolder(const QString &folder)
 {
@@ -612,7 +589,6 @@ ModelInfo::ModelFileInfo ModelInfo::parseModelFile(const QString &filePath)
     info.fullPath = fileInfo.absoluteFilePath();
     info.sizeBytes = fileInfo.size();
 
-    // Format size
     double sizeGB = info.sizeBytes / (1024.0 * 1024.0 * 1024.0);
     if (sizeGB >= 1.0) {
         info.sizeString = QString::number(sizeGB, 'f', 1) + " GB";

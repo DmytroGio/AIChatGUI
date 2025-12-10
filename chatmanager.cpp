@@ -11,16 +11,10 @@
 ChatManager::ChatManager(QObject *parent)
     : QObject(parent)
 {
-    // Создаём модель сообщений
     m_messageModel = new MessageListModel(this);
-
     initDatabase();
-
-    // Передаём указатель на БД в модель
     m_messageModel->setDatabase(&m_db);
-
     loadChats();
-
     createNewWelcomeChat();
 }
 
@@ -32,7 +26,7 @@ void ChatManager::createNewChat()
     newChat.lastMessage = "";
     newChat.lastTimestamp = QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss");
 
-    saveChatToDb(newChat);  // Изменено
+    saveChatToDb(newChat);
     m_chats.prepend(newChat);
     m_currentChatId = newChat.id;
 
@@ -43,10 +37,7 @@ void ChatManager::createNewChat()
 
 void ChatManager::createNewWelcomeChat()
 {
-    // Устанавливаем специальный ID для приветственного чата
     m_currentChatId = "welcome";
-
-    // Очищаем модель сообщений
     m_messageModel->clear();
 
     emit currentChatChanged();
@@ -60,8 +51,6 @@ void ChatManager::switchToChat(const QString &chatId)
 {
     if (m_currentChatId != chatId) {
         m_currentChatId = chatId;
-
-        // Загружаем сообщения нового чата
         m_messageModel->loadMessages(chatId, 30);
 
         emit currentChatChanged();
@@ -72,7 +61,7 @@ void ChatManager::switchToChat(const QString &chatId)
 
 void ChatManager::deleteChat(const QString &chatId)
 {
-    deleteChatFromDb(chatId);  // Добавлено
+    deleteChatFromDb(chatId);
 
     for (int i = 0; i < m_chats.size(); ++i) {
         if (m_chats[i].id == chatId) {
@@ -97,7 +86,7 @@ void ChatManager::deleteChat(const QString &chatId)
 
 void ChatManager::addMessage(const QString &text, bool isUser)
 {
-    // ✅ Если это первое сообщение в приветственном чате - создаём реальный чат
+    // Create real chat on first user message from welcome screen
     if (m_currentChatId == "welcome" && isUser) {
         qDebug() << "Creating new chat from welcome screen";
         createNewChat();
@@ -110,7 +99,7 @@ void ChatManager::addMessage(const QString &text, bool isUser)
             msg.isUser = isUser;
             msg.timestamp = QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss");
 
-            // Парсим ВСЕ сообщения от AI (не только первое)
+            // Parse all AI messages
             if (!isUser) {
                 msg.parsed = parseMarkdown(text);
                 qDebug() << "Parsed" << msg.parsed.blocks.size() << "blocks for AI message";
@@ -120,12 +109,12 @@ void ChatManager::addMessage(const QString &text, bool isUser)
             chat.lastMessage = text.left(50) + (text.length() > 50 ? "..." : "");
             chat.lastTimestamp = msg.timestamp;
 
-            // Автогенерация названия для первого сообщения пользователя
+            // Auto-generate title from first user message
             if (chat.title == "New Chat" && isUser && !text.isEmpty()) {
                 chat.title = generateTitle(text);
             }
 
-            // Сохраняем сообщение с blocks_json
+            // Save message with blocks_json
             QSqlQuery query;
             query.prepare("INSERT INTO messages (chat_id, text, isUser, timestamp, blocks_json) "
                           "VALUES (?, ?, ?, ?, ?)");
@@ -134,23 +123,18 @@ void ChatManager::addMessage(const QString &text, bool isUser)
             query.addBindValue(msg.isUser);
             query.addBindValue(msg.timestamp);
 
-            // Сериализуем блоки только для AI сообщений
             if (!isUser && !msg.parsed.blocks.isEmpty()) {
                 query.addBindValue(serializeBlocks(msg.parsed));
             } else {
-                query.addBindValue(QVariant());  // NULL для user messages
+                query.addBindValue(QVariant());
             }
 
             if (!query.exec()) {
                 qDebug() << "Failed to save message:" << query.lastError().text();
             }
 
-            // Обновляем чат в БД
             updateChatInDb(chat);
-
-            // Обновляем модель
             m_messageModel->appendMessage(msg);
-
             break;
         }
     }
@@ -171,7 +155,6 @@ QString ChatManager::serializeBlocks(const ParsedContent& parsed)
         blockObj["language"] = block.language;
         blockObj["isClosed"] = block.isClosed;
         blockObj["lineCount"] = block.lineCount;
-
         blocksArray.append(blockObj);
     }
 
@@ -184,7 +167,7 @@ ParsedContent ChatManager::deserializeBlocks(const QString& json)
     ParsedContent result;
 
     if (json.isEmpty()) {
-        return result;  // Пустой результат
+        return result;
     }
 
     QJsonDocument doc = QJsonDocument::fromJson(json.toUtf8());
@@ -225,7 +208,6 @@ QVariantList ChatManager::getCurrentMessages()
                 msgMap["isUser"] = msg.isUser;
                 msgMap["timestamp"] = msg.timestamp;
 
-                // ✅ НОВОЕ: добавляем распарсенные блоки
                 QVariantList blocks;
                 for (const auto &block : msg.parsed.blocks) {
                     QVariantMap blockMap;
@@ -254,7 +236,7 @@ void ChatManager::renameChatTitle(const QString &chatId, const QString &newTitle
     for (auto &chat : m_chats) {
         if (chat.id == chatId) {
             chat.title = newTitle;
-            updateChatInDb(chat);  // Добавлено
+            updateChatInDb(chat);
             break;
         }
     }
@@ -271,7 +253,6 @@ void ChatManager::updateLastMessage(const QString &text)
                 lastMsg.text = text;
                 lastMsg.parsed = parseMarkdown(text);
 
-                // Обновляем blocks_json в БД
                 QSqlQuery query;
                 query.prepare("UPDATE messages SET text = ?, blocks_json = ? "
                               "WHERE chat_id = ? AND id = (SELECT MAX(id) FROM messages WHERE chat_id = ?)");
@@ -284,9 +265,7 @@ void ChatManager::updateLastMessage(const QString &text)
                     qDebug() << "Failed to update message blocks:" << query.lastError().text();
                 }
 
-                // Обновляем модель
                 m_messageModel->updateLastMessage(lastMsg);
-
                 emit messagesChanged();
                 return;
             }
@@ -340,7 +319,7 @@ void ChatManager::initDatabase()
         return;
     }
 
-    // ✅ НОВОЕ: Оптимизация SQLite
+    // SQLite optimizations
     QSqlQuery pragmaQuery;
     pragmaQuery.exec("PRAGMA journal_mode=WAL");
     pragmaQuery.exec("PRAGMA synchronous=NORMAL");
@@ -351,7 +330,6 @@ void ChatManager::initDatabase()
 
     QSqlQuery query;
 
-    // Создаём таблицу чатов
     query.exec("CREATE TABLE IF NOT EXISTS chats ("
                "id TEXT PRIMARY KEY, "
                "title TEXT, "
@@ -359,17 +337,16 @@ void ChatManager::initDatabase()
                "lastTimestamp TEXT, "
                "created_at TEXT)");
 
-    // ✅ НОВОЕ: Создаём таблицу сообщений с blocks_json
     query.exec("CREATE TABLE IF NOT EXISTS messages ("
                "id INTEGER PRIMARY KEY AUTOINCREMENT, "
                "chat_id TEXT, "
                "text TEXT, "
                "isUser INTEGER, "
                "timestamp TEXT, "
-               "blocks_json TEXT, "  // ✅ Новая колонка
+               "blocks_json TEXT, "
                "FOREIGN KEY(chat_id) REFERENCES chats(id) ON DELETE CASCADE)");
 
-    // ✅ НОВОЕ: Добавляем колонку в существующие таблицы (если её нет)
+    // Add blocks_json column if it doesn't exist
     QSqlQuery checkColumn;
     checkColumn.exec("PRAGMA table_info(messages)");
     bool hasBlocksJson = false;
@@ -385,7 +362,7 @@ void ChatManager::initDatabase()
         query.exec("ALTER TABLE messages ADD COLUMN blocks_json TEXT");
     }
 
-    // ✅ НОВОЕ: Создаём индекс для быстрой сортировки
+    // Create index for fast sorting
     query.exec("CREATE INDEX IF NOT EXISTS idx_chat_messages_desc "
                "ON messages(chat_id, id DESC)");
 
@@ -405,7 +382,7 @@ void ChatManager::loadChats()
         chat.lastMessage = query.value(2).toString();
         chat.lastTimestamp = query.value(3).toString();
 
-        // Загружаем сообщения с blocks_json
+        // Load messages with blocks_json
         QSqlQuery msgQuery;
         msgQuery.prepare("SELECT text, isUser, timestamp, blocks_json FROM messages WHERE chat_id = ? ORDER BY id ASC");
         msgQuery.addBindValue(chat.id);
@@ -418,18 +395,16 @@ void ChatManager::loadChats()
             msg.timestamp = msgQuery.value(2).toString();
             QString blocksJson = msgQuery.value(3).toString();
 
-            // Десериализуем блоки или парсим если их нет
             if (!msg.isUser) {
                 if (!blocksJson.isEmpty()) {
-                    // Загружаем из кэша
+                    // Load from cache
                     msg.parsed = deserializeBlocks(blocksJson);
                     qDebug() << "Loaded cached blocks:" << msg.parsed.blocks.size();
                 } else {
-                    // Парсим и сохраняем в БД (миграция старых сообщений)
+                    // Parse and cache (migration for old messages)
                     msg.parsed = parseMarkdown(msg.text);
                     qDebug() << "Parsed and caching blocks:" << msg.parsed.blocks.size();
 
-                    // Сохраняем в БД для следующего раза
                     QSqlQuery updateQuery;
                     updateQuery.prepare("UPDATE messages SET blocks_json = ? WHERE chat_id = ? AND text = ?");
                     updateQuery.addBindValue(serializeBlocks(msg.parsed));
@@ -492,7 +467,7 @@ void ChatManager::deleteChatFromDb(const QString &chatId)
         qDebug() << "Failed to delete chat:" << query.lastError().text();
     }
 
-    // Удаляем сообщения (если не настроен CASCADE)
+    // Delete messages (if CASCADE is not configured)
     query.prepare("DELETE FROM messages WHERE chat_id = ?");
     query.addBindValue(chatId);
     query.exec();
@@ -522,7 +497,6 @@ int ChatManager::getMessageCount() const
     return 0;
 }
 
-
 ParsedContent ChatManager::parseMarkdown(const QString &text)
 {
     ParsedContent result;
@@ -531,7 +505,6 @@ ParsedContent ChatManager::parseMarkdown(const QString &text)
     qDebug() << "Text length:" << text.length();
     qDebug() << "Text preview:" << text.left(100);
 
-    // Regex для поиска блоков
     QRegularExpression thinkRegex("<think>([\\s\\S]*?)(?:</think>|$)");
     QRegularExpression codeRegex("```(\\w*)\\n?([\\s\\S]*?)(?:```|$)");
 
@@ -546,7 +519,7 @@ ParsedContent ChatManager::parseMarkdown(const QString &text)
 
     QList<Block> allBlocks;
 
-    // Находим все <think> блоки
+    // Find all <think> blocks
     QRegularExpressionMatchIterator thinkIt = thinkRegex.globalMatch(text);
     while (thinkIt.hasNext()) {
         QRegularExpressionMatch match = thinkIt.next();
@@ -559,7 +532,7 @@ ParsedContent ChatManager::parseMarkdown(const QString &text)
         allBlocks.append(block);
     }
 
-    // Находим все code блоки
+    // Find all code blocks
     QRegularExpressionMatchIterator codeIt = codeRegex.globalMatch(text);
     while (codeIt.hasNext()) {
         QRegularExpressionMatch match = codeIt.next();
@@ -569,22 +542,21 @@ ParsedContent ChatManager::parseMarkdown(const QString &text)
         block.type = ContentType::Code;
         block.language = match.captured(1).isEmpty() ? "text" : match.captured(1);
         block.content = match.captured(2);
-        // Убираем лишние переносы в начале и конце
         block.content.replace(QRegularExpression("^\\n+"), "");
         block.content.replace(QRegularExpression("\\n+$"), "");
         block.isClosed = match.captured(0).endsWith("```");
         allBlocks.append(block);
     }
 
-    // Сортируем блоки по позиции
+    // Sort blocks by position
     std::sort(allBlocks.begin(), allBlocks.end(),
               [](const Block &a, const Block &b) { return a.start < b.start; });
 
-    // Собираем результат
+    // Build result
     int currentIndex = 0;
 
     for (const Block &block : allBlocks) {
-        // Добавляем текст перед блоком
+        // Add text before block
         if (block.start > currentIndex) {
             QString textBefore = text.mid(currentIndex, block.start - currentIndex).trimmed();
             if (!textBefore.isEmpty()) {
@@ -595,7 +567,7 @@ ParsedContent ChatManager::parseMarkdown(const QString &text)
             }
         }
 
-        // Добавляем сам блок
+        // Add the block itself
         ContentBlock contentBlock;
         contentBlock.type = block.type;
         contentBlock.content = block.content;
@@ -610,7 +582,7 @@ ParsedContent ChatManager::parseMarkdown(const QString &text)
         currentIndex = block.end;
     }
 
-    // Добавляем оставшийся текст
+    // Add remaining text
     if (currentIndex < text.length()) {
         QString remainingText = text.mid(currentIndex).trimmed();
         if (!remainingText.isEmpty()) {
@@ -630,4 +602,3 @@ ParsedContent ChatManager::parseMarkdown(const QString &text)
 
     return result;
 }
-

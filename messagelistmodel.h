@@ -30,7 +30,7 @@ public:
     QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override;
     QHash<int, QByteArray> roleNames() const override;
 
-    // Управление данными
+    // Data Management
     Q_INVOKABLE void loadMessages(const QString &chatId, int limit = 30);
     Q_INVOKABLE void loadOlderMessages(int count = 20);
     Q_INVOKABLE void appendMessage(const Message &msg);
@@ -39,7 +39,7 @@ public:
 
     bool hasMoreMessages() const { return m_hasMoreMessages; }
 
-    // Методы для C++ (не Q_INVOKABLE)
+    // C++ specific methods
     void setDatabase(QSqlDatabase *db);
     ParsedContent deserializeBlocks(const QString &json);
 

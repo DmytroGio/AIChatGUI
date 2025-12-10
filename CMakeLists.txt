@@ -5,26 +5,17 @@ project(AIChatGUI VERSION 0.1 LANGUAGES CXX)
 set(CMAKE_VERBOSE_MAKEFILE ON)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# ===================================================================
-# ✅ ПРАВИЛЬНАЯ НАСТРОЙКА ОПТИМИЗАЦИЙ (только для Release)
-# ===================================================================
+# Compiler optimizations for Release builds
 if(MSVC)
-    # Debug: оставляем дефолтные флаги Qt
-    # Release: добавляем агрессивные оптимизации
     set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /O2 /Ob2 /Oi /Ot /GL /fp:fast")
     set(CMAKE_EXE_LINKER_FLAGS_RELEASE "${CMAKE_EXE_LINKER_FLAGS_RELEASE} /LTCG /OPT:REF /OPT:ICF")
-
-    # AVX2 только если процессор поддерживает (большинство современных поддерживают)
     set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /arch:AVX2")
-
-    # Отключаем предупреждения о небезопасных функциях
     add_definitions(-D_CRT_SECURE_NO_WARNINGS)
 else()
-    # Linux/Mac оптимизации
     set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -march=native -ffast-math -funroll-loops")
 endif()
 
-# Выводим информацию о режиме сборки
+# Build configuration info
 message(STATUS "=== Build Configuration ===")
 message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 if(CMAKE_BUILD_TYPE STREQUAL "Release")
@@ -34,9 +25,7 @@ else()
     message(STATUS "Optimization flags: DISABLED (Debug mode)")
 endif()
 
-# ===================================================================
-# CUDA Configuration
-# ===================================================================
+# CUDA configuration
 set(CUDAToolkit_ROOT "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v12.6")
 
 find_package(Qt6 REQUIRED COMPONENTS Quick Network Sql)
@@ -44,7 +33,6 @@ find_package(Qt6 REQUIRED COMPONENTS Quick Network Sql)
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build static libraries" FORCE)
 set(LLAMA_BUILD_SHARED OFF CACHE BOOL "Build llama as static library" FORCE)
 
-# Путь к предсобранным библиотекам
 set(LLAMA_PREBUILT_DIR "${CMAKE_SOURCE_DIR}/external/llama_prebuilt")
 
 qt_standard_project_setup()
@@ -68,7 +56,6 @@ qt_add_executable(appAIChatGUI
     ${APP_ICON_RC}
 )
 
-# Добавляем ресурсы отдельно
 qt_add_resources(appAIChatGUI "icons"
     PREFIX "/"
     FILES
@@ -111,7 +98,7 @@ qt_add_qml_module(appAIChatGUI
         message.h
 )
 
-# Заголовочные файлы llama.cpp
+# Include directories
 target_include_directories(appAIChatGUI PRIVATE
     ${CMAKE_SOURCE_DIR}/external/llama.cpp/include
     ${CMAKE_SOURCE_DIR}/external/llama.cpp/ggml/include
@@ -124,22 +111,21 @@ set_target_properties(appAIChatGUI PROPERTIES
     WIN32_EXECUTABLE TRUE
 )
 
-# Выбираем правильную папку с библиотеками
+# Select library directory based on build type
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     set(LLAMA_LIB_DIR "${LLAMA_PREBUILT_DIR}/lib/Debug")
 else()
     set(LLAMA_LIB_DIR "${LLAMA_PREBUILT_DIR}/lib/Release")
 endif()
 
-# Находим CUDA Toolkit
+# Find CUDA Toolkit
 find_package(CUDAToolkit REQUIRED)
 
-# Добавляем CUDA include директории
 target_include_directories(appAIChatGUI PRIVATE
     ${CUDAToolkit_INCLUDE_DIRS}
 )
 
-# Диагностика CUDA
+# CUDA diagnostics
 message(STATUS "=== CUDA Configuration ===")
 message(STATUS "CUDAToolkit_FOUND: ${CUDAToolkit_FOUND}")
 message(STATUS "CUDAToolkit_VERSION: ${CUDAToolkit_VERSION}")
@@ -147,7 +133,7 @@ message(STATUS "CUDAToolkit_LIBRARY_DIR: ${CUDAToolkit_LIBRARY_DIR}")
 message(STATUS "CUDAToolkit_INCLUDE_DIRS: ${CUDAToolkit_INCLUDE_DIRS}")
 message(STATUS "CUDAToolkit_BIN_DIR: ${CUDAToolkit_BIN_DIR}")
 
-# Диагностика библиотек llama
+# LLAMA libraries diagnostics
 message(STATUS "=== LLAMA Libraries ===")
 message(STATUS "LLAMA_LIB_DIR: ${LLAMA_LIB_DIR}")
 file(GLOB LLAMA_LIBS "${LLAMA_LIB_DIR}/*.lib")
@@ -155,14 +141,14 @@ foreach(lib ${LLAMA_LIBS})
     message(STATUS "Found: ${lib}")
 endforeach()
 
-# Проверяем наличие cuda.lib
+# Verify cuda.lib exists
 if(EXISTS "${CUDAToolkit_LIBRARY_DIR}/cuda.lib")
     message(STATUS "cuda.lib FOUND")
 else()
     message(FATAL_ERROR "cuda.lib NOT FOUND in ${CUDAToolkit_LIBRARY_DIR}")
 endif()
 
-# Проверяем существование всех библиотек перед линковкой
+# Verify all required libraries exist
 message(STATUS "=== Checking library files ===")
 foreach(lib llama ggml ggml-base ggml-cpu ggml-cuda)
     if(EXISTS "${LLAMA_LIB_DIR}/${lib}.lib")
@@ -188,9 +174,8 @@ target_link_libraries(appAIChatGUI
     CUDA::cublasLt
 )
 
-# Копируем CUDA DLL в папку сборки
+# Copy CUDA DLLs to build directory
 if(WIN32)
-    # Определяем правильную версию DLL на основе найденной CUDA
     if(CUDAToolkit_VERSION VERSION_GREATER_EQUAL "12.0" AND CUDAToolkit_VERSION VERSION_LESS "13.0")
         set(CUDA_DLL_SUFFIX "_12")
     elseif(CUDAToolkit_VERSION VERSION_GREATER_EQUAL "13.0")
@@ -216,15 +201,13 @@ if(WIN32)
     )
 endif()
 
-# ===================================================================
-# ✅ ПОДСКАЗКА ПОЛЬЗОВАТЕЛЮ
-# ===================================================================
+# Debug build reminder
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     message(STATUS "")
-    message(STATUS "⚠️  ВНИМАНИЕ: Сборка в Debug режиме")
-    message(STATUS "   Для максимальной производительности используй Release:")
-    message(STATUS "   1. В Qt Creator: Projects → Build Settings → Release")
-    message(STATUS "   2. Пересобери проект")
-    message(STATUS "   Это увеличит скорость генерации токенов в 2-3 раза!")
+    message(STATUS "⚠️  WARNING: Building in Debug mode")
+    message(STATUS "   For maximum performance, use Release build:")
+    message(STATUS "   1. In Qt Creator: Projects → Build Settings → Release")
+    message(STATUS "   2. Rebuild the project")
+    message(STATUS "   This will increase token generation speed by 2-3x!")
     message(STATUS "")
 endif()

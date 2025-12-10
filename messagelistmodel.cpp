@@ -2,7 +2,7 @@
 #include <QJsonDocument>
 #include <QJsonArray>
 #include <QJsonObject>
-#include <climits>  // Для INT_MAX
+#include <climits>
 
 MessageListModel::MessageListModel(QObject *parent)
     : QAbstractListModel(parent)
@@ -31,7 +31,7 @@ QVariant MessageListModel::data(const QModelIndex &index, int role) const
     case TimestampRole:
         return msg.timestamp;
     case BlocksRole: {
-        // Конвертируем ParsedContent в QVariantList для QML
+        // Convert ParsedContent to QVariantList for QML
         QVariantList blocks;
         for (const auto &block : msg.parsed.blocks) {
             QVariantMap blockMap;
@@ -81,7 +81,8 @@ ParsedContent MessageListModel::deserializeBlocks(const QString &json)
     QJsonArray blocksArray = doc.array();
 
     for (const QJsonValue &value : blocksArray) {
-        if (!value.isObject()) continue;
+        if (!value.isObject())
+            continue;
 
         QJsonObject blockObj = value.toObject();
 
@@ -102,7 +103,6 @@ void MessageListModel::loadMessages(const QString &chatId, int limit)
 {
     Q_UNUSED(limit);
 
-    // ✅ ДИАГНОСТИКА: Засекаем время
     QElapsedTimer timer;
     timer.start();
 
@@ -120,11 +120,11 @@ void MessageListModel::loadMessages(const QString &chatId, int limit)
     m_hasMoreMessages = false;
     endResetModel();
 
-    // ✅ ИЗМЕНЕНО: Загружаем ВСЕ сообщения сразу (без LIMIT)
+    // Load all messages without LIMIT
     QSqlQuery query(*m_db);
     query.prepare("SELECT id, text, isUser, timestamp, blocks_json "
                   "FROM messages WHERE chat_id = ? "
-                  "ORDER BY id ASC");  // ✅ ASC вместо DESC — прямой порядок
+                  "ORDER BY id ASC");
     query.addBindValue(chatId);
 
     if (!query.exec()) {
@@ -142,12 +142,11 @@ void MessageListModel::loadMessages(const QString &chatId, int limit)
         msg.timestamp = query.value(3).toString();
         QString blocksJson = query.value(4).toString();
 
-        // Десериализуем блоки
         if (!msg.isUser && !blocksJson.isEmpty()) {
             msg.parsed = deserializeBlocks(blocksJson);
         }
 
-        loadedMessages.append(msg);  // Добавляем в начало (т.к. ORDER BY DESC)
+        loadedMessages.append(msg);
 
         if (msgId < m_oldestLoadedId) {
             m_oldestLoadedId = msgId;
@@ -155,7 +154,6 @@ void MessageListModel::loadMessages(const QString &chatId, int limit)
     }
 
     qDebug() << "SQL query finished in:" << timer.elapsed() << "ms";
-
 
     if (!loadedMessages.isEmpty()) {
         qDebug() << "Inserting" << loadedMessages.size() << "rows into model...";
@@ -222,7 +220,7 @@ void MessageListModel::loadOlderMessages(int count)
         emit countChanged();
     }
 
-    // Обновляем флаг hasMoreMessages
+    // Update hasMoreMessages flag
     QSqlQuery countQuery(*m_db);
     countQuery.prepare("SELECT COUNT(*) FROM messages WHERE chat_id = ? AND id < ?");
     countQuery.addBindValue(m_currentChatId);

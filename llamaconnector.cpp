@@ -10,10 +10,9 @@ LlamaWorker::LlamaWorker(QObject *parent)
 #ifdef _WIN32
     _putenv("GGML_CUDA_FORCE_CUBLAS=1");
     _putenv("GGML_CUDA_NO_PEER_COPY=1");
-    // ✅ НОВЫЕ оптимизации:
-    _putenv("GGML_CUDA_FORCE_MMQ=1");        // Матричное умножение на GPU
-    _putenv("GGML_CUDA_F16=1");              // FP16 для ускорения
-    _putenv("CUDA_LAUNCH_BLOCKING=0");       // ❌ УБЕРИ блокировку!
+    _putenv("GGML_CUDA_FORCE_MMQ=1");
+    _putenv("GGML_CUDA_F16=1");
+    _putenv("CUDA_LAUNCH_BLOCKING=0");
 #else
     setenv("GGML_CUDA_FORCE_CUBLAS", "1", 1);
     setenv("GGML_CUDA_NO_PEER_COPY", "1", 1);
@@ -23,11 +22,8 @@ LlamaWorker::LlamaWorker(QObject *parent)
 
     llama_backend_init();
 
-    // ДОБАВИТЬ:
     qDebug() << "=== llama.cpp system info ===";
     qDebug() << llama_print_system_info();
-
-    // ДОБАВИТЬ эти проверки:
     qDebug() << "=== GPU Support Check ===";
     qDebug() << "GPU offload supported:" << llama_supports_gpu_offload();
     qDebug() << "MMAP supported:" << llama_supports_mmap();
@@ -38,7 +34,7 @@ LlamaWorker::~LlamaWorker()
 {
     if (sampler) llama_sampler_free(sampler);
     if (ctx) llama_free(ctx);
-    if (model) llama_model_free(model);  // было llama_free_model
+    if (model) llama_model_free(model);
     llama_backend_free();
 }
 
@@ -68,7 +64,7 @@ void LlamaWorker::unloadModel()
 
 bool LlamaWorker::initialize(const QString &modelPath)
 {
-    // Очищаем предыдущие ресурсы если есть
+    // Clean up previous resources if any
     if (sampler) {
         llama_sampler_free(sampler);
         sampler = nullptr;
@@ -93,7 +89,7 @@ bool LlamaWorker::initialize(const QString &modelPath)
     qDebug() << "GPU offload support:" << llama_supports_gpu_offload();
 
     if (llama_supports_gpu_offload()) {
-        model_params.n_gpu_layers = 999;  // Все слои на GPU
+        model_params.n_gpu_layers = 999;
         model_params.main_gpu = 0;
         model_params.split_mode = LLAMA_SPLIT_MODE_NONE;
         qDebug() << "GPU offload ENABLED, requesting" << model_params.n_gpu_layers << "layers";
@@ -113,7 +109,6 @@ bool LlamaWorker::initialize(const QString &modelPath)
         return false;
     }
 
-    // ДОБАВИТЬ:
     qDebug() << "=== Model Loaded ===";
     qDebug() << "Requested GPU layers:" << model_params.n_gpu_layers;
     qDebug() << "Model total layers:" << llama_model_n_layer(model);
@@ -130,17 +125,12 @@ bool LlamaWorker::initialize(const QString &modelPath)
 
     llama_context_params ctx_params = llama_context_default_params();
     ctx_params.n_ctx = 4096;
-    ctx_params.n_batch = 8192;      // ✅ УВЕЛИЧЕНО: Было 2048
-    ctx_params.n_ubatch = 2048;     // ✅ УВЕЛИЧЕНО: Было 512
-    ctx_params.n_threads = 8;       // ✅ Оптимально для большинства CPU
+    ctx_params.n_batch = 8192;
+    ctx_params.n_ubatch = 2048;
+    ctx_params.n_threads = 8;
     ctx_params.n_threads_batch = 8;
-
-    // ВСЕГДА включаем GPU параметры
-    // ДОБАВИТЬ эти строки:
-    ctx_params.offload_kqv = true;  // Offload KV cache на GPU
-    ctx_params.flash_attn_type = LLAMA_FLASH_ATTN_TYPE_ENABLED;  // Flash Attention
-
-    // ✅ НОВОЕ: Включаем continuous batching для RTX GPU
+    ctx_params.offload_kqv = true;
+    ctx_params.flash_attn_type = LLAMA_FLASH_ATTN_TYPE_ENABLED;
     ctx_params.rope_scaling_type = LLAMA_ROPE_SCALING_TYPE_LINEAR;
     ctx_params.yarn_ext_factor = -1.0f;
     ctx_params.yarn_attn_factor = 1.0f;
@@ -192,15 +182,13 @@ void LlamaWorker::processMessage(const QString &message)
     m_shouldStop.storeRelaxed(0);
     auto start_time = std::chrono::high_resolution_clock::now();
 
-    // Формируем prompt только для нового сообщения
+    // Format prompt for new message
     QString prompt;
     if (m_n_past == 0) {
-        // Первое сообщение - добавляем системный промпт
         prompt = "<|im_start|>system\nYou are a helpful assistant.<|im_end|>\n"
                  "<|im_start|>user\n" + message + "<|im_end|>\n"
                              "<|im_start|>assistant\n";
     } else {
-        // Последующие сообщения - только новый user message
         prompt = "<|im_start|>user\n" + message + "<|im_end|>\n"
                                                   "<|im_start|>assistant\n";
     }
@@ -209,7 +197,7 @@ void LlamaWorker::processMessage(const QString &message)
     qDebug() << "Prompt length:" << prompt_str.length();
     qDebug() << "Tokens in context (n_past):" << m_n_past;
 
-    // Токенизация нового промпта
+    // Tokenize new prompt
     std::vector<llama_token> tokens(prompt_str.size() + 128);
     int n_tokens = llama_tokenize(
         vocab,
@@ -217,7 +205,7 @@ void LlamaWorker::processMessage(const QString &message)
         prompt_str.length(),
         tokens.data(),
         tokens.size(),
-        m_n_past == 0,  // add_special только для первого сообщения
+        m_n_past == 0,
         true
         );
 
@@ -237,10 +225,9 @@ void LlamaWorker::processMessage(const QString &message)
     tokens.resize(n_tokens);
     qDebug() << "Tokenized successfully, n_tokens:" << n_tokens;
 
-    // Добавляем новые токены в историю сессии
     m_session_tokens.insert(m_session_tokens.end(), tokens.begin(), tokens.end());
 
-    // Создаём batch ОДИН РАЗ для всего промпта
+    // Create batch for entire prompt
     llama_batch batch = llama_batch_init(n_tokens, 0, 1);
 
     for (int i = 0; i < n_tokens; i++) {
@@ -264,7 +251,6 @@ void LlamaWorker::processMessage(const QString &message)
         return;
     }
 
-    // Обновляем позицию в контексте
     m_n_past += n_tokens;
     qDebug() << "Prompt decoded successfully, n_past now:" << m_n_past;
     emit generationStarted();
@@ -273,14 +259,13 @@ void LlamaWorker::processMessage(const QString &message)
     int n_gen = 0;
     const int max_gen_tokens = 4096;
 
-    // ✅ НОВОЕ: Буфер для накопления токенов
+    // Token accumulation buffer
     QString tokenBuffer;
     int tokensInBuffer = 0;
-    const int EMIT_BATCH_SIZE = 50; // Отправляем по 5 токенов за раз
+    const int EMIT_BATCH_SIZE = 50;
 
-    // ✅ НОВОЕ: Используем std::string вместо QString для скорости
     std::string responseStr;
-    responseStr.reserve(16384); // Предаллокация памяти
+    responseStr.reserve(16384);
 
     llama_batch gen_batch = llama_batch_init(1, 0, 1);
     gen_batch.n_seq_id[0] = 1;
@@ -289,11 +274,10 @@ void LlamaWorker::processMessage(const QString &message)
     gen_batch.n_tokens = 1;
 
     std::vector<llama_token> response_tokens;
-    response_tokens.reserve(max_gen_tokens); // ✅ Предаллокация
+    response_tokens.reserve(max_gen_tokens);
 
     while (n_gen < max_gen_tokens) {
         if (m_shouldStop.loadRelaxed() == 1) {
-            // Отправляем остаток буфера
             if (!tokenBuffer.isEmpty()) {
                 emit tokenGenerated(tokenBuffer);
             }
@@ -324,19 +308,17 @@ void LlamaWorker::processMessage(const QString &message)
 
         response_tokens.push_back(new_token);
 
-        // Отслеживание think блоков
+        // Track think blocks
         std::string_view currentResponse(responseStr);
         size_t thinkStart = currentResponse.find("<think>");
         size_t thinkEnd = currentResponse.find("</think>");
 
-        // Начало think блока
         if (!m_inThinkBlock && thinkStart != std::string::npos && thinkEnd == std::string::npos) {
             m_inThinkBlock = true;
             m_thinkStartTime = std::chrono::high_resolution_clock::now();
             qDebug() << "Think block started";
         }
 
-        // Конец think блока
         if (m_inThinkBlock && thinkEnd != std::string::npos) {
             auto thinkEndTime = std::chrono::high_resolution_clock::now();
             auto thinkDuration = std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -345,7 +327,6 @@ void LlamaWorker::processMessage(const QString &message)
             double durationSec = thinkDuration.count() / 1000.0;
             qDebug() << "Think block finished in" << durationSec << "seconds";
 
-            // Вставляем duration в think блок
             size_t insertPos = thinkEnd;
             std::string durationTag = " duration=\"" + std::to_string(durationSec) + "s\"";
             responseStr.insert(insertPos, durationTag);
@@ -353,7 +334,7 @@ void LlamaWorker::processMessage(const QString &message)
             m_inThinkBlock = false;
         }
 
-        // ✅ ОПТИМИЗАЦИЯ: Работаем с буфером напрямую
+        // Work with buffer directly
         char piece[128];
         int n_chars = llama_token_to_piece(vocab, new_token, piece,
                                            sizeof(piece), 0, true);
@@ -361,27 +342,24 @@ void LlamaWorker::processMessage(const QString &message)
         if (n_chars > 0) {
             responseStr.append(piece, n_chars);
 
-            // ✅ ИСПРАВЛЕНИЕ: Проверяем валидность UTF-8 перед добавлением
+            // Validate UTF-8 before adding
             QByteArray byteArray(piece, n_chars);
             QString decoded = QString::fromUtf8(byteArray);
 
-            // Если декодирование успешно (нет замен на �)
             if (!decoded.contains(QChar(0xFFFD))) {
                 tokenBuffer += decoded;
                 tokensInBuffer++;
             } else {
-                // Emoji разбит на части - накапливаем байты
+                // Emoji split into parts - accumulate bytes
                 static QByteArray incompleteUtf8;
                 incompleteUtf8.append(byteArray);
 
-                // Пробуем декодировать накопленное
                 QString fullDecoded = QString::fromUtf8(incompleteUtf8);
                 if (!fullDecoded.contains(QChar(0xFFFD))) {
                     tokenBuffer += fullDecoded;
                     tokensInBuffer++;
                     incompleteUtf8.clear();
                 }
-                // Иначе продолжаем накапливать
             }
 
             if (tokensInBuffer >= EMIT_BATCH_SIZE) {
@@ -391,7 +369,6 @@ void LlamaWorker::processMessage(const QString &message)
             }
         }
 
-        // Decode
         gen_batch.token[0] = new_token;
         gen_batch.pos[0] = m_n_past + n_gen;
 
@@ -405,7 +382,7 @@ void LlamaWorker::processMessage(const QString &message)
         n_gen++;
     }
 
-    // ✅ Отправляем остаток буфера
+    // Send remaining buffer
     if (!tokenBuffer.isEmpty()) {
         emit tokenGenerated(tokenBuffer);
     }
@@ -441,7 +418,6 @@ void LlamaWorker::stopGeneration()
     m_shouldStop.storeRelaxed(1);
 }
 
-// ДОБАВИТЬ ПОСЛЕ stopGeneration():
 void LlamaWorker::clearContext()
 {
     if (ctx) {
@@ -516,9 +492,7 @@ void LlamaConnector::unloadModel()
         }
     }
 
-    // Вызываем метод worker через Qt signal/slot систему для потокобезопасности
     QMetaObject::invokeMethod(worker, &LlamaWorker::unloadModel, Qt::BlockingQueuedConnection);
-
     modelInfo->clearModel();
 
     qDebug() << "Model unloaded successfully";
@@ -536,12 +510,11 @@ bool LlamaConnector::loadModel(const QString &modelPath)
     qDebug() << "=== loadModel called with:" << modelPath;
     emit modelLoadingStarted();
 
-    // КРИТИЧНО: Правильная очистка ресурсов
+    // Proper resource cleanup
     if (m_isGenerating) {
         qDebug() << "Stopping generation before loading new model...";
         worker->stopGeneration();
 
-        // Ждём завершения генерации
         int waitCount = 0;
         while (m_isGenerating && waitCount < 50) {
             QThread::msleep(100);
@@ -553,10 +526,9 @@ bool LlamaConnector::loadModel(const QString &modelPath)
     if (worker->model || worker->ctx) {
         qDebug() << "Cleaning up previous model...";
         modelInfo->clearModel();
-
-        // Дополнительная пауза для освобождения ресурсов
         QThread::msleep(300);
     }
+
     bool success = worker->initialize(modelPath);
 
     if (success) {

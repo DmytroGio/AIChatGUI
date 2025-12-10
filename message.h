@@ -13,9 +13,9 @@ enum class ContentType {
 struct ContentBlock {
     ContentType type;
     QString content;
-    QString language;  // Для code блоков
-    bool isClosed;     // Для code и think блоков
-    int lineCount;     // Для code блоков
+    QString language;  // For code blocks
+    bool isClosed;     // For code and think blocks
+    int lineCount;     // For code blocks
 };
 
 struct ParsedContent {
@@ -23,10 +23,10 @@ struct ParsedContent {
 };
 
 struct Message {
-    QString text;           // Оригинальный текст (для истории)
+    QString text;           // Original text (for history/storage)
     bool isUser;
     QString timestamp;
-    ParsedContent parsed;   // Готовый распарсенный контент
+    ParsedContent parsed;   // Parsed content ready for display
 };
 
 struct Chat {

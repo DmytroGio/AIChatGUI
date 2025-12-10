@@ -3,10 +3,10 @@
 #include <QQmlContext>
 #include <QFile>
 #include <QIcon>
-#include "llamaconnector.h"
 #include <QtCore/QString>
-#include "chatmanager.h"
 #include <QClipboard>
+#include "llamaconnector.h"
+#include "chatmanager.h"
 #include "clipboardhelper.h"
 #include "syntaxhighlighter.h"
 
@@ -16,14 +16,14 @@ int main(int argc, char *argv[])
 {
     QGuiApplication app(argc, argv);
 
-    // Включаем тёмный режим (как в VisionCompass)
+    // Enable dark mode
     app.setAttribute(Qt::AA_UseStyleSheetPropagationInWidgetStyles, true);
     qputenv("QT_QUICK_CONTROLS_STYLE", "Material");
     qputenv("QT_QUICK_CONTROLS_MATERIAL_THEME", "Dark");
 
-    // Устанавливаем иконки
+    // Set application icon
     QIcon appIcon;
-    appIcon.addFile(":/icons/App_Icon_128.ico");  // Только для окна программы
+    appIcon.addFile(":/icons/App_Icon_128.ico");
     app.setWindowIcon(appIcon);
 
     app.setApplicationName("AI Chat Assistant");
@@ -33,10 +33,10 @@ int main(int argc, char *argv[])
 
     LlamaConnector connector;
 
-    // Загружаем настройки
+    // Load settings
     connector.getModelInfo()->loadSettings();
 
-    // Проверяем, есть ли модель для автозагрузки
+    // Auto-load model if configured
     QString autoLoadPath = connector.getModelInfo()->autoLoadModelPath();
     if (!autoLoadPath.isEmpty() && QFile::exists(autoLoadPath)) {
         qDebug() << "Auto-loading model from:" << autoLoadPath;
@@ -50,13 +50,13 @@ int main(int argc, char *argv[])
     }
 
     ChatManager chatManager;
-
     ClipboardHelper clipboardHelper;
-    engine.rootContext()->setContextProperty("clipboardHelper", &clipboardHelper);
 
+    // Register context properties
     engine.rootContext()->setContextProperty("llamaConnector", &connector);
     engine.rootContext()->setContextProperty("modelInfo", connector.getModelInfo());
     engine.rootContext()->setContextProperty("chatManager", &chatManager);
+    engine.rootContext()->setContextProperty("clipboardHelper", &clipboardHelper);
     engine.rootContext()->setContextProperty("clipboard", QGuiApplication::clipboard());
 
     qmlRegisterType<SyntaxHighlighter>("SyntaxHighlighter", 1, 0, "SyntaxHighlighter");

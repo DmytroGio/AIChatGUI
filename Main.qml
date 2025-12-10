@@ -5,7 +5,6 @@ import QtQuick.Effects
 ApplicationWindow {
     id: root
 
-
     visible: true
     width: 2000
     height: 1000
@@ -77,7 +76,7 @@ ApplicationWindow {
             radius: 0
         }
 
-        // Группа кнопок Menu и New Chat
+        // Menu and New Chat button group
         Rectangle {
             id: controlButtonsGroup
             anchors.left: parent.left
@@ -174,7 +173,7 @@ ApplicationWindow {
             }
         }
 
-        // Блок с AI иконкой и информацией (выделен фоном)
+        // AI icon and info block
         Rectangle {
             id: aiInfoBlock
             anchors.left: controlButtonsGroup.right
@@ -186,7 +185,6 @@ ApplicationWindow {
             color: root.inputBackground
             opacity: 0.9
 
-            // Эффект свечения для акцента
             layer.enabled: true
             layer.effect: MultiEffect {
                 shadowEnabled: true
@@ -230,7 +228,7 @@ ApplicationWindow {
             }
         }
 
-        // Группа кнопок Connection status и Model Panel
+        // Connection status and Model Panel button group
         Rectangle {
             id: statusButtonsGroup
             anchors.right: parent.right
@@ -316,168 +314,163 @@ ApplicationWindow {
                 }
             }
         }
-
     }
 
     // Main content area
     Rectangle {
         id: contentArea
-            anchors.top: header.bottom
-            anchors.left: chatList.right
-            anchors.right: modelPanel.left
-            anchors.bottom: inputArea.top
-            anchors.margins: 20
-            anchors.topMargin: 10
-            color: "transparent"
-            radius: 15
+        anchors.top: header.bottom
+        anchors.left: chatList.right
+        anchors.right: modelPanel.left
+        anchors.bottom: inputArea.top
+        anchors.margins: 20
+        anchors.topMargin: 10
+        color: "transparent"
+        radius: 15
 
-            Rectangle {
-                anchors.fill: parent
-                color: root.surfaceColor
-                opacity: 0.6
-                radius: parent.radius
-            }
+        Rectangle {
+            anchors.fill: parent
+            color: root.surfaceColor
+            opacity: 0.6
+            radius: parent.radius
+        }
 
-            // ✅ Приветственная страница
-            Item {
-                id: welcomePage
-                anchors.fill: parent
-                visible: chatManager.isWelcomeChat
+        // Welcome page
+        Item {
+            id: welcomePage
+            anchors.fill: parent
+            visible: chatManager.isWelcomeChat
 
+            Column {
+                anchors.centerIn: parent
+                spacing: 30
+
+                Image {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    width: 200
+                    height: 200
+                    source: "/icons/AiGui_Logo_med.png"
+                    fillMode: Image.PreserveAspectFit
+                    smooth: true
+                }
+
+                Text {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    text: "Hello, User!"
+                    color: root.textPrimary
+                    font.pixelSize: 36
+                    font.bold: true
+                }
+
+                Text {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    text: "Start chatting with the AI assistant"
+                    color: root.textSecondary
+                    font.pixelSize: 16
+                    opacity: 0.8
+                }
+
+                // Example questions
                 Column {
-                    anchors.centerIn: parent
-                    spacing: 30
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    spacing: 10
 
-                    // Иконка
-                    Image {
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        width: 200
-                        height: 200
-                        source: "/icons/AiGui_Logo_med.png"
-                        fillMode: Image.PreserveAspectFit
-                        smooth: true
-                    }
+                    Repeater {
+                        model: [
+                            "💡 Explain quantum physics in simple terms",
+                            "📝 Help me write Python code",
+                            "🎨 Give me interface design tips"
+                        ]
 
-                    // Приветственный текст
-                    Text {
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        text: "Hello, User!"
-                        color: root.textPrimary
-                        font.pixelSize: 36
-                        font.bold: true
-                    }
+                        Rectangle {
+                            width: 450
+                            height: 50
+                            color: root.inputBackground
+                            radius: 12
+                            border.color: suggestionArea.containsMouse ? root.primaryColor : "transparent"
+                            border.width: 2
 
+                            Text {
+                                anchors.left: parent.left
+                                anchors.leftMargin: 15
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: modelData
+                                color: root.textSecondary
+                                font.pixelSize: 14
+                            }
 
-                    Text {
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        text: "Start chatting with the AI assistant"
-                        color: root.textSecondary
-                        font.pixelSize: 16
-                        opacity: 0.8
-                    }
-
-
-                    // Example questions
-                    Column {
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        spacing: 10
-
-                        Repeater {
-                            model: [
-                                "💡 Explain quantum physics in simple terms",
-                                "📝 Help me write Python code",
-                                "🎨 Give me interface design tips"
-                            ]
-
-                            Rectangle {
-                                width: 450
-                                height: 50
-                                color: root.inputBackground
-                                radius: 12
-                                border.color: suggestionArea.containsMouse ? root.primaryColor : "transparent"
-                                border.width: 2
-
-                                Text {
-                                    anchors.left: parent.left
-                                    anchors.leftMargin: 15
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    text: modelData
-                                    color: root.textSecondary
-                                    font.pixelSize: 14
+                            MouseArea {
+                                id: suggestionArea
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: {
+                                    // Remove emoji and space
+                                    var cleanText = modelData.replace(/^[\u{1F000}-\u{1F9FF}]\s*/u, "")
+                                    inputField.text = cleanText
+                                    inputField.forceActiveFocus()
                                 }
+                            }
 
-                                MouseArea {
-                                    id: suggestionArea
-                                    anchors.fill: parent
-                                    hoverEnabled: true
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: {
-                                        // Убираем emoji и пробел
-                                        var cleanText = modelData.replace(/^[\u{1F000}-\u{1F9FF}]\s*/u, "")
-                                        inputField.text = cleanText
-                                        inputField.forceActiveFocus()
-                                    }
-                                }
-
-                                Behavior on border.color {
-                                    ColorAnimation { duration: 200 }
-                                }
+                            Behavior on border.color {
+                                ColorAnimation { duration: 200 }
                             }
                         }
                     }
                 }
             }
+        }
 
-            // ✅ Обычный список сообщений
-            ListView {
-                id: messagesView
-                anchors.fill: parent
-                anchors.margins: 15
-                anchors.rightMargin: 30
-                model: chatManager.messageModel
-                spacing: 15
-                clip: true
-                visible: !welcomePage.visible
+        // Messages list
+        ListView {
+            id: messagesView
+            anchors.fill: parent
+            anchors.margins: 15
+            anchors.rightMargin: 30
+            model: chatManager.messageModel
+            spacing: 15
+            clip: true
+            visible: !welcomePage.visible
 
-                cacheBuffer: 50000
-                reuseItems: false
+            cacheBuffer: 50000
+            reuseItems: false
 
-                ScrollBar.vertical: null
-                ScrollBar.horizontal: null
+            ScrollBar.vertical: null
+            ScrollBar.horizontal: null
 
-                property bool shouldAutoScroll: true
+            property bool shouldAutoScroll: true
 
-                onCountChanged: {
-                    if (shouldAutoScroll && count > 0) {
-                        Qt.callLater(function() {
-                            positionViewAtEnd()
-                        })
-                    }
-                }
-
-                delegate: SimpleMessageBubble {
-                    width: messagesView.width
-                    messageText: model.text || ""
-                    isUserMessage: model.isUser || false
-                    parsedBlocks: model.blocks || []
-                }
-
-                header: Item {
-                    width: messagesView.width
-                    height: chatManager.messageCount === 0 ? 80 : 0
-                    Text {
-                        anchors.centerIn: parent
-                        text: "Start typing to begin..."
-                        color: root.textSecondary
-                        font.pixelSize: 16
-                        font.weight: Font.Light
-                        opacity: 0.7
-                        visible: chatManager.messageCount === 0
-                    }
+            onCountChanged: {
+                if (shouldAutoScroll && count > 0) {
+                    Qt.callLater(function() {
+                        positionViewAtEnd()
+                    })
                 }
             }
 
-        // Кастомный скроллбар
+            delegate: SimpleMessageBubble {
+                width: messagesView.width
+                messageText: model.text || ""
+                isUserMessage: model.isUser || false
+                parsedBlocks: model.blocks || []
+            }
+
+            header: Item {
+                width: messagesView.width
+                height: chatManager.messageCount === 0 ? 80 : 0
+                Text {
+                    anchors.centerIn: parent
+                    text: "Start typing to begin..."
+                    color: root.textSecondary
+                    font.pixelSize: 16
+                    font.weight: Font.Light
+                    opacity: 0.7
+                    visible: chatManager.messageCount === 0
+                }
+            }
+        }
+
+        // Custom scrollbar
         Item {
             id: customScrollBar
             anchors.right: parent.right
@@ -604,7 +597,7 @@ ApplicationWindow {
             }
         }
 
-        // Автоскролл по средней кнопке мыши
+        // Middle mouse button auto-scroll
         MouseArea {
             id: autoScrollArea
             anchors.fill: parent
@@ -613,7 +606,7 @@ ApplicationWindow {
             propagateComposedEvents: true
 
             property bool isAutoScrolling: false
-            property point anchorPos // Фиксированная точка якоря
+            property point anchorPos
 
             onPressed: function(mouse) {
                 if (mouse.button === Qt.MiddleButton) {
@@ -635,7 +628,6 @@ ApplicationWindow {
                     autoScrollCursor.visible = false
                     scrollTimer.stop()
 
-                    // Восстанавливаем автоскролл если внизу
                     var maxContentY = messagesView.contentHeight - messagesView.height
                     if (messagesView.contentY >= maxContentY - 10) {
                         messagesView.shouldAutoScroll = true
@@ -643,34 +635,28 @@ ApplicationWindow {
                 }
             }
 
-            // Таймер для постоянного скролла
             Timer {
                 id: scrollTimer
-                interval: 16 // ~60 FPS
+                interval: 16
                 repeat: true
                 running: false
 
                 onTriggered: {
                     if (!autoScrollArea.isAutoScrolling) return
 
-                    // Получаем текущую позицию курсора относительно contentArea
-                    var mousePos = autoScrollArea.mapFromGlobal(autoScrollArea.mapToGlobal(Qt.point(0, 0)))
-                    var cursorPos = autoScrollArea.mapFromItem(null, autoScrollArea.mouseX, autoScrollArea.mouseY)
-
-                    // Используем глобальные координаты через mapFromGlobal
                     var globalPos = autoScrollArea.mapToGlobal(Qt.point(autoScrollArea.mouseX, autoScrollArea.mouseY))
                     var localPos = autoScrollArea.mapFromGlobal(globalPos)
 
                     var deltaY = localPos.y - autoScrollArea.anchorPos.y
 
-                    // Скорость зависит от расстояния (мёртвая зона 10px)
+                    // Speed depends on distance (dead zone 10px)
                     var speed = Math.abs(deltaY) > 10 ? deltaY * 0.4 : 0
 
                     var maxContentY = messagesView.contentHeight - messagesView.height
                     var newContentY = messagesView.contentY + speed
                     messagesView.contentY = Math.max(0, Math.min(newContentY, maxContentY))
 
-                    // Обновляем цвет и направление стрелок
+                    // Update cursor color and direction
                     if (Math.abs(deltaY) < 10) {
                         autoScrollCursor.color = root.textSecondary
                         autoScrollCursor.showDirection = "none"
@@ -684,7 +670,7 @@ ApplicationWindow {
                 }
             }
 
-            // Индикатор автоскролла (якорь)
+            // Auto-scroll indicator
             Rectangle {
                 id: autoScrollCursor
                 width: 40
@@ -697,7 +683,6 @@ ApplicationWindow {
 
                 property string showDirection: "none"
 
-                // Иконка стрелок
                 Item {
                     anchors.centerIn: parent
                     width: 20
@@ -719,8 +704,6 @@ ApplicationWindow {
             }
         }
     }
-
-
 
     // Input area
     Rectangle {
@@ -745,7 +728,7 @@ ApplicationWindow {
             anchors.verticalCenter: parent.verticalCenter
             anchors.margins: 15
             anchors.rightMargin: 10
-            height: Math.min(Math.max(40, inputField.contentHeight + 16), 270) // Высота контейнера
+            height: Math.min(Math.max(40, inputField.contentHeight + 16), 270)
             color: root.inputBackground
             radius: 20
             border.color: inputField.activeFocus ? root.primaryColor : "transparent"
@@ -774,17 +757,12 @@ ApplicationWindow {
                     leftPadding: 8
                     rightPadding: 8
                     verticalAlignment: TextEdit.AlignVCenter
-
-                    // Убираем все стандартные виндовс эффекты
                     renderType: Text.NativeRendering
 
-                    // Обработка Enter
                     Keys.onReturnPressed: function(event) {
                         if (event.modifiers & Qt.ShiftModifier) {
-                            // Shift+Enter - новая строка (стандартное поведение)
                             event.accepted = false
                         } else {
-                            // Enter - отправка
                             event.accepted = true
                             if (inputField.text.trim().length > 0) {
                                 sendMessage()
@@ -803,7 +781,6 @@ ApplicationWindow {
                         }
                     }
 
-                    // Placeholder текст
                     Text {
                         id: placeholderText
                         anchors.fill: parent
@@ -814,12 +791,9 @@ ApplicationWindow {
                         font.pixelSize: 16
                         verticalAlignment: Text.AlignVCenter
                         visible: inputField.text.length === 0
-
-                        // Предотвращаем взаимодействие с placeholder
                         enabled: false
                     }
 
-                    // Кастомный курсор
                     cursorDelegate: Rectangle {
                         width: 1
                         color: "white"
@@ -835,7 +809,6 @@ ApplicationWindow {
                         }
                     }
                 }
-
             }
         }
 
@@ -850,7 +823,6 @@ ApplicationWindow {
 
             property bool hasText: inputField.text.trim().length > 0
 
-            // Цвет в зависимости от состояния
             color: {
                 if (llamaConnector.isGenerating) return "#1A77EB"
                 if (!hasText) return root.inputBackground
@@ -860,7 +832,6 @@ ApplicationWindow {
 
             opacity: hasText || llamaConnector.isGenerating ? 1.0 : 0.4
 
-            // Тень для активной кнопки (более тонкая)
             layer.enabled: hasText || llamaConnector.isGenerating
             layer.effect: MultiEffect {
                 shadowEnabled: true
@@ -878,7 +849,6 @@ ApplicationWindow {
                 NumberAnimation { duration: 200 }
             }
 
-            // Масштабирование при наведении (едва заметное)
             scale: (hasText && sendMouseArea.containsMouse && !llamaConnector.isGenerating) ? 1.05 : 1.0
 
             Behavior on scale {
@@ -942,7 +912,7 @@ ApplicationWindow {
         }
     }
 
-    // Connections for LM Studio
+    // Connections for LlamaConnector
     Connections {
         target: llamaConnector
 

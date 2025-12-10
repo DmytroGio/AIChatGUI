@@ -13,7 +13,7 @@
 #pragma comment(lib, "wbemuuid.lib")
 #endif
 
-// Модель для логирования запросов
+// Model for logging queries
 class RequestLogModel : public QAbstractListModel
 {
     Q_OBJECT
@@ -247,7 +247,7 @@ private:
         QString fullPath;
         qint64 sizeBytes;
         QString sizeString;
-        QString parameters; // Извлечено из имени файла
+        QString parameters; // Extracted from file name
     };
 
     ModelFileInfo parseModelFile(const QString &filePath);

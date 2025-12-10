@@ -118,7 +118,7 @@ Rectangle {
                         }
 
                         MetricItem {
-                            icon: "📝"
+                            icon: "📊"
                             label: "CONTEXT"
                             value: ((modelInfo.tokensIn + modelInfo.tokensOut) / modelInfo.contextSize * 100).toFixed(0)
                             unit: "%"
@@ -213,14 +213,7 @@ Rectangle {
                             tooltipText: "Rescan folder"
                             iconSource: "/icons/RescanFolder_Icon.svg"
                         }
-                        /*
-                        ActionButton {
-                            text: "⚙️"
-                            width: parent.width * 0.12
-                            enabled: modelInfo.isLoaded
-                            onClicked: settingsPopup.open()
-                        }
-                        */
+
                         ActionButton {
                             text: "Unload"
                             width: parent.width * 0.40
@@ -657,16 +650,15 @@ Rectangle {
                 property bool rawOutputCollapsed: true
 
                 Behavior on height {
-                        NumberAnimation {
-                            duration: 200
-                            easing.type: Easing.OutCubic
-                        }
+                    NumberAnimation {
+                        duration: 200
+                        easing.type: Easing.OutCubic
                     }
+                }
 
-                // Автопрокрутка при изменении высоты
+                // Auto-scroll when expanded
                 onHeightChanged: {
                     if (!rawOutputCollapsed && height > 80) {
-                        // Используем Qt.callLater чтобы дождаться обновления contentHeight
                         Qt.callLater(function() {
                             panelFlickable.contentY = Math.max(0, panelFlickable.contentHeight - panelFlickable.height)
                         })
@@ -807,14 +799,13 @@ Rectangle {
                         visible: !parent.parent.rawOutputCollapsed
                     }
 
-                    // Raw text content с кастомным скроллбаром
+                    // Raw text content with custom scrollbar
                     Item {
                         width: parent.width
                         height: parent.parent.height - 110
                         visible: !parent.parent.rawOutputCollapsed
                         clip: true
 
-                        // Фон
                         Rectangle {
                             anchors.fill: parent
                             anchors.bottomMargin: 10
@@ -855,7 +846,7 @@ Rectangle {
                             }
                         }
 
-                        // Кастомный скроллбар
+                        // Custom scrollbar
                         Rectangle {
                             id: rawScrollbar
                             anchors.right: parent.right
@@ -916,7 +907,6 @@ Rectangle {
                     }
                 }
             }
-
         }
     }
 
@@ -964,7 +954,7 @@ Rectangle {
         property string tooltipText: ""
         property alias text: buttonText.text
         property bool enabled: true
-        property string iconSource: ""  // Добавлено
+        property string iconSource: ""
         signal clicked()
 
         height: 38

@@ -48,7 +48,7 @@ Rectangle {
                     sourceComponent: {
                         var blockType = modelData.type
                         if (blockType === 1) return codeBlockComponent
-                        if (blockType === 2) return thinkBlockComponent  // ✅ Think
+                        if (blockType === 2) return thinkBlockComponent
                         return textBlockComponent
                     }
                     property var blockData: modelData
@@ -57,7 +57,7 @@ Rectangle {
         }
     }
 
-    // ===== THINK COMPONENT =====
+    // Think block component
     Component {
         id: thinkBlockComponent
 
@@ -76,7 +76,6 @@ Rectangle {
                 width: parent.width - 20
                 spacing: 8
 
-                // Заголовок
                 Row {
                     spacing: 8
                     Text {
@@ -91,7 +90,6 @@ Rectangle {
                     }
                 }
 
-                // Содержимое
                 TextEdit {
                     width: parent.width
                     text: blockData.content || ""
@@ -110,7 +108,7 @@ Rectangle {
         }
     }
 
-    // ===== TEXT COMPONENT =====
+    // Text block component
     Component {
         id: textBlockComponent
 
@@ -120,23 +118,22 @@ Rectangle {
             text: {
                 var formatted = blockData.content || ""
 
-                // ✅ Простой парсинг markdown
-                // Заголовки (### ## #)
+                // Markdown parsing: headers
                 formatted = formatted.replace(/^### (.+)$/gm, '<span style="font-size: 16px; font-weight: bold; color: #60a5fa;">$1</span><br>')
                 formatted = formatted.replace(/^## (.+)$/gm, '<span style="font-size: 18px; font-weight: bold; color: #3b82f6;">$1</span><br>')
                 formatted = formatted.replace(/^# (.+)$/gm, '<span style="font-size: 20px; font-weight: bold; color: #2563eb;">$1</span><br>')
 
-                // Горизонтальная линия
+                // Horizontal rule
                 formatted = formatted.replace(/^---$/gm, '<hr style="border: none; border-top: 2px solid #4a5568; margin: 12px 0;">')
 
-                // Bold/Italic
+                // Bold and italic
                 formatted = formatted.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>')
                 formatted = formatted.replace(/\*(.+?)\*/g, '<i>$1</i>')
 
-                // Inline code (`text`)
+                // Inline code
                 formatted = formatted.replace(/`([^`\n]+)`/g, '<span style="background-color: #2d3748; color: #ffd700; padding: 2px 6px; border-radius: 3px; font-family: Consolas, monospace; font-size: 13px;">$1</span>')
 
-                // Переносы строк
+                // Line breaks
                 formatted = formatted.replace(/\n/g, '<br>')
 
                 return formatted
@@ -164,7 +161,7 @@ Rectangle {
         }
     }
 
-    // ===== CODE COMPONENT =====
+    // Code block component
     Component {
         id: codeBlockComponent
 
@@ -182,7 +179,6 @@ Rectangle {
                 width: parent.width - 20
                 spacing: 8
 
-                // Заголовок
                 Rectangle {
                     id: headerBar
                     width: parent.width
@@ -248,7 +244,6 @@ Rectangle {
                     }
                 }
 
-                // ✅ Код с подсветкой синтаксиса
                 TextEdit {
                     id: codeContent
                     width: parent.width
@@ -266,7 +261,6 @@ Rectangle {
                     selectionColor: "#4facfe"
                     selectedTextColor: "#ffffff"
 
-                    // ✅ Подключаем SyntaxHighlighter
                     Component.onCompleted: {
                         if (blockData.language) {
                             var highlighter = Qt.createQmlObject(

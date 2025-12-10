@@ -38,10 +38,10 @@ private:
     const llama_vocab *vocab = nullptr;
     QAtomicInt m_shouldStop;
 
-    int m_n_past = 0;  // количество токенов в контексте
-    std::vector<llama_token> m_session_tokens;  // история токенов
+    int m_n_past = 0;  // number of tokens in context
+    std::vector<llama_token> m_session_tokens;  // history of tokens
 
-    // Для отслеживания think блоков
+    // To track think blocks
     std::chrono::high_resolution_clock::time_point m_thinkStartTime;
     bool m_inThinkBlock = false;
 };
@@ -62,7 +62,7 @@ public:
 
     ModelInfo* getModelInfo() const { return modelInfo; }
 
-    Q_INVOKABLE void stopGeneration();  // НОВЫЙ МЕТОД
+    Q_INVOKABLE void stopGeneration();
     bool isGenerating() const { return m_isGenerating; }
 
 signals:
