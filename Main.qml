@@ -721,6 +721,16 @@ ApplicationWindow {
             NumberAnimation { duration: 150; easing.type: Easing.OutQuad }
         }
 
+        MouseArea {
+            anchors.fill: parent
+            onClicked: {
+                inputField.forceActiveFocus()
+                inputField.cursorPosition = inputField.length
+            }
+            propagateComposedEvents: true
+            z: -1
+        }
+
         Rectangle {
             id: inputContainer
             anchors.left: parent.left
@@ -736,6 +746,16 @@ ApplicationWindow {
 
             Behavior on height {
                 NumberAnimation { duration: 150; easing.type: Easing.OutQuad }
+            }
+
+            MouseArea {
+                anchors.fill: parent
+                onClicked: {
+                    inputField.forceActiveFocus()
+                    inputField.cursorPosition = inputField.length
+                }
+                propagateComposedEvents: true
+                z: -1
             }
 
             ScrollView {
@@ -758,6 +778,21 @@ ApplicationWindow {
                     rightPadding: 8
                     verticalAlignment: TextEdit.AlignVCenter
                     renderType: Text.NativeRendering
+
+                    // Добавьте эту MouseArea поверх TextEdit
+                    MouseArea {
+                        anchors.fill: parent
+                        onClicked: function(mouse) {
+                            inputField.forceActiveFocus()
+                            // Устанавливаем курсор в позицию клика
+                            inputField.cursorPosition = inputField.positionAt(mouse.x, mouse.y)
+                        }
+                        // Пропускаем события для выделения текста
+                        onPressed: function(mouse) {
+                            inputField.forceActiveFocus()
+                            mouse.accepted = false
+                        }
+                    }
 
                     Keys.onReturnPressed: function(event) {
                         if (event.modifiers & Qt.ShiftModifier) {
