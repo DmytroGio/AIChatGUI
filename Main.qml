@@ -765,82 +765,92 @@ ApplicationWindow {
                 ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
                 ScrollBar.vertical.policy: inputField.contentHeight > 200 ? ScrollBar.AsNeeded : ScrollBar.AlwaysOff
 
-                TextEdit {
-                    id: inputField
+                // Добавьте Item-контейнер, который заполнит всю область
+                Item {
                     width: parent.width
-                    color: root.textPrimary
-                    font.pixelSize: 16
-                    wrapMode: TextEdit.Wrap
-                    selectByMouse: true
-                    selectionColor: root.primaryColor
-                    selectedTextColor: "white"
-                    leftPadding: 8
-                    rightPadding: 8
-                    verticalAlignment: TextEdit.AlignVCenter
-                    renderType: Text.NativeRendering
+                    height: Math.max(parent.height, inputField.contentHeight)
 
-                    // Добавьте эту MouseArea поверх TextEdit
+                    TextEdit {
+                        id: inputField
+                        width: parent.width
+                        color: root.textPrimary
+                        font.pixelSize: 16
+                        wrapMode: TextEdit.Wrap
+                        selectByMouse: true
+                        selectionColor: root.primaryColor
+                        selectedTextColor: "white"
+                        leftPadding: 8
+                        rightPadding: 8
+                        verticalAlignment: TextEdit.AlignVCenter
+                        renderType: Text.NativeRendering
+
+                        Keys.onReturnPressed: function(event) {
+                            if (event.modifiers & Qt.ShiftModifier) {
+                                event.accepted = false
+                            } else {
+                                event.accepted = true
+                                if (inputField.text.trim().length > 0) {
+                                    sendMessage()
+                                }
+                            }
+                        }
+
+                        Keys.onEnterPressed: function(event) {
+                            if (event.modifiers & Qt.ShiftModifier) {
+                                event.accepted = false
+                            } else {
+                                event.accepted = true
+                                if (inputField.text.trim().length > 0) {
+                                    sendMessage()
+                                }
+                            }
+                        }
+
+                        Text {
+                            id: placeholderText
+                            anchors.fill: parent
+                            anchors.leftMargin: 8
+                            anchors.rightMargin: 8
+                            text: "Type your message..."
+                            color: root.textSecondary
+                            font.pixelSize: 16
+                            verticalAlignment: Text.AlignVCenter
+                            visible: inputField.text.length === 0
+                            enabled: false
+                        }
+
+                        cursorDelegate: Rectangle {
+                            width: 1
+                            color: "white"
+                            visible: inputField.cursorVisible
+
+                            SequentialAnimation on visible {
+                                running: inputField.cursorVisible
+                                loops: Animation.Infinite
+                                PropertyAnimation { to: true; duration: 0 }
+                                PauseAnimation { duration: 500 }
+                                PropertyAnimation { to: false; duration: 0 }
+                                PauseAnimation { duration: 500 }
+                            }
+                        }
+                    }
+
+                    // MouseArea поверх всего Item-контейнера
                     MouseArea {
                         anchors.fill: parent
                         onClicked: function(mouse) {
                             inputField.forceActiveFocus()
-                            // Устанавливаем курсор в позицию клика
-                            inputField.cursorPosition = inputField.positionAt(mouse.x, mouse.y)
+                            // Если клик попал в область TextEdit, ставим курсор туда
+                            if (mouse.y <= inputField.contentHeight) {
+                                inputField.cursorPosition = inputField.positionAt(mouse.x, mouse.y)
+                            } else {
+                                // Иначе в конец текста
+                                inputField.cursorPosition = inputField.length
+                            }
                         }
-                        // Пропускаем события для выделения текста
                         onPressed: function(mouse) {
                             inputField.forceActiveFocus()
                             mouse.accepted = false
-                        }
-                    }
-
-                    Keys.onReturnPressed: function(event) {
-                        if (event.modifiers & Qt.ShiftModifier) {
-                            event.accepted = false
-                        } else {
-                            event.accepted = true
-                            if (inputField.text.trim().length > 0) {
-                                sendMessage()
-                            }
-                        }
-                    }
-
-                    Keys.onEnterPressed: function(event) {
-                        if (event.modifiers & Qt.ShiftModifier) {
-                            event.accepted = false
-                        } else {
-                            event.accepted = true
-                            if (inputField.text.trim().length > 0) {
-                                sendMessage()
-                            }
-                        }
-                    }
-
-                    Text {
-                        id: placeholderText
-                        anchors.fill: parent
-                        anchors.leftMargin: 8
-                        anchors.rightMargin: 8
-                        text: "Type your message..."
-                        color: root.textSecondary
-                        font.pixelSize: 16
-                        verticalAlignment: Text.AlignVCenter
-                        visible: inputField.text.length === 0
-                        enabled: false
-                    }
-
-                    cursorDelegate: Rectangle {
-                        width: 1
-                        color: "white"
-                        visible: inputField.cursorVisible
-
-                        SequentialAnimation on visible {
-                            running: inputField.cursorVisible
-                            loops: Animation.Infinite
-                            PropertyAnimation { to: true; duration: 0 }
-                            PauseAnimation { duration: 500 }
-                            PropertyAnimation { to: false; duration: 0 }
-                            PauseAnimation { duration: 500 }
                         }
                     }
                 }
