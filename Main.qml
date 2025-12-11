@@ -10,7 +10,7 @@ ApplicationWindow {
     height: 1000
     minimumWidth: 400
     minimumHeight: 500
-    title: "AI Chat Assistant"
+    title: "Chat Assistant"
 
     flags: Qt.Window | Qt.WindowTitleHint | Qt.WindowSystemMenuHint |
            Qt.WindowMinimizeButtonHint | Qt.WindowMaximizeButtonHint |
@@ -765,7 +765,6 @@ ApplicationWindow {
                 ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
                 ScrollBar.vertical.policy: inputField.contentHeight > 200 ? ScrollBar.AsNeeded : ScrollBar.AlwaysOff
 
-                // Добавьте Item-контейнер, который заполнит всю область
                 Item {
                     width: parent.width
                     height: Math.max(parent.height, inputField.contentHeight)
@@ -835,16 +834,14 @@ ApplicationWindow {
                         }
                     }
 
-                    // MouseArea поверх всего Item-контейнера
+                    // MouseArea over the entire Item container
                     MouseArea {
                         anchors.fill: parent
                         onClicked: function(mouse) {
                             inputField.forceActiveFocus()
-                            // Если клик попал в область TextEdit, ставим курсор туда
                             if (mouse.y <= inputField.contentHeight) {
                                 inputField.cursorPosition = inputField.positionAt(mouse.x, mouse.y)
                             } else {
-                                // Иначе в конец текста
                                 inputField.cursorPosition = inputField.length
                             }
                         }
