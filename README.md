@@ -2,7 +2,7 @@
 
 A modern, native desktop application for running local AI models with GPU acceleration. Built with Qt6/QML and powered by llama.cpp.
 
-![Version](https://img.shields.io/badge/version-0.1-blue)
+![Version](https://img.shields.io/badge/version-1.0-blue)
 ![Qt](https://img.shields.io/badge/Qt-6-green)
 ![CUDA](https://img.shields.io/badge/CUDA-12.6-brightgreen)
 

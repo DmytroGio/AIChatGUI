@@ -41,7 +41,7 @@ if(WIN32)
     set(APP_ICON_RC "${CMAKE_CURRENT_SOURCE_DIR}/app.rc")
 endif()
 
-qt_add_executable(appAIChatGUI
+qt_add_executable(AIChatGUI
     main.cpp
     llamaconnector.h
     llamaconnector.cpp
@@ -56,7 +56,7 @@ qt_add_executable(appAIChatGUI
     ${APP_ICON_RC}
 )
 
-qt_add_resources(appAIChatGUI "icons"
+qt_add_resources(AIChatGUI "icons"
     PREFIX "/"
     FILES
         icons/AiGui_Logo_small.png
@@ -79,7 +79,7 @@ qt_add_resources(appAIChatGUI "icons"
         icons/App_Icon_Invert_128.ico
 )
 
-qt_add_qml_module(appAIChatGUI
+qt_add_qml_module(AIChatGUI
     URI AIChatGUI
     VERSION 1.0
     RESOURCE_PREFIX "/"
@@ -99,12 +99,12 @@ qt_add_qml_module(appAIChatGUI
 )
 
 # Include directories
-target_include_directories(appAIChatGUI PRIVATE
+target_include_directories(AIChatGUI PRIVATE
     ${CMAKE_SOURCE_DIR}/external/llama.cpp/include
     ${CMAKE_SOURCE_DIR}/external/llama.cpp/ggml/include
 )
 
-set_target_properties(appAIChatGUI PROPERTIES
+set_target_properties(AIChatGUI PROPERTIES
     MACOSX_BUNDLE_BUNDLE_VERSION ${PROJECT_VERSION}
     MACOSX_BUNDLE_SHORT_VERSION_STRING ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}
     MACOSX_BUNDLE TRUE
@@ -121,7 +121,7 @@ endif()
 # Find CUDA Toolkit
 find_package(CUDAToolkit REQUIRED)
 
-target_include_directories(appAIChatGUI PRIVATE
+target_include_directories(AIChatGUI PRIVATE
     ${CUDAToolkit_INCLUDE_DIRS}
 )
 
@@ -158,7 +158,7 @@ foreach(lib llama ggml ggml-base ggml-cpu ggml-cuda)
     endif()
 endforeach()
 
-target_link_libraries(appAIChatGUI
+target_link_libraries(AIChatGUI
     PRIVATE
     Qt6::Quick
     Qt6::Network
@@ -184,20 +184,20 @@ if(WIN32)
         set(CUDA_DLL_SUFFIX "")
     endif()
 
-    add_custom_command(TARGET appAIChatGUI POST_BUILD
+    add_custom_command(TARGET AIChatGUI POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
         "${CUDAToolkit_BIN_DIR}/cudart64${CUDA_DLL_SUFFIX}.dll"
-        "$<TARGET_FILE_DIR:appAIChatGUI>"
+        "$<TARGET_FILE_DIR:AIChatGUI>"
     )
-    add_custom_command(TARGET appAIChatGUI POST_BUILD
+    add_custom_command(TARGET AIChatGUI POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
         "${CUDAToolkit_BIN_DIR}/cublas64${CUDA_DLL_SUFFIX}.dll"
-        "$<TARGET_FILE_DIR:appAIChatGUI>"
+        "$<TARGET_FILE_DIR:AIChatGUI>"
     )
-    add_custom_command(TARGET appAIChatGUI POST_BUILD
+    add_custom_command(TARGET AIChatGUI POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
         "${CUDAToolkit_BIN_DIR}/cublasLt64${CUDA_DLL_SUFFIX}.dll"
-        "$<TARGET_FILE_DIR:appAIChatGUI>"
+        "$<TARGET_FILE_DIR:AIChatGUI>"
     )
 endif()
 
