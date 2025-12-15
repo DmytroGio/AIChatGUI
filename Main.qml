@@ -380,11 +380,15 @@ ApplicationWindow {
 
                         Rectangle {
                             width: 450
-                            height: 50
+                            height: editScrollView.visible ? Math.min(editField.contentHeight + 20, 140) : 50
                             color: root.inputBackground
                             radius: 12
-                            border.color: editField.visible ? root.primaryColor : "transparent"
+                            border.color: editScrollView.visible ? root.primaryColor : "transparent"
                             border.width: 2
+
+                            Behavior on height {
+                                NumberAnimation { duration: 150; easing.type: Easing.OutQuad }
+                            }
 
                             // Question text
                             Item {
@@ -407,30 +411,40 @@ ApplicationWindow {
                                     visible: !editField.visible
                                 }
 
-                                TextInput {
-                                    id: editField
+                                ScrollView {
+                                    id: editScrollView
                                     anchors.verticalCenter: parent.verticalCenter
                                     anchors.left: parent.left
                                     anchors.right: parent.right
-                                    text: modelData
-                                    color: root.textPrimary
-                                    font.pixelSize: 14
-                                    selectByMouse: true
-                                    selectionColor: root.primaryColor
-                                    selectedTextColor: "white"
+                                    height: Math.min(editField.contentHeight + 4, 120)
                                     visible: false
+                                    clip: true
+                                    ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+                                    ScrollBar.vertical.policy: editField.contentHeight > 116 ? ScrollBar.AsNeeded : ScrollBar.AlwaysOff
 
-                                    Keys.onReturnPressed: {
-                                        saveEdit()
-                                    }
-                                    Keys.onEscapePressed: {
-                                        editField.visible = false
-                                        editField.text = modelData
-                                    }
+                                    TextEdit {
+                                        id: editField
+                                        width: editScrollView.width
+                                        text: modelData
+                                        color: root.textPrimary
+                                        font.pixelSize: 14
+                                        selectByMouse: true
+                                        selectionColor: root.primaryColor
+                                        selectedTextColor: "white"
+                                        wrapMode: TextEdit.Wrap
 
-                                    function saveEdit() {
-                                        chatManager.updateExampleQuestion(index, editField.text)
-                                        editField.visible = false
+                                        Keys.onReturnPressed: {
+                                            saveEdit()
+                                        }
+                                        Keys.onEscapePressed: {
+                                            editScrollView.visible = false
+                                            editField.text = modelData
+                                        }
+
+                                        function saveEdit() {
+                                            chatManager.updateExampleQuestion(index, editField.text)
+                                            editScrollView.visible = false
+                                        }
                                     }
                                 }
 
@@ -463,7 +477,8 @@ ApplicationWindow {
                                 height: 30
                                 radius: 6
                                 color: editMouseArea.pressed ? root.primaryColor :
-                                       editMouseArea.containsMouse ? Qt.darker(root.inputBackground, 1.2) : "transparent"
+                                       editMouseArea.containsMouse ? Qt.darker(root.inputBackground, 1.2) :
+                                       Qt.darker(root.inputBackground, 1.2)
 
                                 Behavior on color {
                                     ColorAnimation { duration: 200 }
@@ -471,8 +486,8 @@ ApplicationWindow {
 
                                 Text {
                                     anchors.centerIn: parent
-                                    text: editField.visible ? "✓" : "✎"
-                                    color: editField.visible ? "white" : root.textSecondary
+                                    text: editScrollView.visible ? "✓" : "✎"
+                                    color: editScrollView.visible ? "white" : root.textSecondary
                                     font.pixelSize: 16
                                 }
 
@@ -482,10 +497,10 @@ ApplicationWindow {
                                     hoverEnabled: true
                                     cursorShape: Qt.PointingHandCursor
                                     onClicked: {
-                                        if (editField.visible) {
+                                        if (editScrollView.visible) {
                                             editField.saveEdit()
                                         } else {
-                                            editField.visible = true
+                                            editScrollView.visible = true
                                             editField.forceActiveFocus()
                                             editField.selectAll()
                                         }
