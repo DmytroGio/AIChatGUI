@@ -376,39 +376,120 @@ ApplicationWindow {
                     spacing: 10
 
                     Repeater {
-                        model: [
-                            "💡 Explain quantum physics in simple terms",
-                            "📝 Help me write Python code",
-                            "🎨 Give me interface design tips"
-                        ]
+                        model: chatManager.exampleQuestions
 
                         Rectangle {
                             width: 450
                             height: 50
                             color: root.inputBackground
                             radius: 12
-                            border.color: suggestionArea.containsMouse ? root.primaryColor : "transparent"
+                            border.color: editField.visible ? root.primaryColor : "transparent"
                             border.width: 2
 
-                            Text {
+                            // Question text
+                            Item {
                                 anchors.left: parent.left
+                                anchors.right: editButton.left
+                                anchors.top: parent.top
+                                anchors.bottom: parent.bottom
                                 anchors.leftMargin: 15
-                                anchors.verticalCenter: parent.verticalCenter
-                                text: modelData
-                                color: root.textSecondary
-                                font.pixelSize: 14
+                                anchors.rightMargin: 5
+
+                                Text {
+                                    id: questionText
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    anchors.left: parent.left
+                                    anchors.right: parent.right
+                                    text: modelData
+                                    color: root.textSecondary
+                                    font.pixelSize: 14
+                                    elide: Text.ElideRight
+                                    visible: !editField.visible
+                                }
+
+                                TextInput {
+                                    id: editField
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    anchors.left: parent.left
+                                    anchors.right: parent.right
+                                    text: modelData
+                                    color: root.textPrimary
+                                    font.pixelSize: 14
+                                    selectByMouse: true
+                                    selectionColor: root.primaryColor
+                                    selectedTextColor: "white"
+                                    visible: false
+
+                                    Keys.onReturnPressed: {
+                                        saveEdit()
+                                    }
+                                    Keys.onEscapePressed: {
+                                        editField.visible = false
+                                        editField.text = modelData
+                                    }
+
+                                    function saveEdit() {
+                                        chatManager.updateExampleQuestion(index, editField.text)
+                                        editField.visible = false
+                                    }
+                                }
+
+                                MouseArea {
+                                    id: suggestionArea
+                                    anchors.fill: parent
+                                    anchors.rightMargin: -40  // Расширяем область на кнопку
+                                    hoverEnabled: true
+                                    cursorShape: containsMouse && mouseX < width - 40 ? Qt.PointingHandCursor : Qt.ArrowCursor
+                                    enabled: !editField.visible
+
+                                    onClicked: function(mouse) {
+                                        // Кликаем только если не в зоне кнопки
+                                        if (mouse.x < width - 40) {
+                                            var cleanText = modelData.replace(/^[\u{1F000}-\u{1F9FF}]\s*/u, "")
+                                            inputField.text = cleanText
+                                            inputField.forceActiveFocus()
+                                        }
+                                    }
+                                }
                             }
 
-                            MouseArea {
-                                id: suggestionArea
-                                anchors.fill: parent
-                                hoverEnabled: true
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: {
-                                    // Remove emoji and space
-                                    var cleanText = modelData.replace(/^[\u{1F000}-\u{1F9FF}]\s*/u, "")
-                                    inputField.text = cleanText
-                                    inputField.forceActiveFocus()
+                            // Edit button
+                            Rectangle {
+                                id: editButton
+                                anchors.right: parent.right
+                                anchors.rightMargin: 10
+                                anchors.verticalCenter: parent.verticalCenter
+                                width: 30
+                                height: 30
+                                radius: 6
+                                color: editMouseArea.pressed ? root.primaryColor :
+                                       editMouseArea.containsMouse ? Qt.darker(root.inputBackground, 1.2) : "transparent"
+
+                                Behavior on color {
+                                    ColorAnimation { duration: 200 }
+                                }
+
+                                Text {
+                                    anchors.centerIn: parent
+                                    text: editField.visible ? "✓" : "✎"
+                                    color: editField.visible ? "white" : root.textSecondary
+                                    font.pixelSize: 16
+                                }
+
+                                MouseArea {
+                                    id: editMouseArea
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: {
+                                        if (editField.visible) {
+                                            editField.saveEdit()
+                                        } else {
+                                            editField.visible = true
+                                            editField.forceActiveFocus()
+                                            editField.selectAll()
+                                        }
+                                    }
                                 }
                             }
 
@@ -416,6 +497,8 @@ ApplicationWindow {
                                 ColorAnimation { duration: 200 }
                             }
                         }
+
+
                     }
                 }
             }

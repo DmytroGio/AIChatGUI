@@ -14,6 +14,7 @@ ChatManager::ChatManager(QObject *parent)
     m_messageModel = new MessageListModel(this);
     initDatabase();
     m_messageModel->setDatabase(&m_db);
+    loadExampleQuestions();
     loadChats();
     createNewWelcomeChat();
 }
@@ -346,6 +347,12 @@ void ChatManager::initDatabase()
                "blocks_json TEXT, "
                "FOREIGN KEY(chat_id) REFERENCES chats(id) ON DELETE CASCADE)");
 
+    query.exec("CREATE TABLE IF NOT EXISTS settings ("
+               "key TEXT PRIMARY KEY, "
+               "value TEXT)");
+
+    qDebug() << "Settings table created";
+
     // Add blocks_json column if it doesn't exist
     QSqlQuery checkColumn;
     checkColumn.exec("PRAGMA table_info(messages)");
@@ -601,4 +608,76 @@ ParsedContent ChatManager::parseMarkdown(const QString &text)
     }
 
     return result;
+}
+
+void ChatManager::loadExampleQuestions()
+{
+    m_exampleQuestions.clear();
+
+    QSqlQuery query;
+    query.prepare("SELECT value FROM settings WHERE key = ?");
+    query.addBindValue("example_questions");
+
+    if (query.exec() && query.next()) {
+        QString json = query.value(0).toString();
+        QJsonDocument doc = QJsonDocument::fromJson(json.toUtf8());
+
+        if (doc.isArray()) {
+            QJsonArray arr = doc.array();
+            for (const QJsonValue &val : arr) {
+                m_exampleQuestions.append(val.toString());
+            }
+        }
+    }
+
+
+    if (m_exampleQuestions.isEmpty()) {
+        m_exampleQuestions << "💡 Explain quantum physics in simple terms"
+                           << "📝 Help me write Python code"
+                           << "🎨 Give me interface design tips";
+        saveExampleQuestions();
+    }
+
+    qDebug() << "Loaded example questions:" << m_exampleQuestions.size();
+}
+
+void ChatManager::saveExampleQuestions()
+{
+    QJsonArray arr;
+    for (const QString &q : m_exampleQuestions) {
+        arr.append(q);
+    }
+
+    QJsonDocument doc(arr);
+    QString json = doc.toJson(QJsonDocument::Compact);
+
+    QSqlQuery query;
+    query.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)");
+    query.addBindValue("example_questions");
+    query.addBindValue(json);
+
+    if (!query.exec()) {
+        qDebug() << "Failed to save example questions:" << query.lastError().text();
+    } else {
+        qDebug() << "Example questions saved";
+    }
+}
+
+void ChatManager::updateExampleQuestion(int index, const QString &text)
+{
+    if (index >= 0 && index < m_exampleQuestions.size()) {
+        m_exampleQuestions[index] = text;
+        saveExampleQuestions();
+        emit exampleQuestionsChanged();
+        qDebug() << "Updated example question" << index << "to:" << text;
+    }
+}
+
+QVariantList ChatManager::getExampleQuestions() const
+{
+    QVariantList list;
+    for (const QString &q : m_exampleQuestions) {
+        list.append(q);
+    }
+    return list;
 }
